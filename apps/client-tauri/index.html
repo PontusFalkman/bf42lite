@@ -20,6 +20,8 @@
         top: 0;
         left: 0;
         z-index: 100;
+        width: 100vw;
+        height: 100vh;
       }
       #fps-counter, #rtt-counter {
         position: absolute;
@@ -30,9 +32,33 @@
         top: 10px;
       }
       #rtt-counter {
-        top: 35px; /* Positioned below the FPS counter */
+        top: 60px; /* Positioned below the FPS counter */
       }
-      
+      /* --- V4: HUD EXPANSION --- */
+      #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        /* Center the '+' */
+        transform: translate(-50%, -50%); 
+        font-size: 24px;
+        color: rgba(255, 255, 255, 0.7);
+        /* Prevents text selection */
+        user-select: none; 
+      }
+      #hud-stats {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        font-size: 28px;
+        font-weight: bold;
+      }
+      #hud-stats div {
+        margin-top: 10px;
+        /* Add a slight shadow to make text readable */
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+      }
+      /* --- END V4 --- */
       /* New Menu Styles */
       #menu {
         display: flex;
@@ -93,7 +119,13 @@
     <div id="hud">
       <div id="fps-counter">FPS: ...</div>
       <div id="rtt-counter">RTT: ...</div>
-    </div>
+
+      <div id="crosshair">+</div>
+      <div id="hud-stats">
+        <div id="health-counter">HP: 100</div>
+        <div id="ammo-counter">AMMO: 30 / 120</div>
+      </div>
+      </div>
     <canvas id="game"></canvas>
 
     <script type="module" src="./src/main.ts"></script>

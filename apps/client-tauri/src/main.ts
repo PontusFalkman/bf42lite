@@ -29,7 +29,12 @@ const btnHost = document.getElementById("btn-host") as HTMLButtonElement | null;
 const btnJoin = document.getElementById("btn-join") as HTMLButtonElement | null;
 const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
 
-if (!canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl) {
+// --- V4: HUD EXPANSION ---
+const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
+const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
+// --- END V4 ---
+
+if (!canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl || !healthEl || !ammoEl) {
   throw new Error("UI elements not found. Check index.html.");
 }
 
@@ -89,16 +94,30 @@ async function startGame(mode: "join", url: string) {
     1000
   );
   camera.position.set(0, 1.6, 3);
-
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(5, 10, 7);
+// --- V5: CAMERA SMOOTHING ---
+  // A reusable vector to store the camera's target position
+  const cameraTarget = new THREE.Vector3(); 
+  // How fast the camera should "catch up" (lower is smoother)
+  const smoothingFactor = 0.1; 
+  // --- END V5 ---
+  const light = new THREE.DirectionalLight(0xffffff, 1.0); // Keep intensity at 1.0
+  light.position.set(10, 20, 5); // Change position for a different shadow angle
   // Enable shadows for the light
   light.castShadow = true;
+
+  // --- V3 LIGHTING POLISH (MVP) ---
+  // Tweak shadow map for better (but still fast) shadows
+  light.shadow.mapSize.width = 1024; // Default 512
+  light.shadow.mapSize.height = 1024; // Default 512
+  light.shadow.camera.near = 0.5;
+  light.shadow.camera.far = 50;
+  // --- END V3 ---
+
   scene.add(light);
 
   // Add some ambient light
-  const ambientLight = new THREE.AmbientLight(0x404040, 2);
-  scene.add(ambientLight);
+  const ambientLight = new THREE.AmbientLight(0x606060, 1.5); // (Original was 0x404040, 2)
+    scene.add(ambientLight);
 
   // --- V2: ADD WAREHOUSE MAP GEOMETRY ---
   const mapGroup = new THREE.Group();
@@ -371,14 +390,27 @@ async function startGame(mode: "join", url: string) {
         obj.position.z = Transform.z[eid];
       }
 
-      // Camera follows the local player
-      if (eid === localPlayerEid) {
-        camera.position.x = Transform.x[eid];
-        camera.position.z = Transform.z[eid] + 3;
-      }
+    // Camera follows the local player
+    if (eid === localPlayerEid) {
+    // --- V5: CAMERA SMOOTHING ---
+    // Set where the camera *should* be
+     cameraTarget.x = Transform.x[eid];
+     cameraTarget.y = 1.6; // Keep the same static height
+    cameraTarget.z = Transform.z[eid] + 3; // 3 units behind the player
+
+  // Smoothly move the camera's current position *towards* the target
+    camera.position.lerp(cameraTarget, smoothingFactor);
+  // --- END V5 ---
+}
     }
 
     renderer.render(scene, camera);
+    // === 10. CLIENT: UPDATE HUD (V4) ===
+    // For now, we just show placeholder values.
+    // Later, this data will come from the simulation state.
+    healthEl.textContent = `HP: 100`;
+    ammoEl.textContent = `AMMO: 30 / 120`;
+    // --- END V4 ---
 
     // Update FPS counter
     frameCount++;
