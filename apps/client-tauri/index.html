@@ -4,21 +4,98 @@
     <meta charset="utf-8" />
     <title>bf42lite</title>
     <style>
-      body { margin: 0; overflow: hidden; }
-      #fps-counter {
-        position: absolute;
-        top: 10px;
-        left: 10px;
+      body { 
+        margin: 0; 
+        overflow: hidden; 
+        background-color: #202028;
         color: white;
         font-family: monospace;
-        font-size: 20px;
+      }
+      canvas {
+        display: block; /* Hide canvas by default */
+      }
+      #hud {
+        display: none; /* Hide HUD by default */
+        position: absolute;
+        top: 0;
+        left: 0;
         z-index: 100;
+      }
+      #fps-counter, #rtt-counter {
+        position: absolute;
+        left: 10px;
+        font-size: 20px;
+      }
+      #fps-counter {
+        top: 10px;
+      }
+      #rtt-counter {
+        top: 35px; /* Positioned below the FPS counter */
+      }
+      
+      /* New Menu Styles */
+      #menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100vw;
+        height: 100vh;
+        z-index: 200;
+      }
+      #menu h1 {
+        font-size: 48px;
+        color: #eee;
+        margin-bottom: 40px;
+      }
+      .menu-button {
+        font-family: monospace;
+        font-size: 24px;
+        background-color: #4488ff;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        margin: 10px;
+        cursor: pointer;
+        min-width: 200px;
+      }
+      .menu-button:hover {
+        background-color: #5599ff;
+      }
+      #join-section {
+        margin-top: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      #join-section input {
+        font-family: monospace;
+        font-size: 20px;
+        padding: 10px;
+        margin-bottom: 10px;
+        background-color: #333;
+        border: 1px solid #555;
+        color: white;
+        width: 260px;
       }
     </style>
   </head>
   <body>
-    <div id="fps-counter">FPS: ...</div>
+    <div id="menu">
+      <h1>bf42lite</h1>
+      <button id="btn-host" class="menu-button">Host (Loopback)</button>
+      <div id="join-section">
+        <input type="text" id="join-ip" value="ws://localhost:8080" />
+        <button id="btn-join" class="menu-button">Join</button>
+      </div>
+    </div>
+
+    <div id="hud">
+      <div id="fps-counter">FPS: ...</div>
+      <div id="rtt-counter">RTT: ...</div>
+    </div>
     <canvas id="game"></canvas>
+
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

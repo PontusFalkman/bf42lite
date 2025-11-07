@@ -1,5 +1,5 @@
 import { createWorld, IWorld } from "bitecs";
-import { MovementSystem } from "./ecs/systems";
+import { MovementSystem } from "./systems"; // <-- This path is now corrected
 
 // Export the world so other files can access it
 export const world = createWorld() as IWorld & { dt: number };

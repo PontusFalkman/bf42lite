@@ -11,7 +11,8 @@
     "bitecs": "^0.3.40",
     "@protocol/schema": "workspace:*",
     "msgpackr": "^1.10.4",
-    "@net/adapter": "workspace:*"
+    "@net/adapter": "workspace:*",
+    "@sim/logic": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

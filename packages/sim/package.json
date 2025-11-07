@@ -1,0 +1,12 @@
+{
+  "name": "@sim/logic",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "dependencies": {
+    "bitecs": "^0.3.40"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  }
+}
