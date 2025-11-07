@@ -14,6 +14,7 @@ export const InputMsgSchema = z.object({
     forward: z.number(),
     right: z.number(),
     jump: z.boolean(),
+    fire: z.boolean(), // --- G2: ADD THIS ---
   }),
 });
 export type InputMsg = z.infer<typeof InputMsgSchema>;
@@ -27,6 +28,7 @@ export const EntitySnapshotSchema = z.object({
   x: z.number(),  // Transform.x
   y: z.number(),  // Transform.y
   z: z.number(),  // Transform.z
+  hp: z.number(),
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -41,6 +43,7 @@ export const JoinMsgSchema = z.object({
   x: z.number(),
   y: z.number(),
   z: z.number(),
+  hp: z.number(),
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
 

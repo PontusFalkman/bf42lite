@@ -5,15 +5,21 @@ import {
   InputMsg,
   StateMsg,
   EntitySnapshot,
-  JoinMsg, // Import the new message type
+  JoinMsg,
 } from "@protocol/schema";
-import { world, step, Transform, Velocity } from "@sim/logic";
+// --- G1: Import Health ---
+import { world, step, Transform, Velocity, Health } from "@sim/logic";
 
 const PORT = 8080;
 const TICK_RATE = 60; // 60hz
 const SNAPSHOT_RATE = 30; // 30hz
 const TICK_MS = 1000 / TICK_RATE;
 const SPEED = 3.0;
+const DEFAULT_HEALTH = 100;
+// --- G2: Add weapon constants ---
+const SHOT_DAMAGE = 10;
+const SHOT_RANGE = 20.0; // Max distance for a hit
+// --- END G2 ---
 
 const wss = new WebSocketServer({ port: PORT });
 const packr = new Packr();
@@ -38,9 +44,16 @@ wss.on("connection", (ws) => {
   Transform.y[playerEid] = 0;
   Transform.z[playerEid] = 0;
 
+  // --- G1: Add Health component and set defaults ---
+  addComponent(world, Health, playerEid);
+  Health.current[playerEid] = DEFAULT_HEALTH;
+  Health.max[playerEid] = DEFAULT_HEALTH;
+  // --- END G1 ---
+
   // Store the client and their entity ID
   clients.set(ws, playerEid);
-  inputs.set(playerEid, { forward: 0, right: 0, jump: false });
+  // --- G2: Update default input state ---
+  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false });
 
   // --- N4: Send JoinMsg to the new client ---
   const joinMsg: JoinMsg = {
@@ -50,6 +63,7 @@ wss.on("connection", (ws) => {
     x: Transform.x[playerEid],
     y: Transform.y[playerEid],
     z: Transform.z[playerEid],
+    hp: Health.current[playerEid],
   };
   ws.send(packr.pack(joinMsg));
   // --- End N4 ---
@@ -87,6 +101,47 @@ function gameLoop() {
     Velocity.y[eid] = 0; // No gravity yet
   }
 
+  // --- G2: Handle Firing ---
+  // (We do this *before* the main simulation step)
+  for (const [firingEid, input] of inputs.entries()) {
+    if (input.fire) {
+      console.log(`[Host] Player ${firingEid} is firing!`);
+      // This is a simple "hitscan" that just finds the closest target
+      // A real implementation would use raycasting
+      
+      let closestTarget: number | null = null;
+      let minDistance = SHOT_RANGE * SHOT_RANGE; // Compare squared distances
+
+      for (const targetEid of clients.values()) {
+        if (targetEid === firingEid) continue; // Can't shoot yourself
+
+        // Simple squared distance check
+        const dx = Transform.x[targetEid] - Transform.x[firingEid];
+        const dy = Transform.y[targetEid] - Transform.y[firingEid];
+        const dz = Transform.z[targetEid] - Transform.z[firingEid];
+        const distSq = dx*dx + dy*dy + dz*dz;
+
+        // TODO: Add "is in front" check (dot product)
+        if (distSq < minDistance) {
+          minDistance = distSq;
+          closestTarget = targetEid;
+        }
+      }
+
+      if (closestTarget !== null) {
+        console.log(`[Host] Player ${firingEid} hit Player ${closestTarget}!`);
+        Health.current[closestTarget] -= SHOT_DAMAGE;
+        
+        // TODO: Add G3 logic - check if health is <= 0
+      }
+
+      // Prevent holding mouse down from firing every tick
+      input.fire = false;
+      inputs.set(firingEid, input);
+    }
+  }
+  // --- END G2 ---
+
   // B. Run the ECS simulation step
   step();
 
@@ -99,13 +154,14 @@ function gameLoop() {
         x: Transform.x[eid],
         y: Transform.y[eid],
         z: Transform.z[eid],
+        hp: Health.current[eid],
       });
     }
 
     const stateMsg: StateMsg = {
       type: "state",
       tick: tick,
-      entities: [snapshots],
+      entities: snapshots,
     };
 
     const payload = packr.pack(stateMsg);

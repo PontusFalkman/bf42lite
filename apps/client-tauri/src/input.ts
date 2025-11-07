@@ -6,12 +6,27 @@ export const inputState = {
   forward: 0,
   right: 0,
   jump: false,
+  fire: false, // --- G2: ADD THIS ---
 };
 
 export function initInput(canvas: HTMLElement) {
   canvas.onclick = () => {
     canvas.requestPointerLock();
   };
+
+  // --- G2: ADD MOUSE LISTENERS ---
+  window.addEventListener("mousedown", (e) => {
+    if (e.button === 0) { // 0 = Left click
+      keys.add("Mouse0");
+    }
+  });
+
+  window.addEventListener("mouseup", (e) => {
+    if (e.button === 0) {
+      keys.delete("Mouse0");
+    }
+  });
+  // --- END G2 ---
 
   // 2. MODIFY this listener
   window.addEventListener("keydown", (e) => {
@@ -33,6 +48,7 @@ export function updateInput() {
   inputState.right =
     (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   inputState.jump = keys.has("Space");
+  inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
 
   // 3. ADD this line at the end
   // This clears all the "just pressed" keys at the end of the frame
