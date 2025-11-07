@@ -15,9 +15,23 @@ export const InputMsgSchema = z.object({
     right: z.number(),
     jump: z.boolean(),
     fire: z.boolean(), // --- G2: ADD THIS ---
+    // --- C2: Add rotation ---
+    yaw: z.number(),
+    pitch: z.number(),
   }),
 });
 export type InputMsg = z.infer<typeof InputMsgSchema>;
+
+// --- G3: ADD RESPAWN MESSAGE ---
+/**
+ * Client -> Host
+ * Player requests to spawn/respawn.
+ */
+export const RespawnMsgSchema = z.object({
+  type: z.literal("respawn"),
+});
+export type RespawnMsg = z.infer<typeof RespawnMsgSchema>;
+// --- END G3 ---
 
 /**
  * Host -> Client
@@ -29,6 +43,9 @@ export const EntitySnapshotSchema = z.object({
   y: z.number(),  // Transform.y
   z: z.number(),  // Transform.z
   hp: z.number(),
+  // --- C2: Add rotation ---
+  yaw: z.number(),
+  pitch: z.number(),
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -44,6 +61,9 @@ export const JoinMsgSchema = z.object({
   y: z.number(),
   z: z.number(),
   hp: z.number(),
+  // --- C2: Add rotation ---
+  yaw: z.number(),
+  pitch: z.number(),
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
 

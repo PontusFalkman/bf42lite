@@ -1,13 +1,14 @@
 import * as THREE from "three";
 // Import the GLTFLoader
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { initInput, updateInput, inputState, keysPressed } from "./input"; // <-- ADD keysPressed
+import { initInput, updateInput, inputState, keysPressed } from "./input";
 import { Packr } from "msgpackr";
 import {
   InputMsg,
   StateMsg,
   JoinMsg, // Import new message
   EntitySnapshot,
+  RespawnMsg, // --- G3: Import RespawnMsg ---
 } from "@protocol/schema";
 import { WebSocketAdapter } from "@net/adapter";
 // N4: Import simulation logic for client-side prediction
@@ -16,6 +17,7 @@ import {
   step,
   Transform,
   Velocity,
+  Health, // --- G1: Import Health ---
 } from "@sim/logic";
 import { addComponent, addEntity } from "bitecs";
 
@@ -67,7 +69,7 @@ btnJoin.onclick = () => {
 async function startGame(mode: "join", url: string) {
   // --- 1. HIDE MENU, SHOW GAME ---
   menuEl.style.display = "none";
-  hudEl.style.display = "none";
+  hudEl.style.display = "none"; // Start with HUD hidden
   canvas.style.display = "block";
 
   // --- V6: RESPAWN UI LOGIC ---
@@ -111,9 +113,13 @@ async function startGame(mode: "join", url: string) {
   // Hook up the deploy button
   btnDeploy.onclick = () => {
     hideRespawnScreen();
-    // In Phase 4, we'll send a "respawn" message to the server here
+    // --- G3: Send Respawn Message ---
     console.log("Player clicked DEPLOY");
+    const respawnMsg: RespawnMsg = { type: "respawn" };
+    adapter.send(packr.pack(respawnMsg));
+    // --- END G3 ---
   };
+
   showRespawnScreen(); // Show the respawn screen on initial join
 
   // --- END V6 ---
@@ -151,13 +157,21 @@ async function startGame(mode: "join", url: string) {
     0.1,
     1000
   );
-  camera.position.set(0, 1.6, 3);
-  // --- V5: CAMERA SMOOTHING ---
-  // A reusable vector to store the camera's target position
-  const cameraTarget = new THREE.Vector3(); 
-  // How fast the camera should "catch up" (lower is smoother)
-  const smoothingFactor = 0.1; 
-  // --- END V5 ---
+  // --- C2: Set camera rotation order ---
+  camera.rotation.order = "YXZ"; // Use YXZ order for FPS controls
+
+  // --- C2: Add rotation logic ---
+  const playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
+  const MOUSE_SENSITIVITY = 0.002;
+  
+  // --- V5 / C2: Camera smoothing logic ---
+  const cameraTarget = new THREE.Vector3();
+  const smoothingFactor = 0.1;
+  const cameraOffset = new THREE.Vector3(0, 1.6, 3.0); // x:0, y:1.6 (up), z:3.0 (behind)
+  const yawEuler = new THREE.Euler(0, 0, 0, "YXZ");
+  // --- END V5 / C2 ---
+
+
   const light = new THREE.DirectionalLight(0xffffff, 1.0); // Keep intensity at 1.0
   light.position.set(10, 20, 5); // Change position for a different shadow angle
   // Enable shadows for the light
@@ -340,10 +354,30 @@ async function startGame(mode: "join", url: string) {
       Transform.x[localPlayerEid] = state.x;
       Transform.y[localPlayerEid] = state.y;
       Transform.z[localPlayerEid] = state.z;
+      // --- C2: Set initial rotation ---
+      Transform.yaw[localPlayerEid] = state.yaw;
+      Transform.pitch[localPlayerEid] = state.pitch;
+      playerRotation.y = state.yaw;
+      playerRotation.x = state.pitch;
+
+      // --- G1: Add Health component on join ---
+      addComponent(clientWorld, Health, localPlayerEid);
+      Health.current[localPlayerEid] = state.hp;
+      Health.max[localPlayerEid] = state.hp; // Assume max health
+      // --- END G1 ---
 
       // Create the visual object for the local player
       // This will now be colored correctly as localPlayerEid is set
       getPlayerObject(localPlayerEid);
+      
+      // --- FIX: Set initial camera position ---
+      // This ensures the camera doesn't start at (0,0,0) before the first render
+      const obj = getPlayerObject(localPlayerEid);
+      obj.position.set(state.x, state.y, state.z);
+      cameraTarget.copy(obj.position).add(cameraOffset);
+      camera.position.copy(cameraTarget);
+      // --- END FIX ---
+
       return;
     }
 
@@ -363,10 +397,24 @@ async function startGame(mode: "join", url: string) {
 
       // Process all entity snapshots from the server
       for (const snapshot of state.entities) {
-        const { id, x, y, z } = snapshot;
+        // --- C2: Get rotation from snapshot ---
+        const { id, x, y, z, hp, yaw, pitch } = snapshot;
 
         // Make sure a visual object exists for this entity
         const obj = getPlayerObject(id);
+
+        // --- G1: Ensure Health component exists for remote players ---
+        // --- C2: Add yaw/pitch to remote entity creation ---
+        if (Health.current[id] === undefined) {
+          addEntity(clientWorld); // Ensure entity exists in client world
+          addComponent(clientWorld, Transform, id);
+          addComponent(clientWorld, Velocity, id); // For potential future interpolation
+          addComponent(clientWorld, Health, id);
+          Health.max[id] = hp; // Assume first packet is max
+          Transform.yaw[id] = yaw;
+          Transform.pitch[id] = pitch;
+        }
+        // --- END G1 ---
 
         // --- N4: Reconciliation ---
         if (id === localPlayerEid) {
@@ -384,10 +432,35 @@ async function startGame(mode: "join", url: string) {
             // A more advanced implementation would rewind and replay inputs
             // from the snapshot's tick to the present.
           }
+          
+          // --- FIX: Also reconcile Y ---
+          Transform.y[localPlayerEid] = y;
+          // --- END FIX ---
+
+
+          // --- C2: Client is authoritative over its own rotation, so we *don't*
+          // snap yaw or pitch from the server. ---
+
+          // --- G1: Always snap health (no prediction) ---
+          Health.current[localPlayerEid] = hp;
+          // --- END G1 ---
+          
+          // --- G3: Check for death ---
+          if (Health.current[localPlayerEid] <= 0 && respawnScreenEl!.style.display === "none") {
+            console.log("Client died, showing respawn screen.");
+            showRespawnScreen();
+          }
+          // --- END G3 ---
+
         } else {
-          // This is a remote player. Just snap their position.
-          // (Later, this will be interpolated for smoothness)
+          // This is a remote player. Just snap their position and rotation.
           obj.position.set(x, y, z);
+          Transform.yaw[id] = yaw;
+          Transform.pitch[id] = pitch;
+          
+          // --- G1: Snap remote player health ---
+          Health.current[id] = hp;
+          // --- END G1 ---
         }
       }
     }
@@ -412,25 +485,30 @@ async function startGame(mode: "join", url: string) {
 
     accumulator += frameTime;
 
-// === 7. CLIENT: SEND INPUT (runs every frame) ===
-
-    // --- V6: TEST KEY (MOVED) ---
-    // CHECK FIRST...
-    if (keysPressed.has("KeyK") && menuEl.style.display === "none") {
-      console.log("Test: Showing respawn screen");
-      if (respawnScreenEl.style.display === "none") {
-        showRespawnScreen();
-      }
-    }
-    // --- END V6 ---
+    // === 7. CLIENT: SEND INPUT (runs every frame) ===
     
     // ...THEN UPDATE (which clears the set for the next frame)
     updateInput(); 
 
+    // --- C2: Apply mouse delta to rotation ---
+    // We only do this if the respawn screen is not visible
+    if (respawnScreenEl!.style.display === "none") {
+      playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
+      playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
+      // Clamp vertical rotation (pitch)
+      playerRotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, playerRotation.x));
+    }
+    // --- END C2 ---
+
     const inputMsg: InputMsg = {
       type: "input",
       tick: tick,
-      axes: { ...inputState },
+      // --- C2: Send rotation in input message ---
+      axes: { 
+        ...inputState,
+        yaw: playerRotation.y,
+        pitch: playerRotation.x,
+      },
     };
     sendTimeMap.set(tick, performance.now());
     adapter.send(packr.pack(inputMsg));
@@ -438,10 +516,20 @@ async function startGame(mode: "join", url: string) {
     // === 8. N4: CLIENT-SIDE PREDICTION STEP (runs at fixed 60hz) ===
     // We run our *own* simulation loop locally for instant feedback.
     while (accumulator >= FIXED_DT_MS) {
-      if (localPlayerEid !== null) {
-        // Apply local input directly to the client's ECS world
-        Velocity.x[localPlayerEid] = inputState.right * SPEED;
-        Velocity.z[localPlayerEid] = -inputState.forward * SPEED;
+      // --- G3: Only predict if alive ---
+      if (localPlayerEid !== null && Health.current[localPlayerEid] > 0) {
+        
+        // --- C2: Store predicted rotation locally ---
+        Transform.yaw[localPlayerEid] = playerRotation.y;
+        Transform.pitch[localPlayerEid] = playerRotation.x;
+
+        // --- C2: Calculate movement based on yaw ---
+        const yaw = playerRotation.y;
+        const forward = inputState.forward * SPEED;
+        const right = inputState.right * SPEED;
+
+        Velocity.x[localPlayerEid] = Math.sin(yaw) * -forward + Math.cos(yaw) * right;
+        Velocity.z[localPlayerEid] = Math.cos(yaw) * -forward - Math.sin(yaw) * right;
         Velocity.y[localPlayerEid] = 0; // No gravity yet
 
         // Run the client-side simulation
@@ -455,34 +543,82 @@ async function startGame(mode: "join", url: string) {
     // === 9. CLIENT: RENDER STEP (runs every frame) ===
     // Update object positions from the *client's* ECS world
     for (const [eid, obj] of playerObjects.entries()) {
+      const isLocalPlayer = (eid === localPlayerEid);
+      const isAlive = Health.current[eid] > 0;
+
+      // Handle visibility and position for all entities
       if (Transform.x[eid] !== undefined) {
-        obj.position.x = Transform.x[eid];
-        obj.position.y = Transform.y[eid];
-        obj.position.z = Transform.z[eid];
+        if (isAlive) {
+          obj.position.x = Transform.x[eid];
+          obj.position.y = Transform.y[eid];
+          obj.position.z = Transform.z[eid];
+        } else {
+          // Hide dead players by moving them away
+          obj.position.y = -1000; 
+        }
       }
 
-    // Camera follows the local player
-    if (eid === localPlayerEid) {
-      // --- V5: CAMERA SMOOTHING ---
-      // Set where the camera *should* be
-      cameraTarget.x = Transform.x[eid];
-      cameraTarget.y = 1.6; // Keep the same static height
-      cameraTarget.z = Transform.z[eid] + 3; // 3 units behind the player
+      if (isLocalPlayer) {
+        // --- 3RD PERSON CAMERA LOGIC (FIXED) ---
+        
+        // 1. Rotate the player model left/right (yaw)
+        obj.rotation.y = playerRotation.y;
 
-      // Smoothly move the camera's current position *towards* the target
-      camera.position.lerp(cameraTarget, smoothingFactor);
-      // --- END V5 ---
-    }
+        // 2. Set the camera's rotation (pitch and yaw)
+        camera.rotation.copy(playerRotation);
+
+        if (isAlive) {
+          obj.visible = true; // Make sure we can see our own model
+  
+          // 3. Calculate the camera's target position
+          // Start with the base offset (up and behind)
+          cameraOffset.set(0, 1.6, 3.0);
+  
+          // Create an Euler with only the yaw rotation
+          yawEuler.set(0, playerRotation.y, 0);
+  
+          // Apply *only* the yaw rotation to the offset
+          cameraOffset.applyEuler(yawEuler);
+  
+          // Add the player's *object* position (which is smoothed) to the rotated offset
+          cameraTarget.copy(obj.position).add(cameraOffset);
+          
+          // 4. Smoothly move the camera to the target
+          camera.position.lerp(cameraTarget, smoothingFactor);
+        
+        } else {
+          // Player is dead, hide the model
+          obj.visible = false;
+          // The camera position will stop lerping and stay put,
+          // which is fine since the respawn screen is up.
+        }
+        // --- END 3RD PERSON ---
+
+      } else {
+        // This is a remote player
+        obj.visible = true;
+        // Apply rotation to remote player models
+        obj.rotation.y = Transform.yaw[eid];
+      }
     }
 
     renderer.render(scene, camera);
     // === 10. CLIENT: UPDATE HUD (V4) ===
-    // For now, we just show placeholder values.
-    // Later, this data will come from the simulation state.
-    healthEl.textContent = `HP: 100`;
-    ammoEl.textContent = `AMMO: 30 / 120`;
-    // --- END V4 ---
+    
+    // --- G1: Update health from local sim state ---
+    if (localPlayerEid !== null && healthEl) {
+      const hp = Health.current[localPlayerEid];
+      if (hp !== undefined) {
+        healthEl.textContent = `HP: ${hp.toFixed(0)}`;
+      }
+    }
+    // --- END G1 ---
 
+    // Placeholder ammo
+    if (ammoEl) {
+      ammoEl.textContent = `AMMO: 30 / 120`;
+    }
+    
     // Update FPS counter
     frameCount++;
     if (now - lastFPSUpdate > 250) {

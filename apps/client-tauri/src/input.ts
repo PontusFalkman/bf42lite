@@ -1,18 +1,33 @@
 let keys = new Set<string>();
-// 1. ADD this new export
 export const keysPressed = new Set<string>();
+
+// --- C2: Add accumulators for mouse movement ---
+let accumulatedX = 0;
+let accumulatedY = 0;
 
 export const inputState = {
   forward: 0,
   right: 0,
   jump: false,
   fire: false, // --- G2: ADD THIS ---
+  // --- C2: Add deltaX/Y to state ---
+  deltaX: 0,
+  deltaY: 0,
 };
 
 export function initInput(canvas: HTMLElement) {
   canvas.onclick = () => {
     canvas.requestPointerLock();
   };
+
+  // --- C2: Add mouse move listener ---
+  document.addEventListener("mousemove", (e) => {
+    // Only accumulate movement if pointer is locked
+    if (document.pointerLockElement === canvas) {
+      accumulatedX += e.movementX;
+      accumulatedY += e.movementY;
+    }
+  });
 
   // --- G2: ADD MOUSE LISTENERS ---
   window.addEventListener("mousedown", (e) => {
@@ -49,6 +64,13 @@ export function updateInput() {
     (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   inputState.jump = keys.has("Space");
   inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
+
+  // --- C2: Copy accumulated deltas and reset ---
+  inputState.deltaX = accumulatedX;
+  inputState.deltaY = accumulatedY;
+  accumulatedX = 0;
+  accumulatedY = 0;
+  // --- END C2 ---
 
   // 3. ADD this line at the end
   // This clears all the "just pressed" keys at the end of the frame
