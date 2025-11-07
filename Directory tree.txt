@@ -2,6 +2,7 @@ bf42lite/
 ├── .gitattributes
 ├── .gitignore
 ├── Directory tree.txt
+├── README.md
 ├── bf_42_lite_simplified_docs.md
 ├── package.json
 ├── pnpm-lock.yaml
@@ -15,7 +16,7 @@ bf42lite/
 │       │   └── index.html
 │       ├── index.html
 │       ├── package.json
-│       ├── tsconfig.json  (Based on vite.config.ts)
+│       ├── tsconfig.json
 │       ├── vite.config.ts
 │       └── src/
 │           ├── input.ts
