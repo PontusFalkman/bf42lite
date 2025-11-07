@@ -282,7 +282,7 @@ function gameLoop() {
         // --- C2: Add rotation to snapshot ---
         yaw: Transform.yaw[eid],
         pitch: Transform.pitch[eid],
-        // --- G4: ADD SCORING TO SNAPSHOT ---
+        // --- G4: ADD SCORING TO SNAPSHOT ---\
         teamId: Team.id[eid],
         kills: PlayerStats.kills[eid],
         deaths: PlayerStats.deaths[eid],

@@ -248,21 +248,16 @@ async function startGame(mode: "join", url: string) {
 
   // === 2. NETWORK & SERIALIZATION SETUP ===
   const adapter = new WebSocketAdapter(url!);
-  try {
-    await adapter.awaitConnection();
-    console.log("Connection successful!");
-  } catch (err) {
-    console.error("Connection failed", err);
-    alert("Connection failed. Is the server running?");
-    menuEl.style.display = "flex";
-    hudEl.style.display = "none";
-    canvas.style.display = "none";
-    return;
-  }
-
   const packr = new Packr();
   let tick = 0;
   const sendTimeMap = new Map<number, number>();
+  
+  // *** FIX: SETUP PROMISE TO WAIT FOR JOIN MESSAGE ***
+  let joinResolve: (() => void) | null = null;
+  const joinPromise = new Promise<void>((resolve) => {
+    joinResolve = resolve;
+  });
+  // *** END FIX ***
 
   // === 3. THREE.JS (CLIENT) SETUP ===
   const renderer = new THREE.WebGLRenderer({ canvas });
@@ -521,6 +516,13 @@ async function startGame(mode: "join", url: string) {
         // --- G4: SHOW SCOREBOARD ---
         scoreboardEl!.style.display = "flex";
         // --- END G4 ---
+        
+        // *** FIX: RESOLVE THE WAITING PROMISE ***
+        if (joinResolve) {
+          joinResolve();
+          joinResolve = null; // Clear the resolver
+        }
+        // *** END FIX ***
 
         return;
       }
@@ -650,6 +652,28 @@ async function startGame(mode: "join", url: string) {
         alert("A critical game error occurred. Check the console for details.");
     }
   });
+  
+  // *** FIX: IMPLEMENT SYNCHRONOUS CONNECTION WAIT ***
+  try {
+    // 1. Wait for the TCP/WebSocket connection to be fully open
+    await adapter.awaitConnection();
+    console.log("Connection successful! Waiting for JoinMsg...");
+
+    // 2. Wait for the JoinMsg from the server before continuing
+    // The message handler above will resolve this promise when 'join' is received.
+    await joinPromise; 
+    console.log("JoinMsg received and processed. Starting game loop.");
+
+  } catch (err) {
+    console.error("Connection failed", err);
+    alert("Connection failed. Is the server running?");
+    menuEl.style.display = "flex";
+    hudEl.style.display = "none";
+    canvas.style.display = "none";
+    return; // Exit startGame if connection or join fails
+  }
+  // *** END FIX ***
+
 
   // === 6. GAME LOOP ===
   initInput(canvas);
@@ -739,6 +763,16 @@ async function startGame(mode: "join", url: string) {
         .then((newState) => {
           // 1. Deserialize the new state from Rust
           deserializeWorldFromRust(newState);
+          
+          // *** FIX: Check if local player object exists before rendering ***
+          const localObj = localPlayerEid !== null ? playerObjects.get(localPlayerEid) : undefined;
+
+          if (localObj === undefined) {
+              // If the local player's 3D object is not ready, skip the rest of the render.
+              renderer.render(scene, camera); // Render the map and environment anyway
+              return; 
+          }
+          // *** END FIX ***
           
           // 2. Run all rendering and HUD logic
           // === 9. CLIENT: RENDER STEP (MOVED INSIDE .then()) ===
