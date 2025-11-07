@@ -1,4 +1,6 @@
 import * as THREE from "three";
+// Import the GLTFLoader
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initInput, updateInput, inputState } from "./input";
 import { Packr } from "msgpackr";
 import {
@@ -22,7 +24,7 @@ const canvas = document.getElementById("game") as HTMLCanvasElement | null;
 const hudEl = document.getElementById("hud") as HTMLDivElement | null;
 const menuEl = document.getElementById("menu") as HTMLDivElement | null;
 const fpsEl = document.getElementById("fps-counter") as HTMLDivElement | null;
-const rttEl = document.getElementById("rtt-counter") as HTMLDivElement | null; 
+const rttEl = document.getElementById("rtt-counter") as HTMLDivElement | null;
 const btnHost = document.getElementById("btn-host") as HTMLButtonElement | null;
 const btnJoin = document.getElementById("btn-join") as HTMLButtonElement | null;
 const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
@@ -33,7 +35,9 @@ if (!canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl) {
 
 // === 1. BUTTON EVENT LISTENERS ===
 btnHost.onclick = () => {
-  alert("Refactor Complete! Please run 'pnpm dev:host' in your terminal first, then click 'Join'.");
+  alert(
+    "Refactor Complete! Please run 'pnpm dev:host' in your terminal first, then click 'Join'."
+  );
 };
 
 btnJoin.onclick = () => {
@@ -41,7 +45,6 @@ btnJoin.onclick = () => {
   console.log(`Connecting to ${url}...`);
   startGame("join", url);
 };
-
 
 /**
  * Main game initialization and loop start
@@ -65,7 +68,7 @@ async function startGame(mode: "join", url: string) {
     canvas.style.display = "none";
     return;
   }
-  
+
   const packr = new Packr();
   let tick = 0;
   const sendTimeMap = new Map<number, number>();
@@ -73,6 +76,8 @@ async function startGame(mode: "join", url: string) {
   // === 3. THREE.JS (CLIENT) SETUP ===
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Enable shadows
+  renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202028);
@@ -87,32 +92,159 @@ async function startGame(mode: "join", url: string) {
 
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(5, 10, 7);
+  // Enable shadows for the light
+  light.castShadow = true;
   scene.add(light);
+
+  // Add some ambient light
+  const ambientLight = new THREE.AmbientLight(0x404040, 2);
+  scene.add(ambientLight);
+
+  // --- V2: ADD WAREHOUSE MAP GEOMETRY ---
+  const mapGroup = new THREE.Group();
+  scene.add(mapGroup);
+
+  // Define materials
+  const floorMaterial = new THREE.MeshStandardMaterial({
+    color: 0x444444,
+    metalness: 0.1,
+    roughness: 0.8,
+  });
+  
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    color: 0x888888,
+    metalness: 0.1,
+    roughness: 0.8,
+  });
+
+  // Floor
+  const floorGeometry = new THREE.BoxGeometry(50, 1, 50);
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.position.y = -0.5; // Place it so its top is at y=0
+  floor.receiveShadow = true; // Allow floor to receive shadows
+  mapGroup.add(floor);
+
+  // Walls
+  const wallHeight = 10;
+  const wallThickness = 1;
+  const wallLength = 50;
+
+  // Wall North (z=-25)
+  const wallNorth = new THREE.Mesh(
+    new THREE.BoxGeometry(wallLength, wallHeight, wallThickness),
+    wallMaterial
+  );
+  wallNorth.position.set(0, wallHeight / 2, -wallLength / 2);
+  wallNorth.castShadow = true;
+  wallNorth.receiveShadow = true;
+  mapGroup.add(wallNorth);
+
+  // Wall South (z=25)
+  const wallSouth = new THREE.Mesh(
+    new THREE.BoxGeometry(wallLength, wallHeight, wallThickness),
+    wallMaterial
+  );
+  wallSouth.position.set(0, wallHeight / 2, wallLength / 2);
+  wallSouth.castShadow = true;
+  wallSouth.receiveShadow = true;
+  mapGroup.add(wallSouth);
+
+  // Wall East (x=25)
+  const wallEast = new THREE.Mesh(
+    new THREE.BoxGeometry(wallThickness, wallHeight, wallLength),
+    wallMaterial
+  );
+  wallEast.position.set(wallLength / 2, wallHeight / 2, 0);
+  wallEast.castShadow = true;
+  wallEast.receiveShadow = true;
+  mapGroup.add(wallEast);
+
+  // Wall West (x=-25)
+  const wallWest = new THREE.Mesh(
+    new THREE.BoxGeometry(wallThickness, wallHeight, wallLength),
+    wallMaterial
+  );
+  wallWest.position.set(-wallLength / 2, wallHeight / 2, 0);
+  wallWest.castShadow = true;
+  wallWest.receiveShadow = true;
+  mapGroup.add(wallWest);
+
+  // --- END V2 ---
 
   // === 4. N4: CLIENT-SIDE SIMULATION SETUP ===
   const SPEED = 3.0;
   let localPlayerEid: number | null = null;
-  // Map THREE.js cubes to entity IDs
-  const playerCubes = new Map<number, THREE.Mesh>();
+  // Map THREE.js objects to entity IDs (Object3D is the base for Groups/Meshes)
+  const playerObjects = new Map<number, THREE.Object3D>();
+
+  // Add GLTFLoader and a fallback geometry
+  const gltfLoader = new GLTFLoader();
+  const fallbackGeometry = new THREE.BoxGeometry();
+
   // Store a history of inputs for reconciliation
   // TODO: Add input history buffer for full reconciliation
 
   /**
-   * Helper to get or create a cube for an entity
+   * Helper to get or create a visual object for an entity
    */
-  function getPlayerCube(eid: number): THREE.Mesh {
-    let cube = playerCubes.get(eid);
-    if (!cube) {
-      const geometry = new THREE.BoxGeometry();
-      const material = new THREE.MeshStandardMaterial({
-        color: eid === localPlayerEid ? 0x4488ff : 0xff8844, // Different color for local player
-      });
-      cube = new THREE.Mesh(geometry, material);
-      scene.add(cube);
-      playerCubes.set(eid, cube);
-      console.log(`Added cube for player ${eid}`);
+  function getPlayerObject(eid: number): THREE.Object3D {
+    let rootObject = playerObjects.get(eid);
+
+    if (!rootObject) {
+      // Create a placeholder Group. The model will be added to this once loaded.
+      rootObject = new THREE.Group();
+      scene.add(rootObject);
+      playerObjects.set(eid, rootObject);
+      console.log(`Added placeholder Group for player ${eid}`);
+
+      // Asynchronously load the model
+      // This path assumes a /public/models/soldier.glb file
+      gltfLoader.load(
+        "/models/soldier.glb",
+        (gltf) => {
+          // --- Model loaded successfully ---
+          console.log(`Model loaded for ${eid}, adding to scene graph.`);
+          const model = gltf.scene;
+
+          // Set color based on local player or remote
+          const color = eid === localPlayerEid ? 0x4488ff : 0xff8844;
+          model.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              const mesh = child as THREE.Mesh;
+              mesh.material = new THREE.MeshStandardMaterial({
+                color: color,
+              });
+              mesh.castShadow = true; // Make the model cast shadows
+            }
+          });
+
+          // Scale and position the model relative to the placeholder Group
+          // TODO: You will need to adjust these values
+          model.scale.set(0.5, 0.5, 0.5);
+          model.position.y = -0.5; // Assumes model pivot is at its feet
+
+          // Add the loaded model to our placeholder
+          rootObject!.add(model);
+        },
+        undefined, // onProgress callback (optional)
+        (error) => {
+          // --- Model failed to load ---
+          console.error(`Error loading model for ${eid}, using fallback cube:`, error);
+
+          // Use a red Box as a fallback so the game doesn't break
+          const material = new THREE.MeshStandardMaterial({
+            color: 0xff0000, // Red = Error
+          });
+          const fallbackCube = new THREE.Mesh(fallbackGeometry, material);
+          fallbackCube.position.y = 0.5; // BoxGeometry pivot is at its center
+          fallbackCube.castShadow = true;
+
+          rootObject!.add(fallbackCube); // Add to the placeholder
+        }
+      );
     }
-    return cube;
+
+    return rootObject; // <-- Return the placeholder Group immediately
   }
 
   // === 5. MESSAGE HANDLERS ===
@@ -123,7 +255,7 @@ async function startGame(mode: "join", url: string) {
     if (state.type === "join") {
       localPlayerEid = state.eid;
       console.log(`Joined game. This client is player ${localPlayerEid}`);
-      
+
       // Create the local player entity in the client's world
       addEntity(clientWorld);
       addComponent(clientWorld, Transform, localPlayerEid);
@@ -131,9 +263,10 @@ async function startGame(mode: "join", url: string) {
       Transform.x[localPlayerEid] = state.x;
       Transform.y[localPlayerEid] = state.y;
       Transform.z[localPlayerEid] = state.z;
-      
-      // Create the visual cube for the local player
-      getPlayerCube(localPlayerEid);
+
+      // Create the visual object for the local player
+      // This will now be colored correctly as localPlayerEid is set
+      getPlayerObject(localPlayerEid);
       return;
     }
 
@@ -155,15 +288,15 @@ async function startGame(mode: "join", url: string) {
       for (const snapshot of state.entities) {
         const { id, x, y, z } = snapshot;
 
-        // Make sure a cube exists for this entity
-        const cube = getPlayerCube(id);
+        // Make sure a visual object exists for this entity
+        const obj = getPlayerObject(id);
 
         // --- N4: Reconciliation ---
         if (id === localPlayerEid) {
           // This is our local player. We need to reconcile.
           const localX = Transform.x[localPlayerEid];
           const localZ = Transform.z[localPlayerEid];
-          
+
           // Simple reconciliation: If the server's state is too different
           // from our predicted state, snap our local state to the server's.
           const error = Math.abs(localX - x) + Math.abs(localZ - z);
@@ -174,16 +307,14 @@ async function startGame(mode: "join", url: string) {
             // A more advanced implementation would rewind and replay inputs
             // from the snapshot's tick to the present.
           }
-
         } else {
           // This is a remote player. Just snap their position.
           // (Later, this will be interpolated for smoothness)
-          cube.position.set(x, y, z);
+          obj.position.set(x, y, z);
         }
       }
     }
   });
-
 
   // === 6. GAME LOOP ===
   initInput(canvas);
@@ -208,7 +339,7 @@ async function startGame(mode: "join", url: string) {
     updateInput();
     const inputMsg: InputMsg = {
       type: "input",
-      tick: tick, 
+      tick: tick,
       axes: { ...inputState },
     };
     sendTimeMap.set(tick, performance.now());
@@ -226,18 +357,18 @@ async function startGame(mode: "join", url: string) {
         // Run the client-side simulation
         step();
       }
-      
+
       tick++;
       accumulator -= FIXED_DT_MS;
     }
 
     // === 9. CLIENT: RENDER STEP (runs every frame) ===
-    // Update cube positions from the *client's* ECS world
-    for (const [eid, cube] of playerCubes.entries()) {
+    // Update object positions from the *client's* ECS world
+    for (const [eid, obj] of playerObjects.entries()) {
       if (Transform.x[eid] !== undefined) {
-        cube.position.x = Transform.x[eid];
-        cube.position.y = Transform.y[eid];
-        cube.position.z = Transform.z[eid];
+        obj.position.x = Transform.x[eid];
+        obj.position.y = Transform.y[eid];
+        obj.position.z = Transform.z[eid];
       }
 
       // Camera follows the local player

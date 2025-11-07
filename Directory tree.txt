@@ -16,11 +16,14 @@ bf42lite/
 │       │   └── index.html
 │       ├── index.html
 │       ├── package.json
+│       ├── public/
+│       │   └── models/
+│       │       └── soldier.glb
+│       ├── src/
+│       │   ├── input.ts
+│       │   └── main.ts
 │       ├── tsconfig.json
-│       ├── vite.config.ts
-│       └── src/
-│           ├── input.ts
-│           └── main.ts
+│       └── vite.config.ts
 ├── docs/
 │   ├── 00_index.md
 │   ├── 10_vision_core.md
@@ -43,27 +46,27 @@ bf42lite/
 └── packages/
     ├── host-node/
     │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       └── index.ts
+    │   ├── src/
+    │   │   └── index.ts
+    │   └── tsconfig.json
     ├── net/
     │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── LoopbackAdapter.ts
-    │       ├── WebSocketAdapter.ts
-    │       └── index.ts
+    │   ├── src/
+    │   │   ├── LoopbackAdapter.ts
+    │   │   ├── WebSocketAdapter.ts
+    │   │   └── index.ts
+    │   └── tsconfig.json
     ├── protocol/
     │   ├── package.json
-    │   ├── tsconfig.json
-    │   └── src/
-    │       ├── index.ts
-    │       └── schema.ts
+    │   ├── src/
+    │   │   ├── index.ts
+    │   │   └── schema.ts
+    │   └── tsconfig.json
     └── sim/
         ├── package.json
-        ├── tsconfig.json
-        └── src/
-            ├── components.ts
-            ├── index.ts
-            ├── loop.ts
-            └── systems.ts
+        ├── src/
+        │   ├── components.ts
+        │   ├── index.ts
+        │   ├── loop.ts
+        │   └── systems.ts
+        └── tsconfig.json
