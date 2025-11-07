@@ -6,10 +6,22 @@ import {
   StateMsg,
   EntitySnapshot,
   JoinMsg,
-  RespawnMsg, // --- G3: Import RespawnMsg ---
+  RespawnMsg,
+  // --- G4: Import new types ---
+  GameState as GameStateSchema,
+  // --- END G4 ---
 } from "@protocol/schema";
-// --- G1: Import Health ---
-import { world, step, Transform, Velocity, Health } from "@sim/logic";
+import {
+  world,
+  step,
+  Transform,
+  Velocity,
+  Health,
+  Team,
+  PlayerStats,
+  GameState,
+  GameModeSystem,
+} from "@sim/logic";
 
 const PORT = 8080;
 const TICK_RATE = 60; // 60hz
@@ -22,6 +34,11 @@ const SHOT_DAMAGE = 10;
 const SHOT_RANGE = 20.0; // Max distance for a hit
 // --- END G2 ---
 
+// --- G4: ADD GAME STATE CONSTANTS ---
+const STARTING_TICKETS = 50;
+const GAME_STATE_EID = addEntity(world); // Singleton entity for game state
+// --- END G4 ---
+
 const wss = new WebSocketServer({ port: PORT });
 const packr = new Packr();
 
@@ -31,6 +48,14 @@ const clients = new Map<WebSocket, number>();
 const inputs = new Map<number, InputMsg["axes"]>();
 
 let tick = 0;
+let teamCounter = 0; // --- G4: For balancing teams ---
+
+// --- G4: INITIALIZE GAME STATE ---
+addComponent(world, GameState, GAME_STATE_EID);
+GameState.phase[GAME_STATE_EID] = 1; // 1 = InProgress
+GameState.team1Tickets[GAME_STATE_EID] = STARTING_TICKETS;
+GameState.team2Tickets[GAME_STATE_EID] = STARTING_TICKETS;
+// --- END G4 ---
 
 console.log(`[bf42lite] Host server started on ws://localhost:${PORT}`);
 
@@ -56,6 +81,16 @@ wss.on("connection", (ws) => {
   Health.max[playerEid] = DEFAULT_HEALTH;
   // --- END G1 ---
 
+  // --- G4: ADD TEAM AND STATS ---
+  addComponent(world, Team, playerEid);
+  Team.id[playerEid] = teamCounter % 2; // Alternate teams (0 or 1)
+  teamCounter++;
+  
+  addComponent(world, PlayerStats, playerEid);
+  PlayerStats.kills[playerEid] = 0;
+  PlayerStats.deaths[playerEid] = 0;
+  // --- END G4 ---
+
   // Store the client and their entity ID
   clients.set(ws, playerEid);
   // --- C2: Update default input state ---
@@ -63,6 +98,7 @@ wss.on("connection", (ws) => {
 
   // --- N4: Send JoinMsg to the new client ---
   // --- C2: Add yaw/pitch to JoinMsg ---
+  // --- G4: Add team/stats to JoinMsg ---
   const joinMsg: JoinMsg = {
     type: "join",
     tick: tick,
@@ -73,15 +109,24 @@ wss.on("connection", (ws) => {
     hp: Health.current[playerEid],
     yaw: Transform.yaw[playerEid],
     pitch: Transform.pitch[playerEid],
+    // --- G4 ---
+    teamId: Team.id[playerEid],
+    kills: PlayerStats.kills[playerEid],
+    deaths: PlayerStats.deaths[playerEid],
   };
   ws.send(packr.pack(joinMsg));
-  // --- End N4 ---
+  // --- End N4 & G4 ---
 
   ws.on("message", (message) => {
     const data = message as Uint8Array;
     // --- G3: Update message typing ---
     const msg = packr.unpack(data) as InputMsg | RespawnMsg;
     
+    // --- G4: Don't process inputs if game is over ---
+    const gamePhase = GameState.phase[GAME_STATE_EID];
+    if (gamePhase !== 1) return; // 1 = InProgress
+    // --- END G4 ---
+
     if (msg.type === "input") {
       inputs.set(playerEid, msg.axes);
     } 
@@ -121,6 +166,11 @@ wss.on("connection", (ws) => {
 
 // --- Game Loop (N3) ---
 function gameLoop() {
+  // --- G4: Check game state ---
+  GameModeSystem(world);
+  const gamePhase = GameState.phase[GAME_STATE_EID];
+  // --- END G4 ---
+
   // A. Apply inputs to ECS Velocity
   for (const [eid, input] of inputs.entries()) {
     // --- C2: Store rotation from client input ---
@@ -128,7 +178,8 @@ function gameLoop() {
     Transform.pitch[eid] = input.pitch;
 
     // --- G3: Only apply input if alive ---
-    if (Health.current[eid] > 0) {
+    // --- G4: And if game is running ---
+    if (Health.current[eid] > 0 && gamePhase === 1) {
       // --- C2: Calculate movement based on yaw ---
       const yaw = Transform.yaw[eid];
       const forward = input.forward * SPEED;
@@ -142,60 +193,78 @@ function gameLoop() {
   }
 
   // --- G2: Handle Firing ---
-  // (We do this *before* the main simulation step)
-  for (const [firingEid, input] of inputs.entries()) {
-    // --- G3: Only allow firing if alive ---
-    if (input.fire && Health.current[firingEid] > 0) {
-      console.log(`[Host] Player ${firingEid} is firing!`);
-      // This is a simple "hitscan" that just finds the closest target
-      // A real implementation would use raycasting
-      
-      let closestTarget: number | null = null;
-      let minDistance = SHOT_RANGE * SHOT_RANGE; // Compare squared distances
-
-      for (const targetEid of clients.values()) {
-        if (targetEid === firingEid) continue; // Can't shoot yourself
-        // --- G3: Can't shoot dead players ---
-        if (Health.current[targetEid] <= 0) continue;
-
-        // Simple squared distance check
-        const dx = Transform.x[targetEid] - Transform.x[firingEid];
-        const dy = Transform.y[targetEid] - Transform.y[firingEid];
-        const dz = Transform.z[targetEid] - Transform.z[firingEid];
-        const distSq = dx*dx + dy*dy + dz*dz;
-
-        // --- C2: TODO: Add "is in front" check (dot product) using yaw/pitch ---
-        if (distSq < minDistance) {
-          minDistance = distSq;
-          closestTarget = targetEid;
-        }
-      }
-
-      if (closestTarget !== null) {
-        console.log(`[Host] Player ${firingEid} hit Player ${closestTarget}!`);
-        Health.current[closestTarget] -= SHOT_DAMAGE;
+  // --- G4: Only if game is running ---
+  if (gamePhase === 1) {
+    for (const [firingEid, input] of inputs.entries()) {
+      // --- G3: Only allow firing if alive ---
+      if (input.fire && Health.current[firingEid] > 0) {
+        console.log(`[Host] Player ${firingEid} is firing!`);
+        // This is a simple "hitscan" that just finds the closest target
+        // A real implementation would use raycasting
         
-        // --- G3: Check for death ---
-        if (Health.current[closestTarget] <= 0) {
-          console.log(`[Host] Player ${closestTarget} has died.`);
-          // Set health to 0 so client can see it.
-          Health.current[closestTarget] = 0; 
-          // Stop processing their input
-          inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0 }); // C2: Add rotation
-          // Stop their movement
-          Velocity.x[closestTarget] = 0;
-          Velocity.y[closestTarget] = 0;
-          Velocity.z[closestTarget] = 0;
-        }
-        // --- END G3 ---
-      }
+        let closestTarget: number | null = null;
+        let minDistance = SHOT_RANGE * SHOT_RANGE; // Compare squared distances
 
-      // Prevent holding mouse down from firing every tick
-      input.fire = false;
-      inputs.set(firingEid, input);
+        for (const targetEid of clients.values()) {
+          if (targetEid === firingEid) continue; // Can't shoot yourself
+          // --- G3: Can't shoot dead players ---
+          if (Health.current[targetEid] <= 0) continue;
+          // --- G4: Can't shoot teammates ---
+          if (Team.id[targetEid] === Team.id[firingEid]) continue;
+          // --- END G4 ---
+
+          // Simple squared distance check
+          const dx = Transform.x[targetEid] - Transform.x[firingEid];
+          const dy = Transform.y[targetEid] - Transform.y[firingEid];
+          const dz = Transform.z[targetEid] - Transform.z[firingEid];
+          const distSq = dx*dx + dy*dy + dz*dz;
+
+          // --- C2: TODO: Add "is in front" check (dot product) using yaw/pitch ---
+          if (distSq < minDistance) {
+            minDistance = distSq;
+            closestTarget = targetEid;
+          }
+        }
+
+        if (closestTarget !== null) {
+          console.log(`[Host] Player ${firingEid} hit Player ${closestTarget}!`);
+          Health.current[closestTarget] -= SHOT_DAMAGE;
+          
+          // --- G3: Check for death ---
+          if (Health.current[closestTarget] <= 0) {
+            console.log(`[Host] Player ${closestTarget} has died.`);
+            // Set health to 0 so client can see it.
+            Health.current[closestTarget] = 0; 
+            // Stop processing their input
+            inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0 }); // C2: Add rotation
+            // Stop their movement
+            Velocity.x[closestTarget] = 0;
+            Velocity.y[closestTarget] = 0;
+            Velocity.z[closestTarget] = 0;
+
+            // --- G4: UPDATE STATS AND TICKETS ---
+            PlayerStats.kills[firingEid]++;
+            PlayerStats.deaths[closestTarget]++;
+            
+            // Decrement tickets for the team that died
+            if (Team.id[closestTarget] === 0) { // Team 1 died
+              GameState.team1Tickets[GAME_STATE_EID]--;
+            } else { // Team 2 died
+              GameState.team2Tickets[GAME_STATE_EID]--;
+            }
+            console.log(`[Host] Team 1: ${GameState.team1Tickets[GAME_STATE_EID]} | Team 2: ${GameState.team2Tickets[GAME_STATE_EID]}`);
+            // --- END G4 ---
+          }
+          // --- END G3 ---
+        }
+
+        // Prevent holding mouse down from firing every tick
+        input.fire = false;
+        inputs.set(firingEid, input);
+      }
     }
   }
-  // --- END G2 ---
+  // --- END G2 & G4 ---
 
   // B. Run the ECS simulation step
   step();
@@ -213,13 +282,27 @@ function gameLoop() {
         // --- C2: Add rotation to snapshot ---
         yaw: Transform.yaw[eid],
         pitch: Transform.pitch[eid],
+        // --- G4: ADD SCORING TO SNAPSHOT ---
+        teamId: Team.id[eid],
+        kills: PlayerStats.kills[eid],
+        deaths: PlayerStats.deaths[eid],
+        // --- END G4 ---
       });
     }
+
+    // --- G4: GET GAME STATE SNAPSHOT ---
+    const gameState: GameStateSchema = {
+      phase: GameState.phase[GAME_STATE_EID],
+      team1Tickets: GameState.team1Tickets[GAME_STATE_EID],
+      team2Tickets: GameState.team2Tickets[GAME_STATE_EID],
+    };
+    // --- END G4 ---
 
     const stateMsg: StateMsg = {
       type: "state",
       tick: tick,
       entities: snapshots,
+      gameState: gameState, // --- G4: Add to message ---
     };
 
     const payload = packr.pack(stateMsg);

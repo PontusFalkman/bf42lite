@@ -133,6 +133,37 @@
         color: white;
         width: 260px;
       }
+      #scoreboard {
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        gap: 40px;
+        font-size: 24px;
+        color: white;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-family: monospace;
+        text-shadow: 1px 1px 2px black;
+        z-index: 110; /* Above HUD, below respawn */
+        display: none; /* Hide by default */
+      }
+
+      #match-end-message {
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 60px;
+        color: white;
+        text-shadow: 2px 2px 4px black;
+        display: none; /* Hidden by default */
+        z-index: 160; /* Above respawn screen */
+        font-family: monospace;
+      }
+      /* ++ END G4 STYLES ++ */
     </style>
   </head>
   <body>
@@ -161,6 +192,15 @@
       <div id="respawn-timer">5</div>
       <button id="btn-deploy" class="menu-button" disabled>DEPLOYING IN...</button>
     </div>
+    <div id="hud">
+    </div>
+
+  <div id="scoreboard">
+    <div class="team" id="team1-score">Team 1: 50</div>
+    <div class="team" id="team2-score">Team 2: 50</div>
+  </div>
+  <div id="match-end-message"></div>
+  <canvas id="game"></canvas>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

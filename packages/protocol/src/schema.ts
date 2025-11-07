@@ -1,3 +1,4 @@
+// packages/protocol/src/schema.ts
 import { z } from "zod";
 
 // Protocol version for compatibility
@@ -46,6 +47,11 @@ export const EntitySnapshotSchema = z.object({
   // --- C2: Add rotation ---
   yaw: z.number(),
   pitch: z.number(),
+  // --- G4: ADD SCORING ---
+  teamId: z.number().optional(),
+  kills: z.number().optional(),
+  deaths: z.number().optional(),
+  // --- END G4 ---
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -64,8 +70,22 @@ export const JoinMsgSchema = z.object({
   // --- C2: Add rotation ---
   yaw: z.number(),
   pitch: z.number(),
+  // --- G4: ADD TEAM & STATS ON JOIN ---
+  teamId: z.number(),
+  kills: z.number(),
+  deaths: z.number(),
+  // --- END G4 ---
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
+
+// --- G4: ADD GAME STATE SCHEMA ---
+export const GameStateSchema = z.object({
+  phase: z.number(),
+  team1Tickets: z.number(),
+  team2Tickets: z.number(),
+});
+export type GameState = z.infer<typeof GameStateSchema>;
+// --- END G4 ---
 
 /**
  * Host -> Client
@@ -75,6 +95,9 @@ export const StateMsgSchema = z.object({
   type: z.literal("state"),
   tick: z.number(),
   entities: z.array(EntitySnapshotSchema),
+  // --- G4: ADD GAME STATE ---
+  gameState: GameStateSchema.optional(),
+  // --- END G4 ---
 });
 export type StateMsg = z.infer<typeof StateMsgSchema>;
 
@@ -89,3 +112,15 @@ export const EventMsgSchema = z.object({
   payload: z.unknown(), // `zod` handles `unknown`
 });
 export type EventMsg = z.infer<typeof EventMsgSchema>;
+
+// Discriminated union for all C->H messages
+export const ClientMsgSchema = z.union([InputMsgSchema, RespawnMsgSchema]);
+export type ClientMsg = z.infer<typeof ClientMsgSchema>;
+
+// Discriminated union for all H->C messages
+export const ServerMsgSchema = z.union([
+  JoinMsgSchema,
+  StateMsgSchema,
+  EventMsgSchema,
+]);
+export type ServerMsg = z.infer<typeof ServerMsgSchema>;

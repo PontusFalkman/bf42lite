@@ -13,6 +13,9 @@ export const inputState = {
   // --- C2: Add deltaX/Y to state ---
   deltaX: 0,
   deltaY: 0,
+  // --- G4: ADD SCOREBOARD STATE ---
+  showScoreboard: false,
+  // --- END G4 ---
 };
 
 export function initInput(canvas: HTMLElement) {
@@ -45,6 +48,18 @@ export function initInput(canvas: HTMLElement) {
 
   // 2. MODIFY this listener
   window.addEventListener("keydown", (e) => {
+    // --- G4: HANDLE TAB KEY ---
+    if (e.code === "Tab") {
+      e.preventDefault(); // Stop the browser from changing focus
+
+      // Only toggle on the *first* press, not when held down
+      if (!keys.has(e.code)) { 
+        inputState.showScoreboard = !inputState.showScoreboard;
+      }
+    }
+    // --- END G4 ---
+
+
     // This logic prevents the key from being added every frame if held down
     if (!keys.has(e.code)) {
       keysPressed.add(e.code);
@@ -64,6 +79,10 @@ export function updateInput() {
     (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   inputState.jump = keys.has("Space");
   inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
+  
+  // --- G4: REMOVE SCOREBOARD LOGIC ---
+  // The logic is now in the "keydown" event listener
+  // --- END G4 ---
 
   // --- C2: Copy accumulated deltas and reset ---
   inputState.deltaX = accumulatedX;
