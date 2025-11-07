@@ -1,7 +1,7 @@
 import * as THREE from "three";
 // Import the GLTFLoader
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { initInput, updateInput, inputState } from "./input";
+import { initInput, updateInput, inputState, keysPressed } from "./input"; // <-- ADD keysPressed
 import { Packr } from "msgpackr";
 import {
   InputMsg,
@@ -67,7 +67,7 @@ btnJoin.onclick = () => {
 async function startGame(mode: "join", url: string) {
   // --- 1. HIDE MENU, SHOW GAME ---
   menuEl.style.display = "none";
-  hudEl.style.display = "block";
+  hudEl.style.display = "none";
   canvas.style.display = "block";
 
   // --- V6: RESPAWN UI LOGIC ---
@@ -114,6 +114,8 @@ async function startGame(mode: "join", url: string) {
     // In Phase 4, we'll send a "respawn" message to the server here
     console.log("Player clicked DEPLOY");
   };
+  showRespawnScreen(); // Show the respawn screen on initial join
+
   // --- END V6 ---
 
   // === 2. NETWORK & SERIALIZATION SETUP ===
@@ -394,20 +396,6 @@ async function startGame(mode: "join", url: string) {
   // === 6. GAME LOOP ===
   initInput(canvas);
 
-  // --- V6: TEST KEY ---
-  // Add a test key to show the respawn screen
-  window.addEventListener("keydown", (e) => {
-    // We check if the menu is hidden, so we don't trigger this while typing
-    if (e.code === "KeyK" && menuEl.style.display === "none") { // <-- CHANGED e.key to e.code
-        console.log("Test: Showing respawn screen");
-      // Check if the screen is already shown to prevent spamming
-      if (respawnScreenEl.style.display === "none") {
-        showRespawnScreen();
-      }
-    }
-  });
-  // --- END V6 ---
-
   let last = performance.now();
   const FIXED_DT_MS = 1000 / 60; // 60hz in milliseconds
   let accumulator = 0;
@@ -424,8 +412,21 @@ async function startGame(mode: "join", url: string) {
 
     accumulator += frameTime;
 
-    // === 7. CLIENT: SEND INPUT (runs every frame) ===
-    updateInput();
+// === 7. CLIENT: SEND INPUT (runs every frame) ===
+
+    // --- V6: TEST KEY (MOVED) ---
+    // CHECK FIRST...
+    if (keysPressed.has("KeyK") && menuEl.style.display === "none") {
+      console.log("Test: Showing respawn screen");
+      if (respawnScreenEl.style.display === "none") {
+        showRespawnScreen();
+      }
+    }
+    // --- END V6 ---
+    
+    // ...THEN UPDATE (which clears the set for the next frame)
+    updateInput(); 
+
     const inputMsg: InputMsg = {
       type: "input",
       tick: tick,
