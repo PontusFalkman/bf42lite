@@ -37,12 +37,18 @@ bf42lite/
 │   ├── .modules.yaml
 │   └── .pnpm-workspace-state-v1.json
 ├── packages/
+│   ├── host-node/
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       └── index.ts
 │   ├── net/
 │   │   ├── package.json
 │   │   ├── tsconfig.json
 │   │   └── src/
 │   │       ├── index.ts
-│   │       └── LoopbackAdapter.ts
+│   │       ├── LoopbackAdapter.ts
+│   │       └── WebSocketAdapter.ts
 │   └── protocol/
 │       ├── package.json
 │       ├── tsconfig.json
