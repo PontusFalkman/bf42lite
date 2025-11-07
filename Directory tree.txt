@@ -1,0 +1,55 @@
+bf42lite/
+├── .gitignore
+├── apps/
+│   └── client-tauri/
+│       ├── dist/
+│       │   ├── assets/
+│       │   │   └── index-BBexWP4S.js
+│       │   └── index.html
+│       ├── index.html
+│       ├── package.json
+│       ├── tsconfig.json
+│       ├── vite.config.ts
+│       └── src/
+│           ├── ecs/
+│           │   ├── components.ts
+│           │   └── systems.ts
+│           ├── input.ts
+│           ├── loop.ts
+│           └── main.ts
+├── docs/
+│   ├── 00_index.md
+│   ├── 10_vision_core.md
+│   ├── 20_design_gameplay.md
+│   ├── 30_design_sim_arch.md
+│   ├── 31_design_sim_movement.md
+│   ├── 32_design_sim_weapons.md
+│   ├── 40_design_net_protocol.md
+│   ├── 41_design_net_transport.md
+│   ├── 50_design_client_rendering.md
+│   ├── 60_backlog_phase1_core_mvp.md
+│   ├── 61_backlog_phase2_lan_loopback.md
+│   ├── 62_backlog_phase3_visual_polish.md
+│   ├── 63_backlog_phase4_core_gameplay.md
+│   ├── 64_backlog_phase5_expansion.md
+│   └── 70_repo_structure.md
+├── node_modules/
+│   ├── .modules.yaml
+│   └── .pnpm-workspace-state-v1.json
+├── packages/
+│   ├── net/
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── src/
+│   │       ├── index.ts
+│   │       └── LoopbackAdapter.ts
+│   └── protocol/
+│       ├── package.json
+│       ├── tsconfig.json
+│       └── src/
+│           ├── index.ts
+│           └── schema.ts
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+└── tsconfig.base.json

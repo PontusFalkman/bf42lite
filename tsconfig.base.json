@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sim/*": ["packages/sim/src/*"],
+      "@net/*": ["packages/net/src/*"],
+      "@protocol/*": ["packages/protocol/src/*"]
+    }
+  }
+}
