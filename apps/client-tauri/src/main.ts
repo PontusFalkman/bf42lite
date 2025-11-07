@@ -22,7 +22,11 @@ import {
   Team, // <-- G4: Import
   PlayerStats, // <-- G4: Import
 } from "@sim/logic";
-import { addComponent, addEntity } from "bitecs";
+// ++ G5: IMPORT 'invoke' FROM TAURI ++
+import { invoke } from "@tauri-apps/api/core"; // <-- FIXED: Changed from /tauri to /core
+// ++ G5: IMPORT 'query' FROM BITECS ++
+import * as Bitecs from "bitecs"; // <-- FIX: Import as namespace
+const { addComponent, addEntity, query } = Bitecs; // <-- FIX: Destructure named exports
 
 // === 0. GET UI ELEMENTS ===
 const canvas = document.getElementById("game") as HTMLCanvasElement | null;
@@ -71,6 +75,100 @@ btnJoin.onclick = () => {
   console.log(`Connecting to ${url}...`);
   startGame("join", url);
 };
+
+// ++ G5: RUST BRIDGE TYPES ++
+// Define the shape of an entity for Rust
+interface RustEntity {
+  id: number;
+  transform: { x: number; y: number; z: number; yaw: number; pitch: number; };
+  velocity: { x: number; y: number; z: number; };
+  health: { current: number; max: number; };
+  team: { id: number; };
+  stats: { kills: number; deaths: number; };
+}
+
+// Define the world state packet for Rust
+interface WorldState {
+  entities: RustEntity[];
+}
+// ++ END G5 ++
+
+// ++ G5: RUST BRIDGE FUNCTIONS ++
+const entityQuery = query(clientWorld, Transform); // Query for all entities with a Transform
+
+/**
+ * Serializes the entire bitecs world into a 'WorldState' object for Rust.
+ */
+function serializeWorldToRust(): WorldState {
+  const entities = entityQuery(clientWorld);
+  const rustEntities: RustEntity[] = [];
+
+  for (const eid of entities) {
+    rustEntities.push({
+      id: eid,
+      transform: {
+        x: Transform.x[eid],
+        y: Transform.y[eid],
+        z: Transform.z[eid],
+        yaw: Transform.yaw[eid],
+        pitch: Transform.pitch[eid],
+      },
+      velocity: {
+        x: Velocity.x[eid] ?? 0,
+        y: Velocity.y[eid] ?? 0,
+        z: Velocity.z[eid] ?? 0,
+      },
+      health: {
+        current: Health.current[eid] ?? 0,
+        max: Health.max[eid] ?? 100,
+      },
+      team: {
+        id: Team.id[eid] ?? 0,
+      },
+      stats: {
+        kills: PlayerStats.kills[eid] ?? 0,
+        deaths: PlayerStats.deaths[eid] ?? 0,
+      },
+    });
+  }
+  
+  return { entities: rustEntities };
+}
+
+/**
+ * Deserializes a 'WorldState' object from Rust and applies it to the bitecs world.
+ */
+function deserializeWorldFromRust(newState: WorldState) {
+  for (const entity of newState.entities) {
+    const eid = entity.id;
+    
+    // TODO: Need a robust way to handle entity creation/deletion
+    if (Transform.x[eid] === undefined) {
+      // Entity doesn't exist, skip for now.
+      // A proper implementation would add it.
+      continue; 
+    }
+    
+    Transform.x[eid] = entity.transform.x;
+    Transform.y[eid] = entity.transform.y;
+    Transform.z[eid] = entity.transform.z;
+    Transform.yaw[eid] = entity.transform.yaw;
+    Transform.pitch[eid] = entity.transform.pitch;
+
+    Velocity.x[eid] = entity.velocity.x;
+    Velocity.y[eid] = entity.velocity.y;
+    Velocity.z[eid] = entity.velocity.z;
+
+    Health.current[eid] = entity.health.current;
+    Health.max[eid] = entity.health.max;
+    
+    Team.id[eid] = entity.team.id;
+    PlayerStats.kills[eid] = entity.stats.kills;
+    PlayerStats.deaths[eid] = entity.stats.deaths;
+  }
+}
+// ++ END G5 ++
+
 
 /**
  * Main game initialization and loop start
@@ -372,179 +470,184 @@ async function startGame(mode: "join", url: string) {
 
   // === 5. MESSAGE HANDLERS ===
   adapter.onMessage((msg) => {
-    const state = packr.unpack(msg) as StateMsg | JoinMsg;
+    try { // <-- ADDED: Try/Catch for network message processing errors
+      const state = packr.unpack(msg) as StateMsg | JoinMsg;
 
-    // --- N4: Handle Join Message ---
-    if (state.type === "join") {
-      localPlayerEid = state.eid;
-      localTeamId = state.teamId; // <-- G4: STORE LOCAL TEAM ID
-      console.log(`Joined game. This client is player ${localPlayerEid} on team ${localTeamId}`);
+      // --- N4: Handle Join Message ---
+      if (state.type === "join") {
+        localPlayerEid = state.eid;
+        localTeamId = state.teamId; // <-- G4: STORE LOCAL TEAM ID
+        console.log(`Joined game. This client is player ${localPlayerEid} on team ${localTeamId}`);
 
-      // Create the local player entity in the client's world
-      addEntity(clientWorld);
-      addComponent(clientWorld, Transform, localPlayerEid);
-      addComponent(clientWorld, Velocity, localPlayerEid);
-      Transform.x[localPlayerEid] = state.x;
-      Transform.y[localPlayerEid] = state.y;
-      Transform.z[localPlayerEid] = state.z;
-      // --- C2: Set initial rotation ---
-      Transform.yaw[localPlayerEid] = state.yaw;
-      Transform.pitch[localPlayerEid] = state.pitch;
-      playerRotation.y = state.yaw;
-      playerRotation.x = state.pitch;
+        // Create the local player entity in the client's world
+        addEntity(clientWorld);
+        addComponent(clientWorld, Transform, localPlayerEid);
+        addComponent(clientWorld, Velocity, localPlayerEid);
+        Transform.x[localPlayerEid] = state.x;
+        Transform.y[localPlayerEid] = state.y;
+        Transform.z[localPlayerEid] = state.z;
+        // --- C2: Set initial rotation ---
+        Transform.yaw[localPlayerEid] = state.yaw;
+        Transform.pitch[localPlayerEid] = state.pitch;
+        playerRotation.y = state.yaw;
+        playerRotation.x = state.pitch;
 
-      // --- G1: Add Health component on join ---
-      addComponent(clientWorld, Health, localPlayerEid);
-      Health.current[localPlayerEid] = state.hp;
-      Health.max[localPlayerEid] = state.hp; // Assume max health
-      // --- END G1 ---
-      
-      // --- G4: ADD TEAM & STATS TO CLIENT SIM ---
-      addComponent(clientWorld, Team, localPlayerEid);
-      Team.id[localPlayerEid] = state.teamId;
-      addComponent(clientWorld, PlayerStats, localPlayerEid);
-      PlayerStats.kills[localPlayerEid] = state.kills;
-      PlayerStats.deaths[localPlayerEid] = state.deaths;
-      // --- END G4 ---
-
-      // Create the visual object for the local player
-      // This will now be colored correctly as localPlayerEid is set
-      getPlayerObject(localPlayerEid, localTeamId); // <-- G4: PASS TEAM ID
-      
-      // --- FIX: Set initial camera position ---
-      // This ensures the camera doesn't start at (0,0,0) before the first render
-      const obj = playerObjects.get(localPlayerEid)!; // We know it exists now
-      obj.position.set(state.x, state.y, state.z);
-      cameraTarget.copy(obj.position).add(cameraOffset);
-      camera.position.copy(cameraTarget);
-      // --- END FIX ---
-
-      // --- G4: SHOW SCOREBOARD ---
-      scoreboardEl!.style.display = "flex";
-      // --- END G4 ---
-
-      return;
-    }
-
-    // --- N4: Handle State Message ---
-    if (state.type === "state") {
-      // --- RTT CALCULATION (N5) ---
-      const stateTick = state.tick;
-      const clientTick = Array.from(sendTimeMap.keys()).pop() || 0;
-      const sendTime = sendTimeMap.get(clientTick);
-
-      if (sendTime && rttEl) {
-        const rtt = performance.now() - sendTime;
-        rttEl.textContent = `RTT: ${rtt.toFixed(1)} ms`;
-        sendTimeMap.delete(clientTick);
-      }
-      // --- END RTT CALCULATION ---
-      
-      // --- G4: STORE GAME STATE ---
-      if (state.gameState) {
-        currentGameState = state.gameState;
-      }
-      // --- END G4 ---
-
-      const seenEids = new Set<number>(); // G4: To remove disconnected players
-      // Process all entity snapshots from the server
-      for (const snapshot of state.entities) {
-        // --- G4: DESTRUCTURE ALL FIELDS ---
-        const { id, x, y, z, hp, yaw, pitch, teamId, kills, deaths } = snapshot;
-        seenEids.add(id); // G4
-
-        // Make sure a visual object exists for this entity
-        const obj = getPlayerObject(id, teamId ?? 0); // <-- G4: PASS TEAM ID
-
-        // --- G1/G4: Ensure components exist for remote players ---
-        // --- C2: Add yaw/pitch to remote entity creation ---
-        if (Health.current[id] === undefined) {
-          addEntity(clientWorld); // Ensure entity exists in client world
-          addComponent(clientWorld, Transform, id);
-          addComponent(clientWorld, Velocity, id); // For potential future interpolation
-          addComponent(clientWorld, Health, id);
-          Health.max[id] = hp; // Assume first packet is max
-          Transform.yaw[id] = yaw;
-          Transform.pitch[id] = pitch;
-          // --- G4: ADD TEAM & STATS FOR REMOTE PLAYERS ---
-          addComponent(clientWorld, Team, id);
-          addComponent(clientWorld, PlayerStats, id);
-          // --- END G4 ---
-        }
-        // --- END G1/G4 ---
+        // --- G1: Add Health component on join ---
+        addComponent(clientWorld, Health, localPlayerEid);
+        Health.current[localPlayerEid] = state.hp;
+        Health.max[localPlayerEid] = state.hp; // Assume max health
+        // --- END G1 ---
         
-        // --- G4: ALWAYS UPDATE TEAM & STATS ---
-        Team.id[id] = teamId ?? 0;
-        PlayerStats.kills[id] = kills ?? 0;
-        PlayerStats.deaths[id] = deaths ?? 0;
+        // --- G4: ADD TEAM & STATS TO CLIENT SIM ---
+        addComponent(clientWorld, Team, localPlayerEid);
+        Team.id[localPlayerEid] = state.teamId;
+        addComponent(clientWorld, PlayerStats, localPlayerEid);
+        PlayerStats.kills[localPlayerEid] = state.kills;
+        PlayerStats.deaths[localPlayerEid] = state.deaths;
         // --- END G4 ---
 
-        // --- N4: Reconciliation ---
-        if (id === localPlayerEid) {
-          // This is our local player. We need to reconcile.
-          const localX = Transform.x[localPlayerEid!];
-          const localZ = Transform.z[localPlayerEid!];
+        // Create the visual object for the local player
+        // This will now be colored correctly as localPlayerEid is set
+        getPlayerObject(localPlayerEid, localTeamId); // <-- G4: PASS TEAM ID
+        
+        // --- FIX: Set initial camera position ---
+        // This ensures the camera doesn't start at (0,0,0) before the first render
+        const obj = playerObjects.get(localPlayerEid)!; // We know it exists now
+        obj.position.set(state.x, state.y, state.z);
+        cameraTarget.copy(obj.position).add(cameraOffset);
+        camera.position.copy(cameraTarget);
+        // --- END FIX ---
 
-          // Simple reconciliation
-          const error = Math.abs(localX - x) + Math.abs(localZ - z);
-          if (error > 0.01) {
-            // console.log(`Reconciling: error was ${error.toFixed(3)}`);
-            Transform.x[localPlayerEid!] = x;
-            Transform.z[localPlayerEid!] = z;
+        // --- G4: SHOW SCOREBOARD ---
+        scoreboardEl!.style.display = "flex";
+        // --- END G4 ---
+
+        return;
+      }
+
+      // --- N4: Handle State Message ---
+      if (state.type === "state") {
+        // --- RTT CALCULATION (N5) ---
+        const stateTick = state.tick;
+        const clientTick = Array.from(sendTimeMap.keys()).pop() || 0;
+        const sendTime = sendTimeMap.get(clientTick);
+
+        if (sendTime && rttEl) {
+          const rtt = performance.now() - sendTime;
+          rttEl.textContent = `RTT: ${rtt.toFixed(1)} ms`;
+          sendTimeMap.delete(clientTick);
+        }
+        // --- END RTT CALCULATION ---
+        
+        // --- G4: STORE GAME STATE ---
+        if (state.gameState) {
+          currentGameState = state.gameState;
+        }
+        // --- END G4 ---
+
+        const seenEids = new Set<number>(); // G4: To remove disconnected players
+        // Process all entity snapshots from the server
+        for (const snapshot of state.entities) {
+          // --- G4: DESTRUCTURE ALL FIELDS ---
+          const { id, x, y, z, hp, yaw, pitch, teamId, kills, deaths } = snapshot;
+          seenEids.add(id); // G4
+
+          // Make sure a visual object exists for this entity
+          const obj = getPlayerObject(id, teamId ?? 0); // <-- G4: PASS TEAM ID
+
+          // --- G1/G4: Ensure components exist for remote players ---
+          // --- C2: Add yaw/pitch to remote entity creation ---
+          if (Health.current[id] === undefined) {
+            addEntity(clientWorld); // Ensure entity exists in client world
+            addComponent(clientWorld, Transform, id);
+            addComponent(clientWorld, Velocity, id); // For potential future interpolation
+            addComponent(clientWorld, Health, id);
+            Health.max[id] = hp; // Assume first packet is max
+            Transform.yaw[id] = yaw;
+            Transform.pitch[id] = pitch;
+            // --- G4: ADD TEAM & STATS FOR REMOTE PLAYERS ---
+            addComponent(clientWorld, Team, id);
+            addComponent(clientWorld, PlayerStats, id);
+            // --- END G4 ---
           }
+          // --- END G1/G4 ---
           
-          // --- FIX: Also reconcile Y ---
-          Transform.y[localPlayerEid!] = y;
-          // --- END FIX ---
-
-          // --- C2: Client is authoritative over its own rotation... ---
-
-          // --- G1: Always snap health (no prediction) ---
-          Health.current[localPlayerEid!] = hp;
-          // --- END G1 ---
-          
-          // --- G3: Check for death ---
-          if (Health.current[localPlayerEid!] <= 0 && respawnScreenEl!.style.display === "none") {
-            console.log("Client died, showing respawn screen.");
-            showRespawnScreen();
-          }
-          // --- END G3 ---
-
-        } else {
-          // This is a remote player. Just snap their position and rotation.
-          obj.position.set(x, y, z);
-          Transform.yaw[id] = yaw;
-          Transform.pitch[id] = pitch;
-          
-          // --- G1: Snap remote player health ---
-          Health.current[id] = hp;
-          // --- END G1 ---
-          
-          // --- G4: UPDATE REMOTE PLAYER MODEL COLOR ---
-          // 0 = Team 1 (Red), 1 = Team 2 (Blue)
-          const newColor = teamId === 0 ? 0xff6666 : 0x6666ff;
-          (obj as THREE.Group).traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              // Check if material is a standard material and has a color property
-              const material = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
-              if (material.color) {
-                  material.color.setHex(newColor);
-              }
-            }
-          });
+          // --- G4: ALWAYS UPDATE TEAM & STATS ---
+          Team.id[id] = teamId ?? 0;
+          PlayerStats.kills[id] = kills ?? 0;
+          PlayerStats.deaths[id] = deaths ?? 0;
           // --- END G4 ---
-        }
-      }
 
-      // --- G4: Remove disconnected players ---
-      for (const [eid, obj] of playerObjects.entries()) {
-        if (!seenEids.has(eid)) {
-          scene.remove(obj);
-          playerObjects.delete(eid);
-          // TODO: Properly remove entity from bitecs world
+          // --- N4: Reconciliation ---
+          if (id === localPlayerEid) {
+            // This is our local player. We need to reconcile.
+            const localX = Transform.x[localPlayerEid!];
+            const localZ = Transform.z[localPlayerEid!];
+
+            // Simple reconciliation
+            const error = Math.abs(localX - x) + Math.abs(localZ - z);
+            if (error > 0.01) {
+              // console.log(`Reconciling: error was ${error.toFixed(3)}`);
+              Transform.x[localPlayerEid!] = x;
+              Transform.z[localPlayerEid!] = z;
+            }
+            
+            // --- FIX: Also reconcile Y ---
+            Transform.y[localPlayerEid!] = y;
+            // --- END FIX ---
+
+            // --- C2: Client is authoritative over its own rotation... ---
+
+            // --- G1: Always snap health (no prediction) ---
+            Health.current[localPlayerEid!] = hp;
+            // --- END G1 ---
+            
+            // --- G3: Check for death ---
+            if (Health.current[localPlayerEid!] <= 0 && respawnScreenEl!.style.display === "none") {
+              console.log("Client died, showing respawn screen.");
+              showRespawnScreen();
+            }
+            // --- END G3 ---
+
+          } else {
+            // This is a remote player. Just snap their position and rotation.
+            obj.position.set(x, y, z);
+            Transform.yaw[id] = yaw;
+            Transform.pitch[id] = pitch;
+            
+            // --- G1: Snap remote player health ---
+            Health.current[id] = hp;
+            // --- END G1 ---
+            
+            // --- G4: UPDATE REMOTE PLAYER MODEL COLOR ---
+            // 0 = Team 1 (Red), 1 = Team 2 (Blue)
+            const newColor = teamId === 0 ? 0xff6666 : 0x6666ff;
+            (obj as THREE.Group).traverse((child) => {
+              if ((child as THREE.Mesh).isMesh) {
+                // Check if material is a standard material and has a color property
+                const material = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+                if (material.color) {
+                    material.color.setHex(newColor);
+                }
+              }
+            });
+            // --- END G4 ---
+          }
         }
+
+        // --- G4: Remove disconnected players ---
+        for (const [eid, obj] of playerObjects.entries()) {
+          if (!seenEids.has(eid)) {
+            scene.remove(obj);
+            playerObjects.delete(eid);
+            // TODO: Properly remove entity from bitecs world
+          }
+        }
+        // --- END G4 ---
       }
-      // --- END G4 ---
+    } catch (error) { // <-- ADDED: Catch block
+        console.error("Client Error Processing Network Message:", error);
+        alert("A critical game error occurred. Check the console for details.");
     }
   });
 
@@ -558,9 +661,16 @@ async function startGame(mode: "join", url: string) {
   let frameCount = 0;
   let lastFPSUpdate = performance.now();
 
+  // ++ G5: Flag to prevent re-entrant async ticks
+  let isProcessingTick = false;
+
   function loop() {
     if (!adapter) return; // Stop loop if connection fails
 
+    // ++ G5: ASYNC LOOP REFACTOR ++
+    // The new structure ensures that rendering and HUD updates
+    // only happen *after* the async Rust tick has completed.
+    
     const now = performance.now();
     const frameTime = Math.min(now - last, 1000);
     last = now;
@@ -595,9 +705,13 @@ async function startGame(mode: "join", url: string) {
     sendTimeMap.set(tick, performance.now());
     adapter.send(packr.pack(inputMsg));
 
-    // === 8. N4: CLIENT-SIDE PREDICTION STEP (runs at fixed 60hz) ===
-    // We run our *own* simulation loop locally for instant feedback.
-    while (accumulator >= FIXED_DT_MS) {
+    // === 8. G5: RUST-BASED PREDICTION STEP (runs at fixed 60hz, async) ===
+    // We only process *one* tick at a time due to the async invoke.
+    // The `isProcessingTick` flag prevents multiple ticks from being
+    // fired off before the first one finishes.
+    if (accumulator >= FIXED_DT_MS && !isProcessingTick) {
+      isProcessingTick = true; // Set lock
+
       // --- G3: Only predict if alive ---
       if (localPlayerEid !== null && Health.current[localPlayerEid] > 0) {
         
@@ -613,131 +727,154 @@ async function startGame(mode: "join", url: string) {
         Velocity.x[localPlayerEid] = Math.sin(yaw) * -forward + Math.cos(yaw) * right;
         Velocity.z[localPlayerEid] = Math.cos(yaw) * -forward - Math.sin(yaw) * right;
         Velocity.y[localPlayerEid] = 0; // No gravity yet
-
-        // Run the client-side simulation
-        step();
       }
+
+      // Run the client-side simulation
+      // REMOVED: step();
+      
+      // ++ G5: RUST BRIDGE CALL ++
+      const worldState = serializeWorldToRust();
+      
+      invoke<WorldState>('step_tick', { world: worldState })
+        .then((newState) => {
+          // 1. Deserialize the new state from Rust
+          deserializeWorldFromRust(newState);
+          
+          // 2. Run all rendering and HUD logic
+          // === 9. CLIENT: RENDER STEP (MOVED INSIDE .then()) ===
+          // Update object positions from the *client's* ECS world
+          for (const [eid, obj] of playerObjects.entries()) {
+            const isLocalPlayer = (eid === localPlayerEid);
+            const isAlive = Health.current[eid] > 0;
+
+            // Handle visibility and position for all entities
+            if (Transform.x[eid] !== undefined) {
+              if (isAlive) {
+                obj.position.x = Transform.x[eid];
+                obj.position.y = Transform.y[eid];
+                obj.position.z = Transform.z[eid];
+              } else {
+                // Hide dead players by moving them away
+                obj.position.y = -1000; 
+              }
+            }
+
+            if (isLocalPlayer) {
+              // --- 3RD PERSON CAMERA LOGIC (FIXED) ---
+              
+              // 1. Rotate the player model left/right (yaw)
+              obj.rotation.y = playerRotation.y;
+
+              // 2. Set the camera's rotation (pitch and yaw)
+              camera.rotation.copy(playerRotation);
+
+              if (isAlive) {
+                obj.visible = true; // Make sure we can see our own model
+        
+                // 3. Calculate the camera's target position
+                // Start with the base offset (up and behind)
+                cameraOffset.set(0, 1.6, 3.0);
+        
+                // Create an Euler with only the yaw rotation
+                yawEuler.set(0, playerRotation.y, 0);
+        
+                // Apply *only* the yaw rotation to the offset
+                cameraOffset.applyEuler(yawEuler);
+        
+                // Add the player's *object* position (which is smoothed) to the rotated offset
+                cameraTarget.copy(obj.position).add(cameraOffset);
+                
+                // 4. Smoothly move the camera to the target
+                camera.position.lerp(cameraTarget, smoothingFactor);
+              
+              } else {
+                // Player is dead, hide the model
+                obj.visible = false;
+                // The camera position will stop lerping and stay put,
+                // which is fine since the respawn screen is up.
+              }
+              // --- END 3RD PERSON ---
+
+            } else {
+              // This is a remote player
+              // --- G4: Use isAlive to set visibility ---
+              obj.visible = isAlive;
+              // --- END G4 ---
+              // Apply rotation to remote player models
+              obj.rotation.y = Transform.yaw[eid];
+            }
+          }
+
+          renderer.render(scene, camera);
+          
+          // === 10. CLIENT: UPDATE HUD (V4) (MOVED INSIDE .then()) ===
+          
+          // --- G1: Update health from local sim state ---
+          if (localPlayerEid !== null && healthEl) {
+            const hp = Health.current[localPlayerEid];
+            if (hp !== undefined) {
+              healthEl.textContent = `HP: ${hp.toFixed(0)}`;
+            }
+          }
+          // --- END G1 ---
+
+          // Placeholder ammo
+          if (ammoEl) {
+            ammoEl.textContent = `AMMO: 30 / 120`;
+          }
+          
+          // --- G4: UPDATE SCOREBOARD HUD ---
+          if (currentGameState) {
+            team1ScoreEl!.textContent = `Team 1: ${currentGameState.team1Tickets}`;
+            team2ScoreEl!.textContent = `Team 2: ${currentGameState.team2Tickets}`;
+            
+            // Check for match end
+            if (currentGameState.phase === 2 && matchEndEl!.style.display === "none") {
+              matchEndEl!.style.display = "block";
+              const winner = currentGameState.team1Tickets <= 0 ? "Team 2" : "Team 1";
+              matchEndEl!.textContent = `${winner} Wins!`;
+              
+              // Hide game HUDs, show end message
+              hudEl.style.display = "none";
+              scoreboardEl!.style.display = "none";
+              if (respawnScreenEl!.style.display === "flex") {
+                hideRespawnScreen(); // Hide respawn screen if it's up
+              }
+              if (document.pointerLockElement) {
+                  document.exitPointerLock(); // Unlock mouse
+              }
+            }
+          }
+          // --- END G4 ---
+          
+          // Update FPS counter
+          frameCount++;
+          // Note: 'now' is captured from the start of the outer 'loop' function
+          if (now - lastFPSUpdate > 250) {
+            const fps = frameCount / ((now - lastFPSUpdate) / 1000);
+            if (fpsEl) {
+              fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
+            }
+            frameCount = 0;
+            lastFPSUpdate = now;
+          }
+        })
+        .catch(console.error)
+        .finally(() => {
+          isProcessingTick = false; // Release lock
+        });
+      // ++ END G5 ++
 
       tick++;
       accumulator -= FIXED_DT_MS;
     }
+    // ++ END G5 REFACTOR ++
 
-    // === 9. CLIENT: RENDER STEP (runs every frame) ===
-    // Update object positions from the *client's* ECS world
-    for (const [eid, obj] of playerObjects.entries()) {
-      const isLocalPlayer = (eid === localPlayerEid);
-      const isAlive = Health.current[eid] > 0;
+    // === 9. CLIENT: RENDER STEP (MOVED) ===
+    // (This logic is now inside the .then() block)
 
-      // Handle visibility and position for all entities
-      if (Transform.x[eid] !== undefined) {
-        if (isAlive) {
-          obj.position.x = Transform.x[eid];
-          obj.position.y = Transform.y[eid];
-          obj.position.z = Transform.z[eid];
-        } else {
-          // Hide dead players by moving them away
-          obj.position.y = -1000; 
-        }
-      }
-
-      if (isLocalPlayer) {
-        // --- 3RD PERSON CAMERA LOGIC (FIXED) ---
-        
-        // 1. Rotate the player model left/right (yaw)
-        obj.rotation.y = playerRotation.y;
-
-        // 2. Set the camera's rotation (pitch and yaw)
-        camera.rotation.copy(playerRotation);
-
-        if (isAlive) {
-          obj.visible = true; // Make sure we can see our own model
-  
-          // 3. Calculate the camera's target position
-          // Start with the base offset (up and behind)
-          cameraOffset.set(0, 1.6, 3.0);
-  
-          // Create an Euler with only the yaw rotation
-          yawEuler.set(0, playerRotation.y, 0);
-  
-          // Apply *only* the yaw rotation to the offset
-          cameraOffset.applyEuler(yawEuler);
-  
-          // Add the player's *object* position (which is smoothed) to the rotated offset
-          cameraTarget.copy(obj.position).add(cameraOffset);
-          
-          // 4. Smoothly move the camera to the target
-          camera.position.lerp(cameraTarget, smoothingFactor);
-        
-        } else {
-          // Player is dead, hide the model
-          obj.visible = false;
-          // The camera position will stop lerping and stay put,
-          // which is fine since the respawn screen is up.
-        }
-        // --- END 3RD PERSON ---
-
-      } else {
-        // This is a remote player
-        // --- G4: Use isAlive to set visibility ---
-        obj.visible = isAlive;
-        // --- END G4 ---
-        // Apply rotation to remote player models
-        obj.rotation.y = Transform.yaw[eid];
-      }
-    }
-
-    renderer.render(scene, camera);
-    
-    // === 10. CLIENT: UPDATE HUD (V4) ===
-    
-    // --- G1: Update health from local sim state ---
-    if (localPlayerEid !== null && healthEl) {
-      const hp = Health.current[localPlayerEid];
-      if (hp !== undefined) {
-        healthEl.textContent = `HP: ${hp.toFixed(0)}`;
-      }
-    }
-    // --- END G1 ---
-
-    // Placeholder ammo
-    if (ammoEl) {
-      ammoEl.textContent = `AMMO: 30 / 120`;
-    }
-    
-    // --- G4: UPDATE SCOREBOARD HUD ---
-    if (currentGameState) {
-      team1ScoreEl!.textContent = `Team 1: ${currentGameState.team1Tickets}`;
-      team2ScoreEl!.textContent = `Team 2: ${currentGameState.team2Tickets}`;
-      
-      // Check for match end
-      if (currentGameState.phase === 2 && matchEndEl!.style.display === "none") {
-        matchEndEl!.style.display = "block";
-        const winner = currentGameState.team1Tickets <= 0 ? "Team 2" : "Team 1";
-        matchEndEl!.textContent = `${winner} Wins!`;
-        
-        // Hide game HUDs, show end message
-        hudEl.style.display = "none";
-        scoreboardEl!.style.display = "none";
-        if (respawnScreenEl!.style.display === "flex") {
-          hideRespawnScreen(); // Hide respawn screen if it's up
-        }
-        if (document.pointerLockElement) {
-            document.exitPointerLock(); // Unlock mouse
-        }
-      }
-    }
-    // --- END G4 ---
-    
-    // Update FPS counter
-    frameCount++;
-    if (now - lastFPSUpdate > 250) {
-      const fps = frameCount / ((now - lastFPSUpdate) / 1000);
-      if (fpsEl) {
-        fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
-      }
-      frameCount = 0;
-      lastFPSUpdate = now;
-    }
+    // === 10. CLIENT: UPDATE HUD (V4) (MOVED) ===
+    // (This logic is now inside the .then() block)
 
     requestAnimationFrame(loop);
   }

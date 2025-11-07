@@ -1,0 +1,33 @@
+{
+  "productName": "bf42lite-client",
+  "version": "0.1.0",
+  "identifier": "com.bf42lite.client",
+  "app": {
+    "windows": [
+      {
+        "title": "bf42lite-client",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "capabilities": [
+        {
+          "identifier": "main-capability",
+          "permissions": [
+            "core:default"
+          ]
+        }
+      ]
+    }
+  },
+"build": {
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm dev:vite",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all"
+  }
+}
