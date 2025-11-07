@@ -59,6 +59,35 @@
         text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
       }
       /* --- END V4 --- */
+      /* --- V6: RESPAWN SCREEN --- */
+      #respawn-screen {
+        display: none; /* Hidden by default */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.85); /* Dark overlay */
+        z-index: 150; /* Over HUD (100), under Menu (200) */
+        color: white;
+        
+        /* Center content */
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #respawn-screen h2 {
+        font-size: 48px;
+        color: #ff4444; /* Red "down" message */
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      }
+      #respawn-timer {
+        font-size: 72px;
+        font-weight: bold;
+        margin: 20px 0;
+      }
+      /* --- END V6 --- */
       /* New Menu Styles */
       #menu {
         display: flex;
@@ -127,7 +156,11 @@
       </div>
       </div>
     <canvas id="game"></canvas>
-
+    <div id="respawn-screen">
+      <h2>YOU ARE DOWN</h2>
+      <div id="respawn-timer">5</div>
+      <button id="btn-deploy" class="menu-button" disabled>DEPLOYING IN...</button>
+    </div>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

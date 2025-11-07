@@ -34,7 +34,17 @@ const healthEl = document.getElementById("health-counter") as HTMLDivElement | n
 const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
 // --- END V4 ---
 
-if (!canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl || !healthEl || !ammoEl) {
+// --- V6: RESPAWN UI ---
+const respawnScreenEl = document.getElementById("respawn-screen") as HTMLDivElement | null;
+const respawnTimerEl = document.getElementById("respawn-timer") as HTMLDivElement | null;
+const btnDeploy = document.getElementById("btn-deploy") as HTMLButtonElement | null;
+// --- END V6 ---
+
+if (
+  !canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl || 
+  !healthEl || !ammoEl ||
+  !respawnScreenEl || !respawnTimerEl || !btnDeploy // <-- Add V6 elements
+) {
   throw new Error("UI elements not found. Check index.html.");
 }
 
@@ -59,6 +69,52 @@ async function startGame(mode: "join", url: string) {
   menuEl.style.display = "none";
   hudEl.style.display = "block";
   canvas.style.display = "block";
+
+  // --- V6: RESPAWN UI LOGIC ---
+  let respawnInterval: number | null = null;
+
+  function hideRespawnScreen() {
+    respawnScreenEl!.style.display = "none";
+    hudEl.style.display = "block"; // Show the main HUD
+    if (respawnInterval) {
+      clearInterval(respawnInterval);
+      respawnInterval = null;
+    }
+  }
+
+  function showRespawnScreen(duration: number = 5) {
+    respawnScreenEl!.style.display = "flex";
+    hudEl.style.display = "none"; // Hide the main HUD
+
+    btnDeploy.disabled = true;
+    btnDeploy.textContent = `DEPLOYING IN...`;
+    
+    let remaining = duration;
+    respawnTimerEl!.textContent = remaining.toString();
+    
+    if (respawnInterval) clearInterval(respawnInterval);
+    
+    respawnInterval = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) {
+        clearInterval(respawnInterval!);
+        respawnInterval = null;
+        respawnTimerEl!.textContent = "READY";
+        btnDeploy.disabled = false;
+        btnDeploy.textContent = "DEPLOY";
+      } else {
+        respawnTimerEl!.textContent = remaining.toString();
+      }
+    }, 1000); // Run every 1 second
+  }
+
+  // Hook up the deploy button
+  btnDeploy.onclick = () => {
+    hideRespawnScreen();
+    // In Phase 4, we'll send a "respawn" message to the server here
+    console.log("Player clicked DEPLOY");
+  };
+  // --- END V6 ---
 
   // === 2. NETWORK & SERIALIZATION SETUP ===
   const adapter = new WebSocketAdapter(url!);
@@ -94,7 +150,7 @@ async function startGame(mode: "join", url: string) {
     1000
   );
   camera.position.set(0, 1.6, 3);
-// --- V5: CAMERA SMOOTHING ---
+  // --- V5: CAMERA SMOOTHING ---
   // A reusable vector to store the camera's target position
   const cameraTarget = new THREE.Vector3(); 
   // How fast the camera should "catch up" (lower is smoother)
@@ -338,6 +394,20 @@ async function startGame(mode: "join", url: string) {
   // === 6. GAME LOOP ===
   initInput(canvas);
 
+  // --- V6: TEST KEY ---
+  // Add a test key to show the respawn screen
+  window.addEventListener("keydown", (e) => {
+    // We check if the menu is hidden, so we don't trigger this while typing
+    if (e.code === "KeyK" && menuEl.style.display === "none") { // <-- CHANGED e.key to e.code
+        console.log("Test: Showing respawn screen");
+      // Check if the screen is already shown to prevent spamming
+      if (respawnScreenEl.style.display === "none") {
+        showRespawnScreen();
+      }
+    }
+  });
+  // --- END V6 ---
+
   let last = performance.now();
   const FIXED_DT_MS = 1000 / 60; // 60hz in milliseconds
   let accumulator = 0;
@@ -392,16 +462,16 @@ async function startGame(mode: "join", url: string) {
 
     // Camera follows the local player
     if (eid === localPlayerEid) {
-    // --- V5: CAMERA SMOOTHING ---
-    // Set where the camera *should* be
-     cameraTarget.x = Transform.x[eid];
-     cameraTarget.y = 1.6; // Keep the same static height
-    cameraTarget.z = Transform.z[eid] + 3; // 3 units behind the player
+      // --- V5: CAMERA SMOOTHING ---
+      // Set where the camera *should* be
+      cameraTarget.x = Transform.x[eid];
+      cameraTarget.y = 1.6; // Keep the same static height
+      cameraTarget.z = Transform.z[eid] + 3; // 3 units behind the player
 
-  // Smoothly move the camera's current position *towards* the target
-    camera.position.lerp(cameraTarget, smoothingFactor);
-  // --- END V5 ---
-}
+      // Smoothly move the camera's current position *towards* the target
+      camera.position.lerp(cameraTarget, smoothingFactor);
+      // --- END V5 ---
+    }
     }
 
     renderer.render(scene, camera);
