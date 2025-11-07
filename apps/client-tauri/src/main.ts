@@ -1,8 +1,21 @@
 import * as THREE from "three";
 import { initInput, updateInput, inputState } from "./input";
 import { Packr } from "msgpackr";
-import { InputMsg, StateMsg } from "@protocol/schema";
-import { WebSocketAdapter } from "@net/adapter"; // <-- CORRECTED LINE
+import {
+  InputMsg,
+  StateMsg,
+  JoinMsg, // Import new message
+  EntitySnapshot,
+} from "@protocol/schema";
+import { WebSocketAdapter } from "@net/adapter";
+// N4: Import simulation logic for client-side prediction
+import {
+  world as clientWorld, // Rename to avoid conflict
+  step,
+  Transform,
+  Velocity,
+} from "@sim/logic";
+import { addComponent, addEntity } from "bitecs";
 
 // === 0. GET UI ELEMENTS ===
 const canvas = document.getElementById("game") as HTMLCanvasElement | null;
@@ -21,8 +34,6 @@ if (!canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl) {
 // === 1. BUTTON EVENT LISTENERS ===
 btnHost.onclick = () => {
   alert("Refactor Complete! Please run 'pnpm dev:host' in your terminal first, then click 'Join'.");
-  // We no longer support "Host" from the client.
-  // The LoopbackAdapter is now removed from the start logic.
 };
 
 btnJoin.onclick = () => {
@@ -57,8 +68,6 @@ async function startGame(mode: "join", url: string) {
   
   const packr = new Packr();
   let tick = 0;
-
-  // Map to store the time we sent a message for a given tick
   const sendTimeMap = new Map<number, number>();
 
   // === 3. THREE.JS (CLIENT) SETUP ===
@@ -76,55 +85,101 @@ async function startGame(mode: "join", url: string) {
   );
   camera.position.set(0, 1.6, 3);
 
-  // We will create cubes for players as they appear
-  const playerCubes = new Map<number, THREE.Mesh>();
-
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(5, 10, 7);
   scene.add(light);
 
-  // === 4. MESSAGE HANDLERS ===
+  // === 4. N4: CLIENT-SIDE SIMULATION SETUP ===
+  const SPEED = 3.0;
+  let localPlayerEid: number | null = null;
+  // Map THREE.js cubes to entity IDs
+  const playerCubes = new Map<number, THREE.Mesh>();
+  // Store a history of inputs for reconciliation
+  // TODO: Add input history buffer for full reconciliation
 
   /**
-   * CLIENT: Receives state from the host
+   * Helper to get or create a cube for an entity
    */
+  function getPlayerCube(eid: number): THREE.Mesh {
+    let cube = playerCubes.get(eid);
+    if (!cube) {
+      const geometry = new THREE.BoxGeometry();
+      const material = new THREE.MeshStandardMaterial({
+        color: eid === localPlayerEid ? 0x4488ff : 0xff8844, // Different color for local player
+      });
+      cube = new THREE.Mesh(geometry, material);
+      scene.add(cube);
+      playerCubes.set(eid, cube);
+      console.log(`Added cube for player ${eid}`);
+    }
+    return cube;
+  }
+
+  // === 5. MESSAGE HANDLERS ===
   adapter.onMessage((msg) => {
-    const stateMsg = packr.unpack(msg) as StateMsg;
-    if (stateMsg.type === "state") {
+    const state = packr.unpack(msg) as StateMsg | JoinMsg;
+
+    // --- N4: Handle Join Message ---
+    if (state.type === "join") {
+      localPlayerEid = state.eid;
+      console.log(`Joined game. This client is player ${localPlayerEid}`);
+      
+      // Create the local player entity in the client's world
+      addEntity(clientWorld);
+      addComponent(clientWorld, Transform, localPlayerEid);
+      addComponent(clientWorld, Velocity, localPlayerEid);
+      Transform.x[localPlayerEid] = state.x;
+      Transform.y[localPlayerEid] = state.y;
+      Transform.z[localPlayerEid] = state.z;
+      
+      // Create the visual cube for the local player
+      getPlayerCube(localPlayerEid);
+      return;
+    }
+
+    // --- N4: Handle State Message ---
+    if (state.type === "state") {
       // --- RTT CALCULATION (N5) ---
-      // We use the server's tick. Our client "tick" is just for sending.
-      const stateTick = stateMsg.tick;
-      // Find the *closest* tick we sent
+      const stateTick = state.tick;
       const clientTick = Array.from(sendTimeMap.keys()).pop() || 0;
       const sendTime = sendTimeMap.get(clientTick);
 
       if (sendTime && rttEl) {
         const rtt = performance.now() - sendTime;
         rttEl.textContent = `RTT: ${rtt.toFixed(1)} ms`;
-        
-        // Clean up old entries
         sendTimeMap.delete(clientTick);
       }
       // --- END RTT CALCULATION ---
 
-      // Update/create cubes based on snapshot
-      for (const snapshot of stateMsg.entities) {
-        let cube = playerCubes.get(snapshot.id);
+      // Process all entity snapshots from the server
+      for (const snapshot of state.entities) {
+        const { id, x, y, z } = snapshot;
 
-        if (!cube) {
-          // Create a new cube for this player
-          const geometry = new THREE.BoxGeometry();
-          const material = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff });
-          cube = new THREE.Mesh(geometry, material);
-          scene.add(cube);
-          playerCubes.set(snapshot.id, cube);
-          console.log(`Added cube for player ${snapshot.id}`);
+        // Make sure a cube exists for this entity
+        const cube = getPlayerCube(id);
+
+        // --- N4: Reconciliation ---
+        if (id === localPlayerEid) {
+          // This is our local player. We need to reconcile.
+          const localX = Transform.x[localPlayerEid];
+          const localZ = Transform.z[localPlayerEid];
+          
+          // Simple reconciliation: If the server's state is too different
+          // from our predicted state, snap our local state to the server's.
+          const error = Math.abs(localX - x) + Math.abs(localZ - z);
+          if (error > 0.01) {
+            // console.log(`Reconciling: error was ${error.toFixed(3)}`);
+            Transform.x[localPlayerEid] = x;
+            Transform.z[localPlayerEid] = z;
+            // A more advanced implementation would rewind and replay inputs
+            // from the snapshot's tick to the present.
+          }
+
+        } else {
+          // This is a remote player. Just snap their position.
+          // (Later, this will be interpolated for smoothness)
+          cube.position.set(x, y, z);
         }
-
-        // Apply state (interpolation will be needed later)
-        cube.position.x = snapshot.x;
-        cube.position.y = snapshot.y;
-        cube.position.z = snapshot.z;
       }
     }
   });
@@ -156,21 +211,42 @@ async function startGame(mode: "join", url: string) {
       tick: tick, 
       axes: { ...inputState },
     };
-    
-    // Store the send time just before sending
     sendTimeMap.set(tick, performance.now());
-    (adapter as WebSocketAdapter).send(packr.pack(inputMsg));
+    adapter.send(packr.pack(inputMsg));
 
-    // === 8. HOST: SIMULATION STEP (runs at fixed 60hz) ===
-    // The server is now responsible for this!
-    // We just increment our local tick for input messages.
+    // === 8. N4: CLIENT-SIDE PREDICTION STEP (runs at fixed 60hz) ===
+    // We run our *own* simulation loop locally for instant feedback.
     while (accumulator >= FIXED_DT_MS) {
+      if (localPlayerEid !== null) {
+        // Apply local input directly to the client's ECS world
+        Velocity.x[localPlayerEid] = inputState.right * SPEED;
+        Velocity.z[localPlayerEid] = -inputState.forward * SPEED;
+        Velocity.y[localPlayerEid] = 0; // No gravity yet
+
+        // Run the client-side simulation
+        step();
+      }
+      
       tick++;
       accumulator -= FIXED_DT_MS;
     }
 
     // === 9. CLIENT: RENDER STEP (runs every frame) ===
-    // The cube's position is now updated in adapter.onClientMessage
+    // Update cube positions from the *client's* ECS world
+    for (const [eid, cube] of playerCubes.entries()) {
+      if (Transform.x[eid] !== undefined) {
+        cube.position.x = Transform.x[eid];
+        cube.position.y = Transform.y[eid];
+        cube.position.z = Transform.z[eid];
+      }
+
+      // Camera follows the local player
+      if (eid === localPlayerEid) {
+        camera.position.x = Transform.x[eid];
+        camera.position.z = Transform.z[eid] + 3;
+      }
+    }
+
     renderer.render(scene, camera);
 
     // Update FPS counter

@@ -1,7 +1,12 @@
 import { WebSocket, WebSocketServer } from "ws";
 import { addComponent, addEntity } from "bitecs";
 import { Packr } from "msgpackr";
-import { InputMsg, StateMsg, EntitySnapshot } from "@protocol/schema";
+import {
+  InputMsg,
+  StateMsg,
+  EntitySnapshot,
+  JoinMsg, // Import the new message type
+} from "@protocol/schema";
 import { world, step, Transform, Velocity } from "@sim/logic";
 
 const PORT = 8080;
@@ -36,6 +41,18 @@ wss.on("connection", (ws) => {
   // Store the client and their entity ID
   clients.set(ws, playerEid);
   inputs.set(playerEid, { forward: 0, right: 0, jump: false });
+
+  // --- N4: Send JoinMsg to the new client ---
+  const joinMsg: JoinMsg = {
+    type: "join",
+    tick: tick,
+    eid: playerEid,
+    x: Transform.x[playerEid],
+    y: Transform.y[playerEid],
+    z: Transform.z[playerEid],
+  };
+  ws.send(packr.pack(joinMsg));
+  // --- End N4 ---
 
   ws.on("message", (message) => {
     const data = message as Uint8Array;
@@ -88,7 +105,7 @@ function gameLoop() {
     const stateMsg: StateMsg = {
       type: "state",
       tick: tick,
-      entities: snapshots,
+      entities: [snapshots],
     };
 
     const payload = packr.pack(stateMsg);

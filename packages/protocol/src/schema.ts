@@ -32,6 +32,20 @@ export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
 /**
  * Host -> Client
+ * Sent once on join, tells the client its entity ID and starting state.
+ */
+export const JoinMsgSchema = z.object({
+  type: z.literal("join"),
+  tick: z.number(), // The server tick when the player joined
+  eid: z.number(),  // The client's player entity ID
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+});
+export type JoinMsg = z.infer<typeof JoinMsgSchema>;
+
+/**
+ * Host -> Client
  * World snapshot delta.
  */
 export const StateMsgSchema = z.object({
