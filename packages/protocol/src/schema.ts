@@ -21,6 +21,8 @@ export const InputMsgSchema = z.object({
     pitch: z.number(),
     sprint: z.boolean(), // <-- ADD THIS
     useGadget: z.boolean(), // <-- ADD THIS
+    useMedBox: z.boolean(), // <-- ADD THIS (FOR MED BOX)
+    useRepairTool: z.boolean(), // <-- ADD THIS (FOR REPAIR TOOL)
   }),
 });
 export type InputMsg = z.infer<typeof InputMsgSchema>;
@@ -61,6 +63,13 @@ export const EntitySnapshotSchema = z.object({
   gadgetCooldown: z.number().optional(),
   isAmmoBox: z.boolean().optional(),
   // --- END X2 ---
+  // --- ADD MED BOX STATE ---
+  medGadgetCooldown: z.number().optional(),
+  isMedBox: z.boolean().optional(),
+  // --- END MED BOX STATE ---
+  // --- ADD REPAIR TOOL STATE ---
+  repairToolHeat: z.number().optional(),
+  // --- END REPAIR TOOL STATE ---
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -90,6 +99,12 @@ export const JoinMsgSchema = z.object({
   ammoReserve: z.number(),
   gadgetCooldown: z.number(),
   // --- END X2 ---
+  // --- ADD MED BOX ON JOIN ---
+  medGadgetCooldown: z.number(),
+  // --- END MED BOX ON JOIN ---
+  // --- ADD REPAIR TOOL ON JOIN ---
+  repairToolHeat: z.number(),
+  // --- END REPAIR TOOL ON JOIN ---
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
 

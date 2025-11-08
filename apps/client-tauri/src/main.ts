@@ -28,6 +28,13 @@ import {
   Gadget,
   AmmoBox,
   // --- END X2 ---
+  // --- IMPORT MED BOX ---
+  MedGadget,
+  MedBox,
+  // --- END MED BOX ---
+  // --- IMPORT REPAIR TOOL ---
+  RepairTool,
+  // --- END REPAIR TOOL ---
 } from "@sim/logic";
 
 // TAURI invoke
@@ -51,7 +58,9 @@ const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
 const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
 const staminaEl = document.getElementById("stamina-counter") as HTMLDivElement | null; // <-- 2. GET STAMINA ELEMENT
 const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
-const gadgetEl = document.getElementById("gadget-counter") as HTMLDivElement | null; // <-- ADD THIS
+const gadgetEl = document.getElementById("gadget-counter") as HTMLDivElement | null; // <-- ADD THIS (Ammo Box)
+const medGadgetEl = document.getElementById("med-gadget-counter") as HTMLDivElement | null; // <-- ADD THIS (Med Box)
+const repairToolEl = document.getElementById("repair-tool-counter") as HTMLDivElement | null; // <-- ADD THIS (Repair Tool)
 
 // Respawn UI
 const respawnScreenEl = document.getElementById("respawn-screen") as HTMLDivElement | null;
@@ -66,7 +75,7 @@ const matchEndEl = document.getElementById("match-end-message") as HTMLDivElemen
 
 if (
   !canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl ||
-  !healthEl || !staminaEl || !ammoEl || !gadgetEl || // <-- ADD TO CHECK
+  !healthEl || !staminaEl || !ammoEl || !gadgetEl || !medGadgetEl || !repairToolEl || // <-- ADD TO CHECK
   !respawnScreenEl || !respawnTimerEl || !btnDeploy ||
   !scoreboardEl || !team1ScoreEl || !team2ScoreEl || !matchEndEl
 ) {
@@ -102,6 +111,8 @@ interface WorldState {
 const entityQuery = defineQuery([Transform]);
 // --- X2: Gadget query ---
 const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
+// --- Med Box query ---
+const medBoxQuery = defineQuery([MedBox, Transform]);
 
 function serializeWorldToRust(): WorldState {
   const entities = entityQuery(clientWorld as any);
@@ -152,6 +163,8 @@ function deserializeWorldFromRust(newState: WorldState) {
       addComponent(clientWorld, Stamina, eid); // <-- 4. ADD STAMINA
       addComponent(clientWorld, Ammo, eid); // <-- ADD THIS
       addComponent(clientWorld, Gadget, eid); // <-- ADD THIS
+      addComponent(clientWorld, MedGadget, eid); // <-- ADD THIS
+      addComponent(clientWorld, RepairTool, eid); // <-- ADD THIS
     }
 
     Transform.x[eid] = entity.transform.x;
@@ -184,6 +197,17 @@ function deserializeWorldFromRust(newState: WorldState) {
       Gadget.cooldown[eid] = 0;
     }
     // --- END X2 ---
+    // --- Initialize MedGadget if not present ---
+    if (MedGadget.cooldown[eid] === undefined) {
+      MedGadget.cooldown[eid] = 0;
+    }
+    // --- END MED BOX ---
+    // --- Initialize RepairTool if not present ---
+    if (RepairTool.current[eid] === undefined) {
+      RepairTool.current[eid] = 0;
+      RepairTool.max[eid] = 100;
+    }
+    // --- END REPAIR TOOL ---
 
     Team.id[eid] = entity.team.id;
     PlayerStats.kills[eid] = entity.stats.kills;
@@ -365,14 +389,23 @@ async function startGame(mode: "join", url: string) {
   const SPRINT_SPEED = 6.0; // <-- 12. ADD SPRINT SPEED FOR CLIENT
   let localPlayerEid: number | null = null;
   const playerObjects = new Map<number, THREE.Object3D>();
+  
   // --- X2: GADGET RENDER STATE ---
-  const gadgetObjects = new Map<number, THREE.Object3D>();
-  const fallbackGadgetGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  const ammoBoxObjects = new Map<number, THREE.Object3D>();
+  const fallbackBoxGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Shared geometry
   const ammoBoxMaterial = new THREE.MeshStandardMaterial({
     color: 0x00ff00, // Bright green
     roughness: 0.7,
   });
   // --- END X2 ---
+  
+  // --- MED BOX RENDER STATE ---
+  const medBoxObjects = new Map<number, THREE.Object3D>();
+  const medBoxMaterial = new THREE.MeshStandardMaterial({
+    color: 0xff4444, // Bright red
+    roughness: 0.7,
+  });
+  // --- END MED BOX ---
 
   const gltfLoader = new GLTFLoader();
   const fallbackGeometry = new THREE.BoxGeometry();
@@ -402,7 +435,26 @@ async function startGame(mode: "join", url: string) {
         AmmoBox.getStorage(eid) === undefined // Check if tag exists
       ) {
         addComponent(world, AmmoBox, eid);
-      } else if (component !== Ammo && component !== Gadget && component !== AmmoBox) {
+      // --- ADD MED BOX COMPONENTS ---
+      } else if (
+        component === MedGadget &&
+        MedGadget.cooldown[eid] === undefined
+      ) {
+        addComponent(world, MedGadget, eid);
+      } else if (
+        component === MedBox &&
+        MedBox.getStorage(eid) === undefined // Check if tag exists
+      ) {
+        addComponent(world, MedBox, eid);
+      // --- END MED BOX ---
+      // --- ADD REPAIR TOOL COMPONENT ---
+      } else if (
+        component === RepairTool &&
+        RepairTool.current[eid] === undefined
+      ) {
+        addComponent(world, RepairTool, eid);
+      // --- END REPAIR TOOL ---
+      } else if (component !== Ammo && component !== Gadget && component !== AmmoBox && component !== MedGadget && component !== MedBox && component !== RepairTool) {
       // --- END X2 ---
         addComponent(world, component, eid);
       }
@@ -470,21 +522,20 @@ async function startGame(mode: "join", url: string) {
     return rootObject;
   }
 
-  // --- X2: ADD GADGET RENDER FUNCTION ---
-  function getGadgetObject(eid: number, snapshot: any): THREE.Object3D {
-    let rootObject = gadgetObjects.get(eid);
+  // --- X2: ADD AMMO BOX RENDER FUNCTION ---
+  function getAmmoBoxObject(eid: number, snapshot: any): THREE.Object3D {
+    let rootObject = ammoBoxObjects.get(eid);
 
     if (!rootObject) {
-      let material = ammoBoxMaterial; // Default to green
-      // (Later, we can add: if (snapshot.isMedkit) material = medkitMaterial;)
+      let material = ammoBoxMaterial;
       
-      rootObject = new THREE.Mesh(fallbackGadgetGeometry, material);
+      rootObject = new THREE.Mesh(fallbackBoxGeometry, material);
       rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
       rootObject.castShadow = true;
       rootObject.receiveShadow = true;
 
       scene.add(rootObject);
-      gadgetObjects.set(eid, rootObject);
+      ammoBoxObjects.set(eid, rootObject);
     }
     
     // Update position
@@ -493,6 +544,29 @@ async function startGame(mode: "join", url: string) {
     return rootObject;
   }
   // --- END X2 ---
+
+  // --- ADD MED BOX RENDER FUNCTION ---
+  function getMedBoxObject(eid: number, snapshot: any): THREE.Object3D {
+    let rootObject = medBoxObjects.get(eid);
+
+    if (!rootObject) {
+      let material = medBoxMaterial;
+      
+      rootObject = new THREE.Mesh(fallbackBoxGeometry, material);
+      rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
+      rootObject.castShadow = true;
+      rootObject.receiveShadow = true;
+
+      scene.add(rootObject);
+      medBoxObjects.set(eid, rootObject);
+    }
+    
+    // Update position
+    rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
+
+    return rootObject;
+  }
+  // --- END MED BOX ---
 
   // === 5. MESSAGE HANDLERS ===
   adapter.onMessage((msg) => {
@@ -529,6 +603,17 @@ async function startGame(mode: "join", url: string) {
         safeAddComponent(clientWorld, Gadget, localPlayerEid);
         Gadget.cooldown[localPlayerEid] = state.gadgetCooldown;
         // --- END X2 ---
+
+        // --- ADD MED BOX ON JOIN ---
+        safeAddComponent(clientWorld, MedGadget, localPlayerEid);
+        MedGadget.cooldown[localPlayerEid] = state.medGadgetCooldown;
+        // --- END MED BOX ---
+
+        // --- ADD REPAIR TOOL ON JOIN ---
+        safeAddComponent(clientWorld, RepairTool, localPlayerEid);
+        RepairTool.current[localPlayerEid] = state.repairToolHeat;
+        RepairTool.max[localPlayerEid] = 100; // Assume max, server will correct
+        // --- END REPAIR TOOL ---
 
         safeAddComponent(clientWorld, Team, localPlayerEid);
         Team.id[localPlayerEid] = state.teamId;
@@ -571,12 +656,18 @@ async function startGame(mode: "join", url: string) {
         const seenEids = new Set<number>();
         // --- X2: Add separate set for gadgets ---
         const seenGadgetEids = new Set<number>();
+        // --- Add set for med boxes ---
+        const seenMedBoxEids = new Set<number>();
 
         for (const snapshot of state.entities) {
           const { 
             id, x, y, z, hp, yaw, pitch, teamId, kills, deaths, stamina,
             // --- X2: Destructure new state ---
-            ammoCurrent, ammoReserve, gadgetCooldown, isAmmoBox
+            ammoCurrent, ammoReserve, gadgetCooldown, isAmmoBox,
+            // --- MED BOX: Destructure new state ---
+            medGadgetCooldown, isMedBox,
+            // --- REPAIR TOOL: Destructure new state ---
+            repairToolHeat
           } = snapshot;
           
           // --- X2: ROUTE TO CORRECT HANDLER ---
@@ -587,10 +678,23 @@ async function startGame(mode: "join", url: string) {
             Transform.x[id] = x;
             Transform.y[id] = y;
             Transform.z[id] = z;
-            getGadgetObject(id, snapshot);
+            getAmmoBoxObject(id, snapshot); // Renamed function
             continue; // Go to next entity
           }
           // --- END X2 ---
+          
+          // --- ROUTE MED BOX ---
+          if (isMedBox) {
+            seenMedBoxEids.add(id);
+            safeAddComponent(clientWorld, Transform, id);
+            safeAddComponent(clientWorld, MedBox, id);
+            Transform.x[id] = x;
+            Transform.y[id] = y;
+            Transform.z[id] = z;
+            getMedBoxObject(id, snapshot);
+            continue; // Go to next entity
+          }
+          // --- END MED BOX ---
 
           // If not a gadget, it's a player
           seenEids.add(id);
@@ -610,6 +714,9 @@ async function startGame(mode: "join", url: string) {
             Stamina.max[id] = stamina ?? 100;
             safeAddComponent(clientWorld, Ammo, id); // <-- ADD THIS
             safeAddComponent(clientWorld, Gadget, id); // <-- ADD THIS
+            safeAddComponent(clientWorld, MedGadget, id); // <-- ADD THIS
+            safeAddComponent(clientWorld, RepairTool, id); // <-- ADD THIS
+            RepairTool.max[id] = 100; // Default max
           }
 
           Stamina.current[id] = stamina ?? Stamina.max[id]; // <-- 9. UPDATE STAMINA
@@ -618,6 +725,12 @@ async function startGame(mode: "join", url: string) {
           Ammo.reserve[id] = ammoReserve ?? Ammo.reserve[id];
           Gadget.cooldown[id] = gadgetCooldown ?? Gadget.cooldown[id];
           // --- END X2 ---
+          // --- UPDATE MED GADGET ---
+          MedGadget.cooldown[id] = medGadgetCooldown ?? MedGadget.cooldown[id];
+          // --- END MED BOX ---
+          // --- UPDATE REPAIR TOOL ---
+          RepairTool.current[id] = repairToolHeat ?? RepairTool.current[id];
+          // --- END REPAIR TOOL ---
 
           Team.id[id] = teamId ?? 0;
           PlayerStats.kills[id] = kills ?? 0;
@@ -666,10 +779,18 @@ async function startGame(mode: "join", url: string) {
             // TODO: Also remove from ECS
           }
         }
-        for (const [eid, obj] of gadgetObjects.entries()) {
+        for (const [eid, obj] of ammoBoxObjects.entries()) {
           if (!seenGadgetEids.has(eid)) {
             scene.remove(obj);
-            gadgetObjects.delete(eid);
+            ammoBoxObjects.delete(eid);
+            // TODO: Also remove from ECS
+          }
+        }
+        // --- Clean up med boxes ---
+        for (const [eid, obj] of medBoxObjects.entries()) {
+          if (!seenMedBoxEids.has(eid)) {
+            scene.remove(obj);
+            medBoxObjects.delete(eid);
             // TODO: Also remove from ECS
           }
         }
@@ -806,10 +927,10 @@ async function startGame(mode: "join", url: string) {
             }
           }
 
-          // --- X2: UPDATE GADGET OBJECT TRANSFORMS ---
-          const boxes = ammoBoxQuery(clientWorld as any);
-          for (const eid of boxes) {
-            const obj = gadgetObjects.get(eid);
+          // --- X2: UPDATE AMMO BOX OBJECT TRANSFORMS ---
+          const ammoBoxes = ammoBoxQuery(clientWorld as any);
+          for (const eid of ammoBoxes) {
+            const obj = ammoBoxObjects.get(eid);
             if (obj && Transform.x[eid] !== undefined) {
               obj.position.x = Transform.x[eid];
               obj.position.y = Transform.y[eid];
@@ -817,6 +938,18 @@ async function startGame(mode: "join", url: string) {
             }
           }
           // --- END X2 ---
+          
+          // --- UPDATE MED BOX OBJECT TRANSFORMS ---
+          const medBoxes = medBoxQuery(clientWorld as any);
+          for (const eid of medBoxes) {
+            const obj = medBoxObjects.get(eid);
+            if (obj && Transform.x[eid] !== undefined) {
+              obj.position.x = Transform.x[eid];
+              obj.position.y = Transform.y[eid];
+              obj.position.z = Transform.z[eid];
+            }
+          }
+          // --- END MED BOX ---
 
           renderer.render(scene, camera);
 
@@ -843,7 +976,7 @@ async function startGame(mode: "join", url: string) {
                 ammoEl.textContent = `AMMO: ${ammo} / ${Math.floor(reserve)}`;
               }
             }
-            // Update Gadget Cooldown
+            // Update Gadget Cooldown (Ammo Box)
             if (gadgetEl) {
               const cooldown = Gadget.cooldown[localPlayerEid];
               if (cooldown !== undefined) {
@@ -852,6 +985,26 @@ async function startGame(mode: "join", url: string) {
                 } else {
                   gadgetEl.textContent = `GADGET: READY`;
                 }
+              }
+            }
+            // Update Med Gadget Cooldown (Med Box)
+            if (medGadgetEl) {
+              const cooldown = MedGadget.cooldown[localPlayerEid];
+              if (cooldown !== undefined) {
+                if (cooldown > 0) {
+                  medGadgetEl.textContent = `MEDBOX: ${cooldown.toFixed(1)}s`;
+                } else {
+                  medGadgetEl.textContent = `MEDBOX: READY`;
+                }
+              }
+            }
+            // Update Repair Tool Heat
+            if (repairToolEl) {
+              const heat = RepairTool.current[localPlayerEid];
+              const maxHeat = RepairTool.max[localPlayerEid];
+              if (heat !== undefined && maxHeat !== undefined) {
+                const heatPercent = (heat / maxHeat) * 100;
+                repairToolEl.textContent = `REPAIR: ${heatPercent.toFixed(0)}%`;
               }
             }
           } else {

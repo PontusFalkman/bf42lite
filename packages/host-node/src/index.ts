@@ -30,6 +30,13 @@ import {
   Gadget,
   AmmoBox,
   // --- END X2 ---
+  // --- IMPORT MED BOX ---
+  MedGadget,
+  MedBox,
+  // --- END MED BOX ---
+  // --- IMPORT REPAIR TOOL ---
+  RepairTool,
+  // --- END REPAIR TOOL ---
 } from "@sim/logic";
 
 const PORT = 8080;
@@ -53,10 +60,24 @@ const SHOT_RANGE = 20.0; // Max distance for a hit
 const DEFAULT_AMMO_CURRENT = 30;
 const DEFAULT_AMMO_RESERVE = 120;
 const DEFAULT_AMMO_MAX_RESERVE = 120;
-const GADGET_COOLDOWN_SEC = 15.0;
+const GADGET_COOLDOWN_SEC = 15.0; // Ammo box
 const AMMO_RESUPPLY_RADIUS_SQ = 5.0 * 5.0; // Use squared radius
 const AMMO_RESUPPLY_RATE_PS = 40; // reserve ammo per second
 // --- END X2 ---
+
+// --- ADD MED BOX CONSTANTS ---
+const MEDGADGET_COOLDOWN_SEC = 15.0; // Med box
+const HEALTH_RESUPPLY_RADIUS_SQ = 5.0 * 5.0;
+const HEALTH_RESUPPLY_RATE_PS = 10; // 10 HP per second
+// --- END MED BOX CONSTANTS ---
+
+// --- ADD REPAIR TOOL CONSTANTS ---
+const REPAIR_TOOL_MAX_HEAT = 100.0;
+const REPAIR_TOOL_HEAT_PS = 30.0; // Heat generated per second
+const REPAIR_TOOL_COOLDOWN_PS = 25.0; // Heat lost per second
+const REPAIR_HEAL_PS = 15.0; // HP healed per second
+const REPAIR_RANGE = 5.0; // Max distance to heal a teammate
+// --- END REPAIR TOOL CONSTANTS ---
 
 // --- G4: ADD GAME STATE CONSTANTS ---
 const STARTING_TICKETS = 50;
@@ -73,6 +94,9 @@ const inputs = new Map<number, InputMsg["axes"]>();
 // --- X2: Query for ammo boxes ---
 const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
 // --- END X2 ---
+// --- Query for med boxes ---
+const medBoxQuery = defineQuery([MedBox, Transform]);
+// --- END med box ---
 
 let tick = 0;
 let teamCounter = 0; // --- G4: For balancing teams ---
@@ -118,10 +142,22 @@ wss.on("connection", (ws) => {
   Ammo.reserve[playerEid] = DEFAULT_AMMO_RESERVE;
   Ammo.maxReserve[playerEid] = DEFAULT_AMMO_MAX_RESERVE;
 
-  addComponent(world, Gadget, playerEid);
+  addComponent(world, Gadget, playerEid); // This is for the Ammo Box
   Gadget.cooldown[playerEid] = 0.0;
   Gadget.maxCooldown[playerEid] = GADGET_COOLDOWN_SEC;
   // --- END X2 ---
+
+  // --- ADD MED BOX GADGET ---
+  addComponent(world, MedGadget, playerEid); // This is for the Med Box
+  MedGadget.cooldown[playerEid] = 0.0;
+  MedGadget.maxCooldown[playerEid] = MEDGADGET_COOLDOWN_SEC;
+  // --- END MED BOX GADGET ---
+
+  // --- ADD REPAIR TOOL ---
+  addComponent(world, RepairTool, playerEid);
+  RepairTool.current[playerEid] = 0.0;
+  RepairTool.max[playerEid] = REPAIR_TOOL_MAX_HEAT;
+  // --- END REPAIR TOOL ---
 
   // --- G4: ADD TEAM AND STATS ---
   addComponent(world, Team, playerEid);
@@ -137,8 +173,7 @@ wss.on("connection", (ws) => {
   clients.set(ws, playerEid);
   // --- C2: Update default input state ---
   // --- X2: Add useGadget ---
-  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false }); // <-- 5. ADD SPRINT & X2
-
+  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false }); // <-- 5. ADD SPRINT & X2 & MEDBOX & REPAIR
   // --- N4: Send JoinMsg to the new client ---
   // --- C2: Add yaw/pitch to JoinMsg ---
   // --- G4: Add team/stats to JoinMsg ---
@@ -162,9 +197,13 @@ wss.on("connection", (ws) => {
     ammoCurrent: Ammo.current[playerEid],
     ammoReserve: Ammo.reserve[playerEid],
     gadgetCooldown: Gadget.cooldown[playerEid],
+    // --- MED BOX ---
+    medGadgetCooldown: MedGadget.cooldown[playerEid],
+    // --- REPAIR TOOL ---
+    repairToolHeat: RepairTool.current[playerEid],
   };
   ws.send(packr.pack(joinMsg));
-  // --- End N4 & G4 & X2 ---
+  // --- End N4 & G4 & X2 & MED BOX & REPAIR ---
 
   ws.on("message", (message) => {
     const data = message as Uint8Array;
@@ -180,10 +219,13 @@ wss.on("connection", (ws) => {
       // Don't overwrite fire/gadget state if it was set
       const oldFire = inputs.get(playerEid)?.fire ?? false;
       const oldGadget = inputs.get(playerEid)?.useGadget ?? false;
+      const oldMedBox = inputs.get(playerEid)?.useMedBox ?? false; // <-- ADD THIS
+      // Note: Repair tool is fine to be overwritten, it's a "hold" action
       inputs.set(playerEid, {
         ...msg.axes,
         fire: oldFire || msg.axes.fire,
         useGadget: oldGadget || msg.axes.useGadget, // <-- ADD THIS
+        useMedBox: oldMedBox || msg.axes.useMedBox, // <-- ADD THIS
       });
     } 
     // --- G3: Handle Respawn Request ---
@@ -206,6 +248,12 @@ wss.on("connection", (ws) => {
       Ammo.reserve[playerEid] = DEFAULT_AMMO_RESERVE;
       Gadget.cooldown[playerEid] = 0.0;
       // --- END X2 ---
+      // --- MED BOX ---
+      MedGadget.cooldown[playerEid] = 0.0;
+      // --- END MED BOX ---
+      // --- REPAIR TOOL ---
+      RepairTool.current[playerEid] = 0.0;
+      // --- END REPAIR TOOL ---
     }
     // --- END G3 ---
   });
@@ -233,7 +281,7 @@ function gameLoop() {
   const dt = TICK_MS / 1000.0; // <-- 8. GET DELTA-TIME IN SECONDS
   // --- END G4 ---
 
-  // --- 9. STAMINA & GADGET COOLDOWN LOGIC ---
+  // --- 9. STAMINA & GADGET COOLDOWN & REPAIR HEAT LOGIC ---
   if (gamePhase === 1) {
     for (const eid of clients.values()) {
       const input = inputs.get(eid);
@@ -252,7 +300,7 @@ function gameLoop() {
         }
       }
 
-      // --- X2: Gadget Cooldown ---
+      // --- X2: Gadget Cooldown (Ammo Box) ---
       if (Gadget.cooldown[eid] > 0) {
         Gadget.cooldown[eid] -= dt;
         if (Gadget.cooldown[eid] < 0) {
@@ -260,6 +308,31 @@ function gameLoop() {
         }
       }
       // --- END X2 ---
+
+      // --- MedGadget Cooldown (Med Box) ---
+      if (MedGadget.cooldown[eid] > 0) {
+        MedGadget.cooldown[eid] -= dt;
+        if (MedGadget.cooldown[eid] < 0) {
+          MedGadget.cooldown[eid] = 0;
+        }
+      }
+      // --- END MED BOX ---
+
+      // --- Repair Tool Heat/Cooldown ---
+      if (input.useRepairTool && Health.current[eid] > 0) {
+        // Build heat
+        RepairTool.current[eid] += REPAIR_TOOL_HEAT_PS * dt;
+        if (RepairTool.current[eid] > RepairTool.max[eid]) {
+          RepairTool.current[eid] = RepairTool.max[eid];
+        }
+      } else if (RepairTool.current[eid] > 0) {
+        // Cool down
+        RepairTool.current[eid] -= REPAIR_TOOL_COOLDOWN_PS * dt;
+        if (RepairTool.current[eid] < 0) {
+          RepairTool.current[eid] = 0;
+        }
+      }
+      // --- END REPAIR TOOL ---
     }
   }
   // --- END 9 ---
@@ -287,7 +360,7 @@ function gameLoop() {
       Velocity.y[eid] = 0; // No gravity yet
       // --- END C2 & X1 ---
 
-      // --- X2: HANDLE GADGET DEPLOY ---
+      // --- X2: HANDLE GADGET DEPLOY (AMMO BOX) ---
       if (input.useGadget && Gadget.cooldown[eid] === 0) {
         console.log(`[Host] Player ${eid} deploying AmmoBox.`);
         const boxEid = addEntity(world);
@@ -312,8 +385,74 @@ function gameLoop() {
         inputs.set(eid, input);
       }
       // --- END X2 ---
+      
+      // --- HANDLE MED BOX DEPLOY ---
+      if (input.useMedBox && MedGadget.cooldown[eid] === 0) {
+        console.log(`[Host] Player ${eid} deploying MedBox.`);
+        const boxEid = addEntity(world);
+        addComponent(world, Transform, boxEid);
+        // Spawn slightly in front of player
+        const spawnX = Transform.x[eid] + Math.sin(yaw) * -1.0;
+        const spawnZ = Transform.z[eid] + Math.cos(yaw) * -1.0;
+        Transform.x[boxEid] = spawnX;
+        Transform.y[boxEid] = Transform.y[eid]; // On the ground
+        Transform.z[boxEid] = spawnZ;
+        
+        addComponent(world, Team, boxEid);
+        Team.id[boxEid] = Team.id[eid]; // Same team
+        
+        addComponent(world, MedBox, boxEid); // Tag it
+        
+        // Start cooldown
+        MedGadget.cooldown[eid] = MedGadget.maxCooldown[eid];
+        
+        // Consume input
+        input.useMedBox = false;
+        inputs.set(eid, input);
+      }
+      // --- END MED BOX ---
     }
   }
+
+  // --- NEW: Handle Repairing ---
+  if (gamePhase === 1) {
+    for (const [repairingEid, input] of inputs.entries()) {
+      // Only allow repairing if alive, holding the button, and not overheated
+      if (input.useRepairTool && Health.current[repairingEid] > 0 && RepairTool.current[repairingEid] < RepairTool.max[repairingEid]) {
+        
+        let closestTeammate: number | null = null;
+        let minDistance = REPAIR_RANGE * REPAIR_RANGE; 
+
+        for (const targetEid of clients.values()) {
+          if (targetEid === repairingEid) continue; // Can't heal yourself
+          if (Health.current[targetEid] <= 0) continue; // Can't heal dead players
+          if (Team.id[targetEid] !== Team.id[repairingEid]) continue; // Can't heal enemies
+          if (Health.current[targetEid] >= Health.max[targetEid]) continue; // Can't heal full health
+
+          // Squared distance check
+          const dx = Transform.x[targetEid] - Transform.x[repairingEid];
+          const dy = Transform.y[targetEid] - Transform.y[repairingEid];
+          const dz = Transform.z[targetEid] - Transform.z[repairingEid];
+          const distSq = dx*dx + dy*dy + dz*dz;
+
+          // TODO: Add "is in front" check (dot product)
+          if (distSq < minDistance) {
+            minDistance = distSq;
+            closestTeammate = targetEid;
+          }
+        }
+
+        if (closestTeammate !== null) {
+          console.log(`[Host] Player ${repairingEid} is healing Player ${closestTeammate}!`);
+          Health.current[closestTeammate] += REPAIR_HEAL_PS * dt;
+          if (Health.current[closestTeammate] > Health.max[closestTeammate]) {
+            Health.current[closestTeammate] = Health.max[closestTeammate];
+          }
+        }
+      }
+    }
+  }
+  // --- END Handle Repairing ---
 
   // --- G2: Handle Firing ---
   // --- G4: Only if game is running ---
@@ -366,7 +505,7 @@ function gameLoop() {
               // Set health to 0 so client can see it.
               Health.current[closestTarget] = 0; 
               // Stop processing their input
-              inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false }); // C2, X1, X2
+              inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false }); // C2, X1, X2, MedBox, Repair
               // Stop their movement
               Velocity.x[closestTarget] = 0;
               Velocity.y[closestTarget] = 0;
@@ -446,6 +585,38 @@ function gameLoop() {
   }
   // --- END X2 ---
 
+  // --- NEW SYSTEM: HEALTH RESUPPLY ---
+  if (gamePhase === 1) {
+    const medBoxes = medBoxQuery(world);
+    for (const boxEid of medBoxes) {
+      const boxX = Transform.x[boxEid];
+      const boxZ = Transform.z[boxEid];
+      const boxTeam = Team.id[boxEid];
+
+      for (const playerEid of clients.values()) {
+        // Check if player is alive and needs health
+        if (Health.current[playerEid] <= 0) continue;
+        if (Health.current[playerEid] >= Health.max[playerEid]) continue;
+        // Check if same team
+        if (Team.id[playerEid] !== boxTeam) continue;
+
+        // Check distance (squared)
+        const dx = Transform.x[playerEid] - boxX;
+        const dz = Transform.z[playerEid] - boxZ;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq <= HEALTH_RESUPPLY_RADIUS_SQ) {
+          // Resupply (Heal)
+          Health.current[playerEid] += HEALTH_RESUPPLY_RATE_PS * dt;
+          if (Health.current[playerEid] > Health.max[playerEid]) {
+            Health.current[playerEid] = Health.max[playerEid];
+          }
+        }
+      }
+    }
+  }
+  // --- END HEALTH RESUPPLY ---
+
   // C. Broadcast snapshots (at SNAPSHOT_RATE)
   if (tick % (TICK_RATE / SNAPSHOT_RATE) === 0) {
     const snapshots: EntitySnapshot[] = [];
@@ -471,6 +642,12 @@ function gameLoop() {
         ammoReserve: Ammo.reserve[eid], // This will be a float, client will parse
         gadgetCooldown: Gadget.cooldown[eid],
         // --- END X2 & G4 ---
+        // --- MED BOX ---
+        medGadgetCooldown: MedGadget.cooldown[eid],
+        // --- END MED BOX ---
+        // --- REPAIR TOOL ---
+        repairToolHeat: RepairTool.current[eid],
+        // --- END REPAIR TOOL ---
       });
     }
 
@@ -490,6 +667,23 @@ function gameLoop() {
       });
     }
     // --- END X2 ---
+    
+    // --- MedBox snapshots ---
+    const medBoxes = medBoxQuery(world);
+    for (const boxEid of medBoxes) {
+      snapshots.push({
+        id: boxEid,
+        x: Transform.x[boxEid],
+        y: Transform.y[boxEid],
+        z: Transform.z[boxEid],
+        hp: 1, // Doesn't have health, but schema needs it
+        yaw: 0,
+        pitch: 0,
+        teamId: Team.id[boxEid],
+        isMedBox: true,
+      });
+    }
+    // --- END MED BOX ---
 
 
     // --- G4: GET GAME STATE SNAPSHOT ---

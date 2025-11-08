@@ -60,10 +60,27 @@ export const Ammo = defineComponent({
 });
 
 export const Gadget = defineComponent({
-  cooldown: Types.f32, // Time remaining
+  cooldown: Types.f32, // Time remaining (for Ammo Box)
   maxCooldown: Types.f32,
 });
 
 // "Tag" component for ammo box entities
 export const AmmoBox = defineComponent({});
 // --- END X2 ---
+
+// --- ADD MED BOX COMPONENTS ---
+export const MedGadget = defineComponent({
+  cooldown: Types.f32, // Time remaining (for Med Box)
+  maxCooldown: Types.f32,
+});
+
+// "Tag" component for med box entities
+export const MedBox = defineComponent({});
+// --- END MED BOX ---
+
+// --- ADD REPAIR TOOL COMPONENT ---
+export const RepairTool = defineComponent({
+  current: Types.f32, // Current heat level (0.0 to 100.0)
+  max: Types.f32,     // Max heat (e.g., 100.0)
+});
+// --- END REPAIR TOOL COMPONENT ---

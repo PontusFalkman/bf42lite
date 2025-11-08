@@ -14,7 +14,9 @@ export const inputState = {
   fire: false, // --- G2: ADD THIS ---
   // --- C2: Add deltaX/Y to state ---
   sprint: false, // <-- ADD THIS
-  useGadget: false, // <-- ADD THIS
+  useGadget: false, // <-- ADD THIS (Ammo Box)
+  useMedBox: false, // <-- ADD THIS (Med Box)
+  useRepairTool: false, // <-- ADD THIS (Repair Tool)
   deltaX: 0,
   deltaY: 0,
   // --- G4: ADD SCOREBOARD STATE ---
@@ -85,6 +87,8 @@ export function updateInput() {
   inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
   inputState.sprint = keys.has("ShiftLeft"); // <-- ADD THIS
   inputState.useGadget = keys.has("Digit3"); // <-- ADD THIS (Use '3' key)
+  inputState.useMedBox = keys.has("Digit4"); // <-- ADD THIS (Use '4' key)
+  inputState.useRepairTool = keys.has("Digit5"); // <-- ADD THIS (Use '5' key)
   
   // --- G4: UPDATE SCOREBOARD STATE ---
   if (!keys.has("Tab")) {
