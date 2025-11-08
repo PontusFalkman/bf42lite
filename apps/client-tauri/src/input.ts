@@ -1,3 +1,5 @@
+// apps/client-tauri/src/input.ts
+
 let keys = new Set<string>();
 export const keysPressed = new Set<string>();
 
@@ -12,6 +14,7 @@ export const inputState = {
   fire: false, // --- G2: ADD THIS ---
   // --- C2: Add deltaX/Y to state ---
   sprint: false, // <-- ADD THIS
+  useGadget: false, // <-- ADD THIS
   deltaX: 0,
   deltaY: 0,
   // --- G4: ADD SCOREBOARD STATE ---
@@ -81,6 +84,7 @@ export function updateInput() {
   inputState.jump = keys.has("Space");
   inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
   inputState.sprint = keys.has("ShiftLeft"); // <-- ADD THIS
+  inputState.useGadget = keys.has("Digit3"); // <-- ADD THIS (Use '3' key)
   
   // --- G4: UPDATE SCOREBOARD STATE ---
   if (!keys.has("Tab")) {

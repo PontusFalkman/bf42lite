@@ -1,3 +1,5 @@
+// apps/client-tauri/src/main.ts
+
 import * as THREE from "three";
 // Import the GLTFLoader
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
@@ -21,12 +23,18 @@ import {
   Team,
   PlayerStats,
   Stamina, // <-- 1. IMPORT STAMINA
+  // --- X2: IMPORT NEW COMPONENTS ---
+  Ammo,
+  Gadget,
+  AmmoBox,
+  // --- END X2 ---
 } from "@sim/logic";
 
 // TAURI invoke
 import { invoke } from "@tauri-apps/api/core";
 
 // ECS helpers from bitecs
+// --- X2: Import defineQuery ---
 import { addComponent, addEntity, defineQuery } from "bitecs";
 
 // === 0. GET UI ELEMENTS ===
@@ -43,6 +51,7 @@ const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
 const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
 const staminaEl = document.getElementById("stamina-counter") as HTMLDivElement | null; // <-- 2. GET STAMINA ELEMENT
 const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
+const gadgetEl = document.getElementById("gadget-counter") as HTMLDivElement | null; // <-- ADD THIS
 
 // Respawn UI
 const respawnScreenEl = document.getElementById("respawn-screen") as HTMLDivElement | null;
@@ -57,7 +66,7 @@ const matchEndEl = document.getElementById("match-end-message") as HTMLDivElemen
 
 if (
   !canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl ||
-  !healthEl || !staminaEl || !ammoEl || // <-- 3. ADD TO CHECK
+  !healthEl || !staminaEl || !ammoEl || !gadgetEl || // <-- ADD TO CHECK
   !respawnScreenEl || !respawnTimerEl || !btnDeploy ||
   !scoreboardEl || !team1ScoreEl || !team2ScoreEl || !matchEndEl
 ) {
@@ -91,6 +100,8 @@ interface WorldState {
 
 // ECS query: all entities with Transform
 const entityQuery = defineQuery([Transform]);
+// --- X2: Gadget query ---
+const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
 
 function serializeWorldToRust(): WorldState {
   const entities = entityQuery(clientWorld as any);
@@ -139,6 +150,8 @@ function deserializeWorldFromRust(newState: WorldState) {
       addComponent(clientWorld, Team, eid);
       addComponent(clientWorld, PlayerStats, eid);
       addComponent(clientWorld, Stamina, eid); // <-- 4. ADD STAMINA
+      addComponent(clientWorld, Ammo, eid); // <-- ADD THIS
+      addComponent(clientWorld, Gadget, eid); // <-- ADD THIS
     }
 
     Transform.x[eid] = entity.transform.x;
@@ -161,6 +174,16 @@ function deserializeWorldFromRust(newState: WorldState) {
       Stamina.current[eid] = 100;
       Stamina.max[eid] = 100;
     }
+
+    // --- X2: Initialize Ammo/Gadget if not present ---
+    if (Ammo.current[eid] === undefined) {
+      Ammo.current[eid] = 30;
+      Ammo.reserve[eid] = 120;
+    }
+    if (Gadget.cooldown[eid] === undefined) {
+      Gadget.cooldown[eid] = 0;
+    }
+    // --- END X2 ---
 
     Team.id[eid] = entity.team.id;
     PlayerStats.kills[eid] = entity.stats.kills;
@@ -342,6 +365,14 @@ async function startGame(mode: "join", url: string) {
   const SPRINT_SPEED = 6.0; // <-- 12. ADD SPRINT SPEED FOR CLIENT
   let localPlayerEid: number | null = null;
   const playerObjects = new Map<number, THREE.Object3D>();
+  // --- X2: GADGET RENDER STATE ---
+  const gadgetObjects = new Map<number, THREE.Object3D>();
+  const fallbackGadgetGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+  const ammoBoxMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00ff00, // Bright green
+    roughness: 0.7,
+  });
+  // --- END X2 ---
 
   const gltfLoader = new GLTFLoader();
   const fallbackGeometry = new THREE.BoxGeometry();
@@ -355,7 +386,26 @@ async function startGame(mode: "join", url: string) {
   function safeAddComponent(world: any, component: any, eid: number) {
     ensureEntity(world, eid);
     try {
-      addComponent(world, component, eid);
+      // --- X2: Add Ammo/Gadget/AmmoBox components ---
+      if (
+        component === Ammo &&
+        Ammo.current[eid] === undefined
+      ) {
+        addComponent(world, Ammo, eid);
+      } else if (
+        component === Gadget &&
+        Gadget.cooldown[eid] === undefined
+      ) {
+        addComponent(world, Gadget, eid);
+      } else if (
+        component === AmmoBox &&
+        AmmoBox.getStorage(eid) === undefined // Check if tag exists
+      ) {
+        addComponent(world, AmmoBox, eid);
+      } else if (component !== Ammo && component !== Gadget && component !== AmmoBox) {
+      // --- END X2 ---
+        addComponent(world, component, eid);
+      }
     } catch (err) {
       console.warn("safeAddComponent failed", {
         eid,
@@ -420,6 +470,30 @@ async function startGame(mode: "join", url: string) {
     return rootObject;
   }
 
+  // --- X2: ADD GADGET RENDER FUNCTION ---
+  function getGadgetObject(eid: number, snapshot: any): THREE.Object3D {
+    let rootObject = gadgetObjects.get(eid);
+
+    if (!rootObject) {
+      let material = ammoBoxMaterial; // Default to green
+      // (Later, we can add: if (snapshot.isMedkit) material = medkitMaterial;)
+      
+      rootObject = new THREE.Mesh(fallbackGadgetGeometry, material);
+      rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
+      rootObject.castShadow = true;
+      rootObject.receiveShadow = true;
+
+      scene.add(rootObject);
+      gadgetObjects.set(eid, rootObject);
+    }
+    
+    // Update position
+    rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
+
+    return rootObject;
+  }
+  // --- END X2 ---
+
   // === 5. MESSAGE HANDLERS ===
   adapter.onMessage((msg) => {
     try {
@@ -447,6 +521,14 @@ async function startGame(mode: "join", url: string) {
         safeAddComponent(clientWorld, Stamina, localPlayerEid); // <-- 6. ADD STAMINA ON JOIN
         Stamina.current[localPlayerEid] = state.stamina;
         Stamina.max[localPlayerEid] = state.stamina;
+
+        // --- X2: ADD AMMO/GADGET ON JOIN ---
+        safeAddComponent(clientWorld, Ammo, localPlayerEid);
+        Ammo.current[localPlayerEid] = state.ammoCurrent;
+        Ammo.reserve[localPlayerEid] = state.ammoReserve;
+        safeAddComponent(clientWorld, Gadget, localPlayerEid);
+        Gadget.cooldown[localPlayerEid] = state.gadgetCooldown;
+        // --- END X2 ---
 
         safeAddComponent(clientWorld, Team, localPlayerEid);
         Team.id[localPlayerEid] = state.teamId;
@@ -487,9 +569,30 @@ async function startGame(mode: "join", url: string) {
         }
 
         const seenEids = new Set<number>();
+        // --- X2: Add separate set for gadgets ---
+        const seenGadgetEids = new Set<number>();
 
         for (const snapshot of state.entities) {
-          const { id, x, y, z, hp, yaw, pitch, teamId, kills, deaths, stamina } = snapshot; // <-- 7. GET STAMINA
+          const { 
+            id, x, y, z, hp, yaw, pitch, teamId, kills, deaths, stamina,
+            // --- X2: Destructure new state ---
+            ammoCurrent, ammoReserve, gadgetCooldown, isAmmoBox
+          } = snapshot;
+          
+          // --- X2: ROUTE TO CORRECT HANDLER ---
+          if (isAmmoBox) {
+            seenGadgetEids.add(id);
+            safeAddComponent(clientWorld, Transform, id);
+            safeAddComponent(clientWorld, AmmoBox, id);
+            Transform.x[id] = x;
+            Transform.y[id] = y;
+            Transform.z[id] = z;
+            getGadgetObject(id, snapshot);
+            continue; // Go to next entity
+          }
+          // --- END X2 ---
+
+          // If not a gadget, it's a player
           seenEids.add(id);
 
           const obj = getPlayerObject(id, teamId ?? 0);
@@ -505,9 +608,16 @@ async function startGame(mode: "join", url: string) {
             safeAddComponent(clientWorld, PlayerStats, id);
             safeAddComponent(clientWorld, Stamina, id); // <-- 8. ADD STAMINA FOR NEW ENTITIES
             Stamina.max[id] = stamina ?? 100;
+            safeAddComponent(clientWorld, Ammo, id); // <-- ADD THIS
+            safeAddComponent(clientWorld, Gadget, id); // <-- ADD THIS
           }
 
           Stamina.current[id] = stamina ?? Stamina.max[id]; // <-- 9. UPDATE STAMINA
+          // --- X2: UPDATE AMMO/GADGET FOR ALL PLAYERS ---
+          Ammo.current[id] = ammoCurrent ?? Ammo.current[id];
+          Ammo.reserve[id] = ammoReserve ?? Ammo.reserve[id];
+          Gadget.cooldown[id] = gadgetCooldown ?? Gadget.cooldown[id];
+          // --- END X2 ---
 
           Team.id[id] = teamId ?? 0;
           PlayerStats.kills[id] = kills ?? 0;
@@ -548,10 +658,19 @@ async function startGame(mode: "join", url: string) {
           }
         }
 
+        // --- X2: Clean up removed players AND gadgets ---
         for (const [eid, obj] of playerObjects.entries()) {
           if (!seenEids.has(eid)) {
             scene.remove(obj);
             playerObjects.delete(eid);
+            // TODO: Also remove from ECS
+          }
+        }
+        for (const [eid, obj] of gadgetObjects.entries()) {
+          if (!seenGadgetEids.has(eid)) {
+            scene.remove(obj);
+            gadgetObjects.delete(eid);
+            // TODO: Also remove from ECS
           }
         }
       }
@@ -687,8 +806,21 @@ async function startGame(mode: "join", url: string) {
             }
           }
 
+          // --- X2: UPDATE GADGET OBJECT TRANSFORMS ---
+          const boxes = ammoBoxQuery(clientWorld as any);
+          for (const eid of boxes) {
+            const obj = gadgetObjects.get(eid);
+            if (obj && Transform.x[eid] !== undefined) {
+              obj.position.x = Transform.x[eid];
+              obj.position.y = Transform.y[eid];
+              obj.position.z = Transform.z[eid];
+            }
+          }
+          // --- END X2 ---
+
           renderer.render(scene, camera);
 
+          // --- X2: UPDATE HUD ---
           if (localPlayerEid !== null) {
             if (healthEl) { // <-- 10. UPDATE HUD
               const hp = Health.current[localPlayerEid];
@@ -702,11 +834,34 @@ async function startGame(mode: "join", url: string) {
                 staminaEl.textContent = `STAM: ${stam.toFixed(0)}`;
               }
             }
+            // Update Ammo
+            if (ammoEl) {
+              const ammo = Ammo.current[localPlayerEid];
+              const reserve = Ammo.reserve[localPlayerEid];
+              if (ammo !== undefined && reserve !== undefined) {
+                // --- BUGFIX 2: Floor the reserve ammo for display ---
+                ammoEl.textContent = `AMMO: ${ammo} / ${Math.floor(reserve)}`;
+              }
+            }
+            // Update Gadget Cooldown
+            if (gadgetEl) {
+              const cooldown = Gadget.cooldown[localPlayerEid];
+              if (cooldown !== undefined) {
+                if (cooldown > 0) {
+                  gadgetEl.textContent = `GADGET: ${cooldown.toFixed(1)}s`;
+                } else {
+                  gadgetEl.textContent = `GADGET: READY`;
+                }
+              }
+            }
+          } else {
+            // Fallback if localPlayerEid is null for some reason
+            if (ammoEl) {
+              ammoEl.textContent = "AMMO: 30 / 120";
+            }
           }
+          // --- END X2 ---
 
-          if (ammoEl) {
-            ammoEl.textContent = "AMMO: 30 / 120";
-          }
 
           if (currentGameState) {
             team1ScoreEl!.textContent = `Team 1: ${currentGameState.team1Tickets}`;

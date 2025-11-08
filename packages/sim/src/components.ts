@@ -51,3 +51,19 @@ export const Input = defineComponent({
 
 // --- X1: ADD STAMINA COMPONENT ---
 export const Stamina = defineComponent({ current: Types.f32, max: Types.f32 });
+
+// --- X2: ADD AMMO & GADGET COMPONENTS ---
+export const Ammo = defineComponent({
+  current: Types.ui16, // Ammo in clip
+  reserve: Types.f32, // <-- BUGFIX 2: CHANGED TO f32
+  maxReserve: Types.ui16,
+});
+
+export const Gadget = defineComponent({
+  cooldown: Types.f32, // Time remaining
+  maxCooldown: Types.f32,
+});
+
+// "Tag" component for ammo box entities
+export const AmmoBox = defineComponent({});
+// --- END X2 ---

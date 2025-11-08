@@ -20,6 +20,7 @@ export const InputMsgSchema = z.object({
     yaw: z.number(),
     pitch: z.number(),
     sprint: z.boolean(), // <-- ADD THIS
+    useGadget: z.boolean(), // <-- ADD THIS
   }),
 });
 export type InputMsg = z.infer<typeof InputMsgSchema>;
@@ -54,6 +55,12 @@ export const EntitySnapshotSchema = z.object({
   deaths: z.number().optional(),
   // --- END G4 ---
   stamina: z.number().optional(), // <-- ADD THIS
+  // --- X2: ADD GADGET/AMMO STATE ---
+  ammoCurrent: z.number().optional(),
+  ammoReserve: z.number().optional(),
+  gadgetCooldown: z.number().optional(),
+  isAmmoBox: z.boolean().optional(),
+  // --- END X2 ---
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -78,6 +85,11 @@ export const JoinMsgSchema = z.object({
   deaths: z.number(),
   // --- END G4 ---
   stamina: z.number(), // <-- ADD THIS
+  // --- X2: ADD GADGET/AMMO ON JOIN ---
+  ammoCurrent: z.number(),
+  ammoReserve: z.number(),
+  gadgetCooldown: z.number(),
+  // --- END X2 ---
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
 

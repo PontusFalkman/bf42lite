@@ -1,5 +1,8 @@
+// packages/host-node/src/index.ts
+
 import { WebSocket, WebSocketServer } from "ws";
-import { addComponent, addEntity } from "bitecs";
+// --- X2: Import defineQuery ---
+import { addComponent, addEntity, defineQuery } from "bitecs";
 import { Packr } from "msgpackr";
 import {
   InputMsg,
@@ -22,6 +25,11 @@ import {
   GameState,
   GameModeSystem,
   Stamina, // <-- 1. IMPORT STAMINA
+  // --- X2: IMPORT NEW COMPONENTS ---
+  Ammo,
+  Gadget,
+  AmmoBox,
+  // --- END X2 ---
 } from "@sim/logic";
 
 const PORT = 8080;
@@ -41,6 +49,15 @@ const SHOT_DAMAGE = 10;
 const SHOT_RANGE = 20.0; // Max distance for a hit
 // --- END G2 ---
 
+// --- X2: ADD GADGET & AMMO CONSTANTS ---
+const DEFAULT_AMMO_CURRENT = 30;
+const DEFAULT_AMMO_RESERVE = 120;
+const DEFAULT_AMMO_MAX_RESERVE = 120;
+const GADGET_COOLDOWN_SEC = 15.0;
+const AMMO_RESUPPLY_RADIUS_SQ = 5.0 * 5.0; // Use squared radius
+const AMMO_RESUPPLY_RATE_PS = 40; // reserve ammo per second
+// --- END X2 ---
+
 // --- G4: ADD GAME STATE CONSTANTS ---
 const STARTING_TICKETS = 50;
 const GAME_STATE_EID = addEntity(world); // Singleton entity for game state
@@ -53,6 +70,9 @@ const packr = new Packr();
 const clients = new Map<WebSocket, number>();
 // Store the last input for each entity
 const inputs = new Map<number, InputMsg["axes"]>();
+// --- X2: Query for ammo boxes ---
+const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
+// --- END X2 ---
 
 let tick = 0;
 let teamCounter = 0; // --- G4: For balancing teams ---
@@ -92,6 +112,17 @@ wss.on("connection", (ws) => {
   Stamina.current[playerEid] = STAMINA_MAX;
   Stamina.max[playerEid] = STAMINA_MAX;
 
+  // --- X2: ADD AMMO & GADGET ---
+  addComponent(world, Ammo, playerEid);
+  Ammo.current[playerEid] = DEFAULT_AMMO_CURRENT;
+  Ammo.reserve[playerEid] = DEFAULT_AMMO_RESERVE;
+  Ammo.maxReserve[playerEid] = DEFAULT_AMMO_MAX_RESERVE;
+
+  addComponent(world, Gadget, playerEid);
+  Gadget.cooldown[playerEid] = 0.0;
+  Gadget.maxCooldown[playerEid] = GADGET_COOLDOWN_SEC;
+  // --- END X2 ---
+
   // --- G4: ADD TEAM AND STATS ---
   addComponent(world, Team, playerEid);
   Team.id[playerEid] = teamCounter % 2; // Alternate teams (0 or 1)
@@ -105,11 +136,13 @@ wss.on("connection", (ws) => {
   // Store the client and their entity ID
   clients.set(ws, playerEid);
   // --- C2: Update default input state ---
-  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false }); // <-- 5. ADD SPRINT
+  // --- X2: Add useGadget ---
+  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false }); // <-- 5. ADD SPRINT & X2
 
   // --- N4: Send JoinMsg to the new client ---
   // --- C2: Add yaw/pitch to JoinMsg ---
   // --- G4: Add team/stats to JoinMsg ---
+  // --- X2: Add ammo/gadget to JoinMsg ---
   const joinMsg: JoinMsg = {
     type: "join",
     tick: tick,
@@ -125,9 +158,13 @@ wss.on("connection", (ws) => {
     kills: PlayerStats.kills[playerEid],
     deaths: PlayerStats.deaths[playerEid],
     stamina: Stamina.current[playerEid], // <-- 6. ADD STAMINA
+    // --- X2 ---
+    ammoCurrent: Ammo.current[playerEid],
+    ammoReserve: Ammo.reserve[playerEid],
+    gadgetCooldown: Gadget.cooldown[playerEid],
   };
   ws.send(packr.pack(joinMsg));
-  // --- End N4 & G4 ---
+  // --- End N4 & G4 & X2 ---
 
   ws.on("message", (message) => {
     const data = message as Uint8Array;
@@ -140,9 +177,14 @@ wss.on("connection", (ws) => {
     // --- END G4 ---
 
     if (msg.type === "input") {
-      // Don't overwrite fire state if it was set by G2 logic
+      // Don't overwrite fire/gadget state if it was set
       const oldFire = inputs.get(playerEid)?.fire ?? false;
-      inputs.set(playerEid, { ...msg.axes, fire: oldFire || msg.axes.fire }); // <-- 7. UPDATE INPUTS
+      const oldGadget = inputs.get(playerEid)?.useGadget ?? false;
+      inputs.set(playerEid, {
+        ...msg.axes,
+        fire: oldFire || msg.axes.fire,
+        useGadget: oldGadget || msg.axes.useGadget, // <-- ADD THIS
+      });
     } 
     // --- G3: Handle Respawn Request ---
     else if (msg.type === "respawn") {
@@ -159,6 +201,11 @@ wss.on("connection", (ws) => {
       Velocity.x[playerEid] = 0;
       Velocity.y[playerEid] = 0;
       Velocity.z[playerEid] = 0;
+      // --- X2: Reset ammo and gadgets ---
+      Ammo.current[playerEid] = DEFAULT_AMMO_CURRENT;
+      Ammo.reserve[playerEid] = DEFAULT_AMMO_RESERVE;
+      Gadget.cooldown[playerEid] = 0.0;
+      // --- END X2 ---
     }
     // --- END G3 ---
   });
@@ -186,12 +233,13 @@ function gameLoop() {
   const dt = TICK_MS / 1000.0; // <-- 8. GET DELTA-TIME IN SECONDS
   // --- END G4 ---
 
-  // --- 9. STAMINA DRAIN/REGEN LOGIC ---
+  // --- 9. STAMINA & GADGET COOLDOWN LOGIC ---
   if (gamePhase === 1) {
     for (const eid of clients.values()) {
       const input = inputs.get(eid);
       if (!input) continue;
 
+      // Stamina
       if (input.sprint && Health.current[eid] > 0) {
         // Drain stamina
         Stamina.current[eid] -= STAMINA_DRAIN_PS * dt;
@@ -203,6 +251,15 @@ function gameLoop() {
           Stamina.current[eid] = Stamina.max[eid];
         }
       }
+
+      // --- X2: Gadget Cooldown ---
+      if (Gadget.cooldown[eid] > 0) {
+        Gadget.cooldown[eid] -= dt;
+        if (Gadget.cooldown[eid] < 0) {
+          Gadget.cooldown[eid] = 0;
+        }
+      }
+      // --- END X2 ---
     }
   }
   // --- END 9 ---
@@ -229,6 +286,32 @@ function gameLoop() {
       Velocity.z[eid] = Math.cos(yaw) * -forward - Math.sin(yaw) * right;
       Velocity.y[eid] = 0; // No gravity yet
       // --- END C2 & X1 ---
+
+      // --- X2: HANDLE GADGET DEPLOY ---
+      if (input.useGadget && Gadget.cooldown[eid] === 0) {
+        console.log(`[Host] Player ${eid} deploying AmmoBox.`);
+        const boxEid = addEntity(world);
+        addComponent(world, Transform, boxEid);
+        // Spawn slightly in front of player
+        const spawnX = Transform.x[eid] + Math.sin(yaw) * -1.0;
+        const spawnZ = Transform.z[eid] + Math.cos(yaw) * -1.0;
+        Transform.x[boxEid] = spawnX;
+        Transform.y[boxEid] = Transform.y[eid]; // On the ground
+        Transform.z[boxEid] = spawnZ;
+        
+        addComponent(world, Team, boxEid);
+        Team.id[boxEid] = Team.id[eid]; // Same team
+        
+        addComponent(world, AmmoBox, boxEid); // Tag it
+        
+        // Start cooldown
+        Gadget.cooldown[eid] = Gadget.maxCooldown[eid];
+        
+        // Consume input
+        input.useGadget = false;
+        inputs.set(eid, input);
+      }
+      // --- END X2 ---
     }
   }
 
@@ -238,65 +321,85 @@ function gameLoop() {
     for (const [firingEid, input] of inputs.entries()) {
       // --- G3: Only allow firing if alive ---
       if (input.fire && Health.current[firingEid] > 0) {
-        console.log(`[Host] Player ${firingEid} is firing!`);
-        // This is a simple "hitscan" that just finds the closest target
-        // A real implementation would use raycasting
         
-        let closestTarget: number | null = null;
-        let minDistance = SHOT_RANGE * SHOT_RANGE; // Compare squared distances
+        // --- BUGFIX 1: REWORKED AMMO/RELOAD LOGIC ---
+        
+        // Check if we have ammo *before* firing
+        if (Ammo.current[firingEid] > 0) {
+          console.log(`[Host] Player ${firingEid} is firing!`);
+          Ammo.current[firingEid]--; // Consume ammo
 
-        for (const targetEid of clients.values()) {
-          if (targetEid === firingEid) continue; // Can't shoot yourself
-          // --- G3: Can't shoot dead players ---
-          if (Health.current[targetEid] <= 0) continue;
-          // --- G4: Can't shoot teammates ---
-          if (Team.id[targetEid] === Team.id[firingEid]) continue;
-          // --- END G4 ---
-
-          // Simple squared distance check
-          const dx = Transform.x[targetEid] - Transform.x[firingEid];
-          const dy = Transform.y[targetEid] - Transform.y[firingEid];
-          const dz = Transform.z[targetEid] - Transform.z[firingEid];
-          const distSq = dx*dx + dy*dy + dz*dz;
-
-          // --- C2: TODO: Add "is in front" check (dot product) using yaw/pitch ---
-          if (distSq < minDistance) {
-            minDistance = distSq;
-            closestTarget = targetEid;
-          }
-        }
-
-        if (closestTarget !== null) {
-          console.log(`[Host] Player ${firingEid} hit Player ${closestTarget}!`);
-          Health.current[closestTarget] -= SHOT_DAMAGE;
+          // This is a simple "hitscan" that just finds the closest target
+          // A real implementation would use raycasting
           
-          // --- G3: Check for death ---
-          if (Health.current[closestTarget] <= 0) {
-            console.log(`[Host] Player ${closestTarget} has died.`);
-            // Set health to 0 so client can see it.
-            Health.current[closestTarget] = 0; 
-            // Stop processing their input
-            inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false }); // C2: Add rotation, X1: Add sprint
-            // Stop their movement
-            Velocity.x[closestTarget] = 0;
-            Velocity.y[closestTarget] = 0;
-            Velocity.z[closestTarget] = 0;
+          let closestTarget: number | null = null;
+          let minDistance = SHOT_RANGE * SHOT_RANGE; // Compare squared distances
 
-            // --- G4: UPDATE STATS AND TICKETS ---
-            PlayerStats.kills[firingEid]++;
-            PlayerStats.deaths[closestTarget]++;
-            
-            // Decrement tickets for the team that died
-            if (Team.id[closestTarget] === 0) { // Team 1 died
-              GameState.team1Tickets[GAME_STATE_EID]--;
-            } else { // Team 2 died
-              GameState.team2Tickets[GAME_STATE_EID]--;
-            }
-            console.log(`[Host] Team 1: ${GameState.team1Tickets[GAME_STATE_EID]} | Team 2: ${GameState.team2Tickets[GAME_STATE_EID]}`);
+          for (const targetEid of clients.values()) {
+            if (targetEid === firingEid) continue; // Can't shoot yourself
+            // --- G3: Can't shoot dead players ---
+            if (Health.current[targetEid] <= 0) continue;
+            // --- G4: Can't shoot teammates ---
+            if (Team.id[targetEid] === Team.id[firingEid]) continue;
             // --- END G4 ---
+
+            // Simple squared distance check
+            const dx = Transform.x[targetEid] - Transform.x[firingEid];
+            const dy = Transform.y[targetEid] - Transform.y[firingEid];
+            const dz = Transform.z[targetEid] - Transform.z[firingEid];
+            const distSq = dx*dx + dy*dy + dz*dz;
+
+            // --- C2: TODO: Add "is in front" check (dot product) using yaw/pitch ---
+            if (distSq < minDistance) {
+              minDistance = distSq;
+              closestTarget = targetEid;
+            }
           }
-          // --- END G3 ---
+
+          if (closestTarget !== null) {
+            console.log(`[Host] Player ${firingEid} hit Player ${closestTarget}!`);
+            Health.current[closestTarget] -= SHOT_DAMAGE;
+            
+            // --- G3: Check for death ---
+            if (Health.current[closestTarget] <= 0) {
+              console.log(`[Host] Player ${closestTarget} has died.`);
+              // Set health to 0 so client can see it.
+              Health.current[closestTarget] = 0; 
+              // Stop processing their input
+              inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false }); // C2, X1, X2
+              // Stop their movement
+              Velocity.x[closestTarget] = 0;
+              Velocity.y[closestTarget] = 0;
+              Velocity.z[closestTarget] = 0;
+
+              // --- G4: UPDATE STATS AND TICKETS ---
+              PlayerStats.kills[firingEid]++;
+              PlayerStats.deaths[closestTarget]++;
+              
+              // Decrement tickets for the team that died
+              if (Team.id[closestTarget] === 0) { // Team 1 died
+                GameState.team1Tickets[GAME_STATE_EID]--;
+              } else { // Team 2 died
+                GameState.team2Tickets[GAME_STATE_EID]--;
+              }
+              console.log(`[Host] Team 1: ${GameState.team1Tickets[GAME_STATE_EID]} | Team 2: ${GameState.team2Tickets[GAME_STATE_EID]}`);
+              // --- END G4 ---
+            }
+            // --- END G3 ---
+          }
+        } else {
+          // No ammo in clip, try to "auto-reload"
+          console.log(`[Host] Player ${firingEid} is empty, reloading...`);
+          const toReload = Math.min(DEFAULT_AMMO_CURRENT, Ammo.reserve[firingEid]);
+          if (toReload > 0) {
+            Ammo.current[firingEid] = toReload;
+            Ammo.reserve[firingEid] -= toReload;
+          } else {
+            // "click click" - no ammo left at all
+            Ammo.current[firingEid] = 0; 
+          }
         }
+        // --- END BUGFIX 1 ---
 
         // Prevent holding mouse down from firing every tick
         input.fire = false;
@@ -309,9 +412,45 @@ function gameLoop() {
   // B. Run the ECS simulation step
   step();
 
+  // --- X2: NEW SYSTEM: AMMO RESUPPLY ---
+  if (gamePhase === 1) {
+    const ammoBoxes = ammoBoxQuery(world);
+    for (const boxEid of ammoBoxes) {
+      const boxX = Transform.x[boxEid];
+      const boxZ = Transform.z[boxEid];
+      const boxTeam = Team.id[boxEid];
+
+      for (const playerEid of clients.values()) {
+        // Check if player is alive and needs ammo
+        if (Health.current[playerEid] <= 0) continue;
+        if (Ammo.reserve[playerEid] >= Ammo.maxReserve[playerEid]) continue;
+        // Check if same team
+        if (Team.id[playerEid] !== boxTeam) continue;
+
+        // Check distance (squared)
+        const dx = Transform.x[playerEid] - boxX;
+        const dz = Transform.z[playerEid] - boxZ;
+        const distSq = dx * dx + dz * dz;
+
+        if (distSq <= AMMO_RESUPPLY_RADIUS_SQ) {
+          // Resupply
+          // --- BUGFIX 2: This logic now works thanks to f32 component ---
+          Ammo.reserve[playerEid] += AMMO_RESUPPLY_RATE_PS * dt;
+          if (Ammo.reserve[playerEid] > Ammo.maxReserve[playerEid]) {
+            Ammo.reserve[playerEid] = Ammo.maxReserve[playerEid];
+          }
+          // --- END BUGFIX 2 ---
+        }
+      }
+    }
+  }
+  // --- END X2 ---
+
   // C. Broadcast snapshots (at SNAPSHOT_RATE)
   if (tick % (TICK_RATE / SNAPSHOT_RATE) === 0) {
     const snapshots: EntitySnapshot[] = [];
+
+    // Player snapshots
     for (const [ws, eid] of clients.entries()) {
       snapshots.push({
         id: eid,
@@ -327,9 +466,31 @@ function gameLoop() {
         kills: PlayerStats.kills[eid],
         deaths: PlayerStats.deaths[eid],
         stamina: Stamina.current[eid], // <-- 11. ADD STAMINA
-        // --- END G4 ---
+        // --- X2: ADD AMMO/GADGET TO SNAPSHOT ---
+        ammoCurrent: Ammo.current[eid],
+        ammoReserve: Ammo.reserve[eid], // This will be a float, client will parse
+        gadgetCooldown: Gadget.cooldown[eid],
+        // --- END X2 & G4 ---
       });
     }
+
+    // --- X2: AmmoBox snapshots ---
+    const ammoBoxes = ammoBoxQuery(world);
+    for (const boxEid of ammoBoxes) {
+      snapshots.push({
+        id: boxEid,
+        x: Transform.x[boxEid],
+        y: Transform.y[boxEid],
+        z: Transform.z[boxEid],
+        hp: 1, // Doesn't have health, but schema needs it
+        yaw: 0,
+        pitch: 0,
+        teamId: Team.id[boxEid],
+        isAmmoBox: true,
+      });
+    }
+    // --- END X2 ---
+
 
     // --- G4: GET GAME STATE SNAPSHOT ---
     const gameState: GameStateSchema = {
