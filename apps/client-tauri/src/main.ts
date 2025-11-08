@@ -20,6 +20,7 @@ import {
   Health,
   Team,
   PlayerStats,
+  Stamina, // <-- 1. IMPORT STAMINA
 } from "@sim/logic";
 
 // TAURI invoke
@@ -40,6 +41,7 @@ const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
 
 // HUD
 const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
+const staminaEl = document.getElementById("stamina-counter") as HTMLDivElement | null; // <-- 2. GET STAMINA ELEMENT
 const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
 
 // Respawn UI
@@ -55,7 +57,7 @@ const matchEndEl = document.getElementById("match-end-message") as HTMLDivElemen
 
 if (
   !canvas || !hudEl || !menuEl || !btnHost || !btnJoin || !joinIpEl ||
-  !healthEl || !ammoEl ||
+  !healthEl || !staminaEl || !ammoEl || // <-- 3. ADD TO CHECK
   !respawnScreenEl || !respawnTimerEl || !btnDeploy ||
   !scoreboardEl || !team1ScoreEl || !team2ScoreEl || !matchEndEl
 ) {
@@ -136,6 +138,7 @@ function deserializeWorldFromRust(newState: WorldState) {
       addComponent(clientWorld, Health, eid);
       addComponent(clientWorld, Team, eid);
       addComponent(clientWorld, PlayerStats, eid);
+      addComponent(clientWorld, Stamina, eid); // <-- 4. ADD STAMINA
     }
 
     Transform.x[eid] = entity.transform.x;
@@ -150,6 +153,14 @@ function deserializeWorldFromRust(newState: WorldState) {
 
     Health.current[eid] = entity.health.current;
     Health.max[eid] = entity.health.max;
+
+    // Stamina isn't part of the Rust->JS bridge yet,
+    // so we just initialize it. The server's network
+    // message will correct the value.
+    if (Stamina.current[eid] === undefined) { // <-- 5. INITIALIZE STAMINA
+      Stamina.current[eid] = 100;
+      Stamina.max[eid] = 100;
+    }
 
     Team.id[eid] = entity.team.id;
     PlayerStats.kills[eid] = entity.stats.kills;
@@ -328,6 +339,7 @@ async function startGame(mode: "join", url: string) {
 
   // === client-side sim state ===
   const SPEED = 3.0;
+  const SPRINT_SPEED = 6.0; // <-- 12. ADD SPRINT SPEED FOR CLIENT
   let localPlayerEid: number | null = null;
   const playerObjects = new Map<number, THREE.Object3D>();
 
@@ -432,6 +444,10 @@ async function startGame(mode: "join", url: string) {
         Health.current[localPlayerEid] = state.hp;
         Health.max[localPlayerEid] = state.hp;
 
+        safeAddComponent(clientWorld, Stamina, localPlayerEid); // <-- 6. ADD STAMINA ON JOIN
+        Stamina.current[localPlayerEid] = state.stamina;
+        Stamina.max[localPlayerEid] = state.stamina;
+
         safeAddComponent(clientWorld, Team, localPlayerEid);
         Team.id[localPlayerEid] = state.teamId;
         safeAddComponent(clientWorld, PlayerStats, localPlayerEid);
@@ -473,7 +489,7 @@ async function startGame(mode: "join", url: string) {
         const seenEids = new Set<number>();
 
         for (const snapshot of state.entities) {
-          const { id, x, y, z, hp, yaw, pitch, teamId, kills, deaths } = snapshot;
+          const { id, x, y, z, hp, yaw, pitch, teamId, kills, deaths, stamina } = snapshot; // <-- 7. GET STAMINA
           seenEids.add(id);
 
           const obj = getPlayerObject(id, teamId ?? 0);
@@ -487,7 +503,11 @@ async function startGame(mode: "join", url: string) {
             Transform.pitch[id] = pitch;
             safeAddComponent(clientWorld, Team, id);
             safeAddComponent(clientWorld, PlayerStats, id);
+            safeAddComponent(clientWorld, Stamina, id); // <-- 8. ADD STAMINA FOR NEW ENTITIES
+            Stamina.max[id] = stamina ?? 100;
           }
+
+          Stamina.current[id] = stamina ?? Stamina.max[id]; // <-- 9. UPDATE STAMINA
 
           Team.id[id] = teamId ?? 0;
           PlayerStats.kills[id] = kills ?? 0;
@@ -603,13 +623,20 @@ async function startGame(mode: "join", url: string) {
         Transform.yaw[localPlayerEid] = playerRotation.y;
         Transform.pitch[localPlayerEid] = playerRotation.x;
 
+        // --- 13. UPDATE CLIENT PREDICTION FOR SPRINT ---
         const yaw = playerRotation.y;
-        const forward = inputState.forward * SPEED;
-        const right = inputState.right * SPEED;
+        // Client prediction for stamina is tricky, so we just check the input.
+        // The server will correct us if we're out of stamina.
+        const isSprinting = inputState.sprint; 
+        const currentSpeed = isSprinting ? SPRINT_SPEED : SPEED;
+        
+        const forward = inputState.forward * currentSpeed; // <-- USE CURRENT SPEED
+        const right = inputState.right * currentSpeed;   // <-- USE CURRENT SPEED
 
         Velocity.x[localPlayerEid] = Math.sin(yaw) * -forward + Math.cos(yaw) * right;
         Velocity.z[localPlayerEid] = Math.cos(yaw) * -forward - Math.sin(yaw) * right;
         Velocity.y[localPlayerEid] = 0;
+        // --- END 13 ---
       }
 
       const worldState = serializeWorldToRust();
@@ -662,10 +689,18 @@ async function startGame(mode: "join", url: string) {
 
           renderer.render(scene, camera);
 
-          if (localPlayerEid !== null && healthEl) {
-            const hp = Health.current[localPlayerEid];
-            if (hp !== undefined) {
-              healthEl.textContent = `HP: ${hp.toFixed(0)}`;
+          if (localPlayerEid !== null) {
+            if (healthEl) { // <-- 10. UPDATE HUD
+              const hp = Health.current[localPlayerEid];
+              if (hp !== undefined) {
+                healthEl.textContent = `HP: ${hp.toFixed(0)}`;
+              }
+            }
+            if (staminaEl) { // <-- 11. ADD STAMINA TO HUD
+              const stam = Stamina.current[localPlayerEid];
+              if (stam !== undefined) {
+                staminaEl.textContent = `STAM: ${stam.toFixed(0)}`;
+              }
             }
           }
 

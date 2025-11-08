@@ -11,6 +11,7 @@ export const inputState = {
   jump: false,
   fire: false, // --- G2: ADD THIS ---
   // --- C2: Add deltaX/Y to state ---
+  sprint: false, // <-- ADD THIS
   deltaX: 0,
   deltaY: 0,
   // --- G4: ADD SCOREBOARD STATE ---
@@ -79,19 +80,21 @@ export function updateInput() {
     (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
   inputState.jump = keys.has("Space");
   inputState.fire = keys.has("Mouse0"); // --- G2: ADD THIS ---
+  inputState.sprint = keys.has("ShiftLeft"); // <-- ADD THIS
   
-  // --- G4: REMOVE SCOREBOARD LOGIC ---
-  // The logic is now in the "keydown" event listener
+  // --- G4: UPDATE SCOREBOARD STATE ---
+  if (!keys.has("Tab")) {
+    // This ensures showScoreboard only toggles once per press
+    keysPressed.delete("Tab"); 
+  }
   // --- END G4 ---
 
-  // --- C2: Copy accumulated deltas and reset ---
+  // --- MOUSE FIX ---
+  // Copy accumulated mouse movement into the state
   inputState.deltaX = accumulatedX;
   inputState.deltaY = accumulatedY;
+  
+  // Reset accumulators for the next frame
   accumulatedX = 0;
   accumulatedY = 0;
-  // --- END C2 ---
-
-  // 3. ADD this line at the end
-  // This clears all the "just pressed" keys at the end of the frame
-  keysPressed.clear();
 }

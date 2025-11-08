@@ -21,6 +21,7 @@ import {
   PlayerStats,
   GameState,
   GameModeSystem,
+  Stamina, // <-- 1. IMPORT STAMINA
 } from "@sim/logic";
 
 const PORT = 8080;
@@ -28,7 +29,13 @@ const TICK_RATE = 60; // 60hz
 const SNAPSHOT_RATE = 30; // 30hz
 const TICK_MS = 1000 / TICK_RATE;
 const SPEED = 3.0;
+const SPRINT_SPEED = 6.0; // <-- 2. ADD SPRINT SPEED
 const DEFAULT_HEALTH = 100;
+
+const STAMINA_MAX = 100.0; // <-- 3. ADD STAMINA CONSTANTS
+const STAMINA_DRAIN_PS = 20.0; // Per second
+const STAMINA_REGEN_PS = 15.0; // Per second
+
 // --- G2: Add weapon constants ---
 const SHOT_DAMAGE = 10;
 const SHOT_RANGE = 20.0; // Max distance for a hit
@@ -81,6 +88,10 @@ wss.on("connection", (ws) => {
   Health.max[playerEid] = DEFAULT_HEALTH;
   // --- END G1 ---
 
+  addComponent(world, Stamina, playerEid); // <-- 4. ADD STAMINA COMPONENT
+  Stamina.current[playerEid] = STAMINA_MAX;
+  Stamina.max[playerEid] = STAMINA_MAX;
+
   // --- G4: ADD TEAM AND STATS ---
   addComponent(world, Team, playerEid);
   Team.id[playerEid] = teamCounter % 2; // Alternate teams (0 or 1)
@@ -94,7 +105,7 @@ wss.on("connection", (ws) => {
   // Store the client and their entity ID
   clients.set(ws, playerEid);
   // --- C2: Update default input state ---
-  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0 });
+  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false }); // <-- 5. ADD SPRINT
 
   // --- N4: Send JoinMsg to the new client ---
   // --- C2: Add yaw/pitch to JoinMsg ---
@@ -113,6 +124,7 @@ wss.on("connection", (ws) => {
     teamId: Team.id[playerEid],
     kills: PlayerStats.kills[playerEid],
     deaths: PlayerStats.deaths[playerEid],
+    stamina: Stamina.current[playerEid], // <-- 6. ADD STAMINA
   };
   ws.send(packr.pack(joinMsg));
   // --- End N4 & G4 ---
@@ -128,7 +140,9 @@ wss.on("connection", (ws) => {
     // --- END G4 ---
 
     if (msg.type === "input") {
-      inputs.set(playerEid, msg.axes);
+      // Don't overwrite fire state if it was set by G2 logic
+      const oldFire = inputs.get(playerEid)?.fire ?? false;
+      inputs.set(playerEid, { ...msg.axes, fire: oldFire || msg.axes.fire }); // <-- 7. UPDATE INPUTS
     } 
     // --- G3: Handle Respawn Request ---
     else if (msg.type === "respawn") {
@@ -169,7 +183,29 @@ function gameLoop() {
   // --- G4: Check game state ---
   GameModeSystem(world);
   const gamePhase = GameState.phase[GAME_STATE_EID];
+  const dt = TICK_MS / 1000.0; // <-- 8. GET DELTA-TIME IN SECONDS
   // --- END G4 ---
+
+  // --- 9. STAMINA DRAIN/REGEN LOGIC ---
+  if (gamePhase === 1) {
+    for (const eid of clients.values()) {
+      const input = inputs.get(eid);
+      if (!input) continue;
+
+      if (input.sprint && Health.current[eid] > 0) {
+        // Drain stamina
+        Stamina.current[eid] -= STAMINA_DRAIN_PS * dt;
+        if (Stamina.current[eid] < 0) Stamina.current[eid] = 0;
+      } else if (Stamina.current[eid] < Stamina.max[eid]) {
+        // Regenerate stamina
+        Stamina.current[eid] += STAMINA_REGEN_PS * dt;
+        if (Stamina.current[eid] > Stamina.max[eid]) {
+          Stamina.current[eid] = Stamina.max[eid];
+        }
+      }
+    }
+  }
+  // --- END 9 ---
 
   // A. Apply inputs to ECS Velocity
   for (const [eid, input] of inputs.entries()) {
@@ -181,14 +217,18 @@ function gameLoop() {
     // --- G4: And if game is running ---
     if (Health.current[eid] > 0 && gamePhase === 1) {
       // --- C2: Calculate movement based on yaw ---
+      // --- X1: ADD SPRINT LOGIC ---
+      const isSprinting = input.sprint && Stamina.current[eid] > 0;
+      const currentSpeed = isSprinting ? SPRINT_SPEED : SPEED;
+
       const yaw = Transform.yaw[eid];
-      const forward = input.forward * SPEED;
-      const right = input.right * SPEED;
+      const forward = input.forward * currentSpeed; // <-- 10. USE CURRENT SPEED
+      const right = input.right * currentSpeed; // <-- 10. USE CURRENT SPEED
 
       Velocity.x[eid] = Math.sin(yaw) * -forward + Math.cos(yaw) * right;
       Velocity.z[eid] = Math.cos(yaw) * -forward - Math.sin(yaw) * right;
       Velocity.y[eid] = 0; // No gravity yet
-      // --- END C2 ---
+      // --- END C2 & X1 ---
     }
   }
 
@@ -236,7 +276,7 @@ function gameLoop() {
             // Set health to 0 so client can see it.
             Health.current[closestTarget] = 0; 
             // Stop processing their input
-            inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0 }); // C2: Add rotation
+            inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false }); // C2: Add rotation, X1: Add sprint
             // Stop their movement
             Velocity.x[closestTarget] = 0;
             Velocity.y[closestTarget] = 0;
@@ -286,6 +326,7 @@ function gameLoop() {
         teamId: Team.id[eid],
         kills: PlayerStats.kills[eid],
         deaths: PlayerStats.deaths[eid],
+        stamina: Stamina.current[eid], // <-- 11. ADD STAMINA
         // --- END G4 ---
       });
     }

@@ -48,3 +48,6 @@ export const Input = defineComponent({
   yaw: Types.f32,
   pitch: Types.f32,
 })
+
+// --- X1: ADD STAMINA COMPONENT ---
+export const Stamina = defineComponent({ current: Types.f32, max: Types.f32 });

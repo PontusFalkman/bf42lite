@@ -19,6 +19,7 @@ export const InputMsgSchema = z.object({
     // --- C2: Add rotation ---
     yaw: z.number(),
     pitch: z.number(),
+    sprint: z.boolean(), // <-- ADD THIS
   }),
 });
 export type InputMsg = z.infer<typeof InputMsgSchema>;
@@ -52,6 +53,7 @@ export const EntitySnapshotSchema = z.object({
   kills: z.number().optional(),
   deaths: z.number().optional(),
   // --- END G4 ---
+  stamina: z.number().optional(), // <-- ADD THIS
 });
 export type EntitySnapshot = z.infer<typeof EntitySnapshotSchema>;
 
@@ -75,6 +77,7 @@ export const JoinMsgSchema = z.object({
   kills: z.number(),
   deaths: z.number(),
   // --- END G4 ---
+  stamina: z.number(), // <-- ADD THIS
 });
 export type JoinMsg = z.infer<typeof JoinMsgSchema>;
 
