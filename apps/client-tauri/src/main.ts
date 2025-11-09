@@ -1,335 +1,106 @@
 // apps/client-tauri/src/main.ts
 
 import * as THREE from "three";
-// Import the GLTFLoader
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { initInput, updateInput, inputState, keysPressed } from "./input";
-import { Packr } from "msgpackr";
-import {
-  InputMsg,
-  StateMsg,
-  JoinMsg,
-  RespawnMsg,
-  GameState as GameStateSchema,
-} from "@protocol/schema";
-import { WebSocketAdapter } from "@net/adapter";
-
-// N4: Import simulation logic for client-side prediction
-import {
-  world as clientWorld,
-  Transform,
-  Velocity,
-  Health,
-  Team,
-  PlayerStats,
-  Stamina, // <-- 1. IMPORT STAMINA
-  // --- X2: IMPORT NEW COMPONENTS ---
-  Ammo,
-  Gadget,
-  AmmoBox,
-  // --- END X2 ---
-  // --- IMPORT MED BOX ---
-  MedGadget,
-  MedBox,
-  // --- END MED BOX ---
-  // --- IMPORT REPAIR TOOL ---
-  RepairTool,
-  // --- END REPAIR TOOL ---
-  // --- X3: IMPORT GRENADE ---
-  GrenadeGadget,
-  Grenade,
-  GrenadeTimer,
-  Gravity,
-  // --- END X3 ---
-} from "@sim/logic";
+import { initInput, updateInput, inputState } from "./input";
 
 // TAURI invoke
 import { invoke } from "@tauri-apps/api/core";
-
-// ECS helpers from bitecs
-// --- BUGFIX: Import removeComponent ---
-import {
-  addComponent,
-  addEntity,
-  defineQuery,
-  removeComponent,
-} from "bitecs";
 
 // === 0. GET UI ELEMENTS ===
 const canvas = document.getElementById("game") as HTMLCanvasElement | null;
 const hudEl = document.getElementById("hud") as HTMLDivElement | null;
 const menuEl = document.getElementById("menu") as HTMLDivElement | null;
 const fpsEl = document.getElementById("fps-counter") as HTMLDivElement | null;
-const rttEl = document.getElementById("rtt-counter") as HTMLDivElement | null;
-const btnHost = document.getElementById("btn-host") as HTMLButtonElement | null;
-const btnJoin = document.getElementById("btn-join") as HTMLButtonElement | null;
-const joinIpEl = document.getElementById("join-ip") as HTMLInputElement | null;
-
-// HUD
 const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
-const staminaEl = document.getElementById("stamina-counter") as HTMLDivElement | null; // <-- 2. GET STAMINA ELEMENT
-const ammoEl = document.getElementById("ammo-counter") as HTMLDivElement | null;
-const gadgetEl = document.getElementById("gadget-counter") as HTMLDivElement | null; // <-- ADD THIS (Ammo Box)
-const medGadgetEl = document.getElementById("med-gadget-counter") as HTMLDivElement | null; // <-- ADD THIS (Med Box)
-const repairToolEl = document.getElementById("repair-tool-counter") as HTMLDivElement | null; // <-- ADD THIS (Repair Tool)
-const grenadeGadgetEl = document.getElementById("grenade-gadget-counter") as HTMLDivElement | null; // <-- X3: ADD THIS
+const staminaEl = document.getElementById(
+  "stamina-counter"
+) as HTMLDivElement | null;
 
-// Respawn UI
-const respawnScreenEl = document.getElementById("respawn-screen") as HTMLDivElement | null;
-const respawnTimerEl = document.getElementById("respawn-timer") as HTMLDivElement | null;
-const btnDeploy = document.getElementById("btn-deploy") as HTMLButtonElement | null;
-
-// Scoreboard
-const scoreboardEl = document.getElementById("scoreboard") as HTMLDivElement | null;
-const team1ScoreEl = document.getElementById("team1-score") as HTMLDivElement | null;
-const team2ScoreEl = document.getElementById("team2-score") as HTMLDivElement | null;
-const matchEndEl = document.getElementById("match-end-message") as HTMLDivElement | null;
+// --- Get all other overlays ---
+const respawnScreenEl = document.getElementById(
+  "respawn-screen"
+) as HTMLDivElement | null;
+const scoreboardEl = document.getElementById(
+  "scoreboard"
+) as HTMLDivElement | null;
+const matchEndEl = document.getElementById(
+  "match-end-message"
+) as HTMLDivElement | null;
 
 if (
   !canvas ||
   !hudEl ||
   !menuEl ||
-  !btnHost ||
-  !btnJoin ||
-  !joinIpEl ||
+  !fpsEl ||
   !healthEl ||
   !staminaEl ||
-  !ammoEl ||
-  !gadgetEl ||
-  !medGadgetEl ||
-  !repairToolEl ||
-  !grenadeGadgetEl || // <-- X3: ADD TO CHECK
   !respawnScreenEl ||
-  !respawnTimerEl ||
-  !btnDeploy ||
   !scoreboardEl ||
-  !team1ScoreEl ||
-  !team2ScoreEl ||
   !matchEndEl
 ) {
   throw new Error("UI elements not found. Check index.html.");
 }
 
-// === 1. BUTTON EVENT LISTENERS ===
-btnHost.onclick = () => {
-  alert(
-    "Refactor Complete! Please run 'pnpm dev:host' in your terminal first, then click 'Join'."
-  );
-};
-
-btnJoin.onclick = () => {
-  const url = joinIpEl.value;
-  console.log(`Connecting to ${url}...`);
-  startGame("join", url);
-};
-
-// --- Rust bridge types ---
-interface RustEntity {
-  id: number;
-  transform: { x: number; y: number; z: number; yaw: number; pitch: number };
-  velocity: { x: number; y: number; z: number };
-  health: { current: number; max: number };
-  team: { id: number };
-  stats: { kills: number; deaths: number };
+// === 1. DEFINE RUST BRIDGE TYPES ===
+interface RustTransform {
+  x: number;
+  y: number;
+  z: number;
 }
 
-interface WorldState {
-  entities: RustEntity[];
+interface RustHealth {
+  current: number;
+  max: number;
 }
 
-// ECS query: all entities with Transform
-const entityQuery = defineQuery([Transform]);
-// --- X2: Gadget query ---
-const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
-// --- Med Box query ---
-const medBoxQuery = defineQuery([MedBox, Transform]);
-// --- X3: Grenade query ---
-const grenadeQuery = defineQuery([Grenade, Transform]);
-
-function serializeWorldToRust(): WorldState {
-  const entities = entityQuery(clientWorld as any);
-  const rustEntities: RustEntity[] = [];
-
-  for (const eid of entities) {
-    rustEntities.push({
-      id: eid,
-      transform: {
-        x: Transform.x[eid],
-        y: Transform.y[eid],
-        z: Transform.z[eid],
-        yaw: Transform.yaw[eid],
-        pitch: Transform.pitch[eid],
-      },
-      velocity: {
-        x: Velocity.x[eid] ?? 0,
-        y: Velocity.y[eid] ?? 0,
-        z: Velocity.z[eid] ?? 0,
-      },
-      health: {
-        current: Health.current[eid] ?? 0,
-        max: Health.max[eid] ?? 100,
-      },
-      team: {
-        id: Team.id[eid] ?? 0,
-      },
-      stats: {
-        kills: PlayerStats.kills[eid] ?? 0,
-        deaths: PlayerStats.deaths[eid] ?? 0,
-      },
-    });
-  }
-
-  return { entities: rustEntities };
+interface RustStamina {
+  current: number;
+  max: number;
+  regen_rate: number;
+  drain_rate: number;
 }
 
-function deserializeWorldFromRust(newState: WorldState) {
-  for (const entity of newState.entities) {
-    const eid = entity.id;
-
-    if (Transform.x[eid] === undefined) {
-      addComponent(clientWorld, Transform, eid);
-      addComponent(clientWorld, Velocity, eid);
-      addComponent(clientWorld, Health, eid);
-      addComponent(clientWorld, Team, eid);
-      addComponent(clientWorld, PlayerStats, eid);
-      addComponent(clientWorld, Stamina, eid); // <-- 4. ADD STAMINA
-      addComponent(clientWorld, Ammo, eid); // <-- ADD THIS
-      addComponent(clientWorld, Gadget, eid); // <-- ADD THIS
-      addComponent(clientWorld, MedGadget, eid); // <-- ADD THIS
-      addComponent(clientWorld, RepairTool, eid); // <-- ADD THIS
-      addComponent(clientWorld, GrenadeGadget, eid); // <-- X3: ADD THIS
-    }
-
-    Transform.x[eid] = entity.transform.x;
-    Transform.y[eid] = entity.transform.y;
-    Transform.z[eid] = entity.transform.z;
-    Transform.yaw[eid] = entity.transform.yaw;
-    Transform.pitch[eid] = entity.transform.pitch;
-
-    Velocity.x[eid] = entity.velocity.x;
-    Velocity.y[eid] = entity.velocity.y;
-    Velocity.z[eid] = entity.velocity.z;
-
-    Health.current[eid] = entity.health.current;
-    Health.max[eid] = entity.health.max;
-
-    // Stamina isn't part of the Rust->JS bridge yet,
-    // so we just initialize it. The server's network
-    // message will correct the value.
-    if (Stamina.current[eid] === undefined) {
-      // <-- 5. INITIALIZE STAMINA
-      Stamina.current[eid] = 100;
-      Stamina.max[eid] = 100;
-    }
-
-    // --- X2: Initialize Ammo/Gadget if not present ---
-    if (Ammo.current[eid] === undefined) {
-      Ammo.current[eid] = 30;
-      Ammo.reserve[eid] = 120;
-    }
-    if (Gadget.cooldown[eid] === undefined) {
-      Gadget.cooldown[eid] = 0;
-    }
-    // --- END X2 ---
-    // --- Initialize MedGadget if not present ---
-    if (MedGadget.cooldown[eid] === undefined) {
-      MedGadget.cooldown[eid] = 0;
-    }
-    // --- END MED BOX ---
-    // --- Initialize RepairTool if not present ---
-    if (RepairTool.current[eid] === undefined) {
-      RepairTool.current[eid] = 0;
-      RepairTool.max[eid] = 100;
-    }
-    // --- END REPAIR TOOL ---
-    // --- X3: Initialize GrenadeGadget if not present ---
-    if (GrenadeGadget.cooldown[eid] === undefined) {
-      GrenadeGadget.cooldown[eid] = 0;
-    }
-    // --- END X3 ---
-
-    Team.id[eid] = entity.team.id;
-    PlayerStats.kills[eid] = entity.stats.kills;
-    PlayerStats.deaths[eid] = entity.stats.deaths;
-  }
+interface EntitySnapshot {
+  eid: number;
+  transform: RustTransform;
+  health: RustHealth | null;
+  stamina: RustStamina | null;
 }
 
-// === MAIN ENTRY ===
-async function startGame(mode: "join", url: string) {
-  menuEl.style.display = "none";
-  hudEl.style.display = "none";
-  canvas.style.display = "block";
+type WorldSnapshot = EntitySnapshot[];
 
-  let currentGameState: GameStateSchema | undefined = undefined;
-  let localTeamId: number | undefined = undefined;
-
-  // Respawn UI state
-  let respawnInterval: number | null = null;
-
-  function hideRespawnScreen() {
-    respawnScreenEl!.style.display = "none";
-    if (currentGameState?.phase !== 2) {
-      hudEl.style.display = "block";
-    }
-    if (respawnInterval) {
-      clearInterval(respawnInterval);
-      respawnInterval = null;
-    }
-  }
-
-  function showRespawnScreen(duration: number = 5) {
-    if (currentGameState?.phase === 2) return;
-
-    respawnScreenEl!.style.display = "flex";
-    hudEl.style.display = "none";
-
-    btnDeploy.disabled = true;
-    btnDeploy.textContent = "DEPLOYING IN...";
-
-    let remaining = duration;
-    respawnTimerEl!.textContent = remaining.toString();
-
-    if (respawnInterval) clearInterval(respawnInterval);
-
-    respawnInterval = window.setInterval(() => {
-      remaining--;
-      if (remaining <= 0) {
-        clearInterval(respawnInterval!);
-        respawnInterval = null;
-        respawnTimerEl!.textContent = "READY";
-        btnDeploy.disabled = false;
-        btnDeploy.textContent = "DEPLOY";
-      } else {
-        respawnTimerEl!.textContent = remaining.toString();
-      }
-    }, 1000);
-  }
-
-  const adapter = new WebSocketAdapter(url!);
-  const packr = new Packr();
-  let tick = 0;
-  const sendTimeMap = new Map<number, number>();
-
-  let joinResolve: (() => void) | null = null;
-  const joinPromise = new Promise<void>((resolve) => {
-    joinResolve = resolve;
-  });
-
-  btnDeploy.onclick = () => {
-    hideRespawnScreen();
-    console.log("Player clicked DEPLOY");
-    const respawnMsg: RespawnMsg = { type: "respawn" };
-    adapter.send(packr.pack(respawnMsg));
-    canvas.requestPointerLock();
+interface InputPayload {
+  tick: number;
+  inputs: {
+    forward: number;
+    right: number;
+    jump: boolean;
+    fire: boolean;
+    sprint: boolean;
   };
+}
+// === 2. MAIN ENTRY ===
+async function startGame() {
+  // --- THIS IS THE FIX ---
+  // Make all overlays invisible to mouse clicks,
+  // so the click "passes through" to the canvas.
+  hudEl.style.pointerEvents = "none";
+  respawnScreenEl.style.pointerEvents = "none";
+  scoreboardEl.style.pointerEvents = "none";
+  matchEndEl.style.pointerEvents = "none";
+  // --- END OF FIX ---
 
-  showRespawnScreen();
+  // Show/Hide Logic
+  menuEl.style.display = "none";
+  hudEl.style.display = "block"; // Show the HUD
+  canvas.style.display = "block";
+  respawnScreenEl.style.display = "none";
+  scoreboardEl.style.display = "none";
+  matchEndEl.style.display = "none";
 
-  // THREE.js setup
+  // === 3. THREE.JS SETUP ===
   const renderer = new THREE.WebGLRenderer({ canvas });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.enabled = true;
-
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x202028);
 
@@ -344,970 +115,149 @@ async function startGame(mode: "join", url: string) {
   const playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
   const MOUSE_SENSITIVITY = 0.002;
 
-  const cameraTarget = new THREE.Vector3();
-  const smoothingFactor = 0.1;
-  const cameraOffset = new THREE.Vector3(0, 1.6, 3.0);
-  const yawEuler = new THREE.Euler(0, 0, 0, "YXZ");
-
   const light = new THREE.DirectionalLight(0xffffff, 1.0);
   light.position.set(10, 20, 5);
-  light.castShadow = true;
-  light.shadow.mapSize.width = 1024;
-  light.shadow.mapSize.height = 1024;
-  light.shadow.camera.near = 0.5;
-  light.shadow.camera.far = 50;
   scene.add(light);
-
   const ambientLight = new THREE.AmbientLight(0x606060, 1.5);
   scene.add(ambientLight);
 
-  // Simple warehouse
-  const mapGroup = new THREE.Group();
-  scene.add(mapGroup);
-
-  const floorMaterial = new THREE.MeshStandardMaterial({
-    color: 0x444444,
-    metalness: 0.1,
-    roughness: 0.8,
-  });
-
-  const wallMaterial = new THREE.MeshStandardMaterial({
-    color: 0x888888,
-    metalness: 0.1,
-    roughness: 0.8,
-  });
-
-  const floorGeometry = new THREE.BoxGeometry(50, 1, 50);
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  const floor = new THREE.Mesh(
+    new THREE.BoxGeometry(50, 1, 50),
+    new THREE.MeshStandardMaterial({ color: 0x444444 })
+  );
   floor.position.y = -0.5;
-  floor.receiveShadow = true;
-  mapGroup.add(floor);
+  scene.add(floor);
 
-  const wallHeight = 10;
-  const wallThickness = 1;
-  const wallLength = 50;
-
-  const wallNorth = new THREE.Mesh(
-    new THREE.BoxGeometry(wallLength, wallHeight, wallThickness),
-    wallMaterial
-  );
-  wallNorth.position.set(0, wallHeight / 2, -wallLength / 2);
-  wallNorth.castShadow = true;
-  wallNorth.receiveShadow = true;
-  mapGroup.add(wallNorth);
-
-  const wallSouth = new THREE.Mesh(
-    new THREE.BoxGeometry(wallLength, wallHeight, wallThickness),
-    wallMaterial
-  );
-  wallSouth.position.set(0, wallHeight / 2, wallLength / 2);
-  wallSouth.castShadow = true;
-  wallSouth.receiveShadow = true;
-  mapGroup.add(wallSouth);
-
-  const wallEast = new THREE.Mesh(
-    new THREE.BoxGeometry(wallThickness, wallHeight, wallLength),
-    wallMaterial
-  );
-  wallEast.position.set(wallLength / 2, wallHeight / 2, 0);
-  wallEast.castShadow = true;
-  wallEast.receiveShadow = true;
-  mapGroup.add(wallEast);
-
-  const wallWest = new THREE.Mesh(
-    new THREE.BoxGeometry(wallThickness, wallHeight, wallLength),
-    wallMaterial
-  );
-  wallWest.position.set(-wallLength / 2, wallHeight / 2, 0);
-  wallWest.castShadow = true;
-  wallWest.receiveShadow = true;
-  mapGroup.add(wallWest);
-
-  // === client-side sim state ===
-  const SPEED = 3.0;
-  const SPRINT_SPEED = 6.0; // <-- 12. ADD SPRINT SPEED FOR CLIENT
+  // === 4. CLIENT RENDER STATE ===
   let localPlayerEid: number | null = null;
   const playerObjects = new Map<number, THREE.Object3D>();
-
-  // --- X2: GADGET RENDER STATE ---
-  const ammoBoxObjects = new Map<number, THREE.Object3D>();
-  const fallbackBoxGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5); // Shared geometry
-  const ammoBoxMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00ff00, // Bright green
-    roughness: 0.7,
-  });
-  // --- END X2 ---
-
-  // --- MED BOX RENDER STATE ---
-  const medBoxObjects = new Map<number, THREE.Object3D>();
-  const medBoxMaterial = new THREE.MeshStandardMaterial({
-    color: 0xff4444, // Bright red
-    roughness: 0.7,
-  });
-  // --- END MED BOX ---
-
-  // --- X3: GRENADE RENDER STATE ---
-  const grenadeObjects = new Map<number, THREE.Object3D>();
-  const grenadeGeometry = new THREE.SphereGeometry(0.2, 16, 8); // Small sphere
-  // --- X3-VFX: MODIFIED MATERIAL ---
-  const grenadeMaterial = new THREE.MeshStandardMaterial({
-    color: 0xffaa00, // Bright orange
-    roughness: 0.4,
-    metalness: 0.1,
-    emissive: 0xffaa00, // Make it glow
-    emissiveIntensity: 0.5,
-  });
-  // --- END X3 ---
-
-  // --- X3-VFX: ADD EXPLOSION CONSTANTS AND ASSETS ---
-  const EXPLOSION_RADIUS = 7.0; // Must match server GRENADE_EXPLOSION_RADIUS_SQ
-  const EXPLOSION_DURATION_MS = 200; // 0.2 seconds
-  const activeExplosions: { mesh: THREE.Mesh; startTime: number }[] = [];
-
-  const explosionGeometry = new THREE.SphereGeometry(EXPLOSION_RADIUS, 16, 8);
-  const explosionMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffcc44, // Yellow-white
-    transparent: true,
-    opacity: 0.9,
-  });
-
-  function spawnExplosion(x: number, y: number, z: number) {
-    const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial.clone());
-    explosion.position.set(x, y, z);
-
-    scene.add(explosion);
-    activeExplosions.push({
-      mesh: explosion,
-      startTime: performance.now(),
-    });
-  }
-  // --- END X3-VFX ---
-
-  const gltfLoader = new GLTFLoader();
   const fallbackGeometry = new THREE.BoxGeometry();
+  const fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
-  // Ensure ECS entity exists for given id
-  function ensureEntity(world: any, eid: number) {
-    while (world.entityCursor <= eid) {
-      addEntity(world);
-    }
-  }
-  function safeAddComponent(world: any, component: any, eid: number) {
-    ensureEntity(world, eid);
-    try {
-      // --- X2: Add Ammo/Gadget/AmmoBox components ---
-      if (component === Ammo && Ammo.current[eid] === undefined) {
-        addComponent(world, Ammo, eid);
-      } else if (component === Gadget && Gadget.cooldown[eid] === undefined) {
-        addComponent(world, Gadget, eid);
-      } else if (
-        component === AmmoBox &&
-        AmmoBox.getStorage(eid) === undefined // Check if tag exists
-      ) {
-        addComponent(world, AmmoBox, eid);
-        // --- ADD MED BOX COMPONENTS ---
-      } else if (
-        component === MedGadget &&
-        MedGadget.cooldown[eid] === undefined
-      ) {
-        addComponent(world, MedGadget, eid);
-      } else if (
-        component === MedBox &&
-        MedBox.getStorage(eid) === undefined // Check if tag exists
-      ) {
-        addComponent(world, MedBox, eid);
-        // --- END MED BOX ---
-        // --- ADD REPAIR TOOL COMPONENT ---
-      } else if (
-        component === RepairTool &&
-        RepairTool.current[eid] === undefined
-      ) {
-        addComponent(world, RepairTool, eid);
-        // --- END REPAIR TOOL ---
-        // --- X3: ADD GRENADE COMPONENTS ---
-      } else if (
-        component === GrenadeGadget &&
-        GrenadeGadget.cooldown[eid] === undefined
-      ) {
-        addComponent(world, GrenadeGadget, eid);
-      } else if (component === Grenade && Grenade.getStorage(eid) === undefined) {
-        addComponent(world, Grenade, eid);
-      } else if (
-        component === GrenadeTimer &&
-        GrenadeTimer.remaining[eid] === undefined
-      ) {
-        addComponent(world, GrenadeTimer, eid);
-      } else if (
-        component === Gravity &&
-        Gravity.getStorage(eid) === undefined
-      ) {
-        addComponent(world, Gravity, eid);
-        // --- END X3 ---
-      } else if (
-        component !== Ammo &&
-        component !== Gadget &&
-        component !== AmmoBox &&
-        component !== MedGadget &&
-        component !== MedBox &&
-        component !== RepairTool &&
-        component !== GrenadeGadget &&
-        component !== Grenade &&
-        component !== GrenadeTimer &&
-        component !== Gravity
-      ) {
-        // --- END X2 ---
-        addComponent(world, component, eid);
-      }
-    } catch (err) {
-      console.warn("safeAddComponent failed", {
-        eid,
-        component: component?.name ?? "unknown",
-        err,
-      });
-      // Do NOT rethrow – prevents the outer try/catch from logging a fatal error
-    }
-  }
-
-  function getPlayerObject(eid: number, teamId: number): THREE.Object3D {
+  function getPlayerObject(eid: number): THREE.Object3D {
     let rootObject = playerObjects.get(eid);
-
     if (!rootObject) {
-      rootObject = new THREE.Group();
+      rootObject = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
       scene.add(rootObject);
       playerObjects.set(eid, rootObject);
-      console.log(`Added placeholder Group for player ${eid} on team ${teamId}`);
-
-      gltfLoader.load(
-        "/models/soldier.glb",
-        (gltf) => {
-          console.log(`Model loaded for ${eid}, adding to scene graph.`);
-          const model = gltf.scene;
-
-          let color = teamId === 0 ? 0xff6666 : 0x6666ff;
-          if (eid === localPlayerEid) {
-            color = 0x66ff66;
-          }
-
-          model.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              mesh.material = new THREE.MeshStandardMaterial({
-                color,
-              });
-              mesh.castShadow = true;
-            }
-          });
-
-          model.scale.set(0.5, 0.5, 0.5);
-          model.position.y = -0.5;
-
-          rootObject!.add(model);
-        },
-        undefined,
-        (error) => {
-          console.error(
-            `Error loading model for ${eid}, using fallback cube:`,
-            error
-          );
-
-          const material = new THREE.MeshStandardMaterial({
-            color: 0xff0000,
-          });
-          const fallbackCube = new THREE.Mesh(fallbackGeometry, material);
-          fallbackCube.position.y = 0.5;
-          fallbackCube.castShadow = true;
-
-          rootObject!.add(fallbackCube);
-        }
-      );
+      console.log(`Created render object for new entity ${eid}`);
     }
-
     return rootObject;
   }
 
-  // --- X2: ADD AMMO BOX RENDER FUNCTION ---
-  function getAmmoBoxObject(eid: number, snapshot: any): THREE.Object3D {
-    let rootObject = ammoBoxObjects.get(eid);
-
-    if (!rootObject) {
-      let material = ammoBoxMaterial;
-
-      rootObject = new THREE.Mesh(fallbackBoxGeometry, material);
-      rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-      rootObject.castShadow = true;
-      rootObject.receiveShadow = true;
-
-      scene.add(rootObject);
-      ammoBoxObjects.set(eid, rootObject);
-    }
-
-    // Update position
-    rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-
-    return rootObject;
-  }
-  // --- END X2 ---
-
-  // --- ADD MED BOX RENDER FUNCTION ---
-  function getMedBoxObject(eid: number, snapshot: any): THREE.Object3D {
-    let rootObject = medBoxObjects.get(eid);
-
-    if (!rootObject) {
-      let material = medBoxMaterial;
-
-      rootObject = new THREE.Mesh(fallbackBoxGeometry, material);
-      rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-      rootObject.castShadow = true;
-      rootObject.receiveShadow = true;
-
-      scene.add(rootObject);
-      medBoxObjects.set(eid, rootObject);
-    }
-
-    // Update position
-    rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-
-    return rootObject;
-  }
-  // --- END MED BOX ---
-
-  // --- X3: ADD GRENADE RENDER FUNCTION ---
-  function getGrenadeObject(eid: number, snapshot: any): THREE.Object3D {
-    let rootObject = grenadeObjects.get(eid);
-
-    if (!rootObject) {
-      rootObject = new THREE.Mesh(grenadeGeometry, grenadeMaterial);
-      rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-      rootObject.castShadow = true;
-
-      scene.add(rootObject);
-      grenadeObjects.set(eid, rootObject);
-    }
-
-    // Update position
-    rootObject.position.set(snapshot.x, snapshot.y, snapshot.z);
-
-    return rootObject;
-  }
-  // --- END X3 ---
-
-  // === 5. MESSAGE HANDLERS ===
-  adapter.onMessage((msg) => {
-    try {
-      const state = packr.unpack(msg) as StateMsg | JoinMsg;
-
-      if (state.type === "join") {
-        localPlayerEid = state.eid;
-        localTeamId = state.teamId;
-        console.log(
-          `Joined game. This client is player ${localPlayerEid} on team ${localTeamId}`
-        );
-
-        safeAddComponent(clientWorld, Transform, localPlayerEid);
-        safeAddComponent(clientWorld, Velocity, localPlayerEid);
-        Transform.x[localPlayerEid] = state.x;
-        Transform.y[localPlayerEid] = state.y;
-        Transform.z[localPlayerEid] = state.z;
-        Transform.yaw[localPlayerEid] = state.yaw;
-        Transform.pitch[localPlayerEid] = state.pitch;
-        playerRotation.y = state.yaw;
-        playerRotation.x = state.pitch;
-
-        safeAddComponent(clientWorld, Health, localPlayerEid);
-        Health.current[localPlayerEid] = state.hp;
-        Health.max[localPlayerEid] = state.hp;
-
-        safeAddComponent(clientWorld, Stamina, localPlayerEid); // <-- 6. ADD STAMINA ON JOIN
-        Stamina.current[localPlayerEid] = state.stamina;
-        Stamina.max[localPlayerEid] = state.stamina;
-
-        // --- X2: ADD AMMO/GADGET ON JOIN ---
-        safeAddComponent(clientWorld, Ammo, localPlayerEid);
-        Ammo.current[localPlayerEid] = state.ammoCurrent;
-        Ammo.reserve[localPlayerEid] = state.ammoReserve;
-        safeAddComponent(clientWorld, Gadget, localPlayerEid);
-        Gadget.cooldown[localPlayerEid] = state.gadgetCooldown;
-        // --- END X2 ---
-
-        // --- ADD MED BOX ON JOIN ---
-        safeAddComponent(clientWorld, MedGadget, localPlayerEid);
-        MedGadget.cooldown[localPlayerEid] = state.medGadgetCooldown;
-        // --- END MED BOX ---
-
-        // --- ADD REPAIR TOOL ON JOIN ---
-        safeAddComponent(clientWorld, RepairTool, localPlayerEid);
-        RepairTool.current[localPlayerEid] = state.repairToolHeat;
-        RepairTool.max[localPlayerEid] = 100; // Assume max, server will correct
-        // --- END REPAIR TOOL ---
-
-        // --- X3: ADD GRENADE GADGET ON JOIN ---
-        safeAddComponent(clientWorld, GrenadeGadget, localPlayerEid);
-        GrenadeGadget.cooldown[localPlayerEid] = state.grenadeGadgetCooldown;
-        GrenadeGadget.maxCooldown[localPlayerEid] = 10; // Assume max
-        // --- END X3 ---
-
-        safeAddComponent(clientWorld, Team, localPlayerEid);
-        Team.id[localPlayerEid] = state.teamId;
-        safeAddComponent(clientWorld, PlayerStats, localPlayerEid);
-        PlayerStats.kills[localPlayerEid] = state.kills;
-        PlayerStats.deaths[localPlayerEid] = state.deaths;
-
-        getPlayerObject(localPlayerEid, localTeamId!);
-
-        const obj = playerObjects.get(localPlayerEid)!;
-        obj.position.set(state.x, state.y, state.z);
-        cameraTarget.copy(obj.position).add(cameraOffset);
-        camera.position.copy(cameraTarget);
-
-        scoreboardEl!.style.display = "flex";
-
-        if (joinResolve) {
-          joinResolve();
-          joinResolve = null;
-        }
-
-        return;
-      }
-
-      if (state.type === "state") {
-        const stateTick = state.tick;
-        const clientTick = Array.from(sendTimeMap.keys()).pop() || 0;
-        const sendTime = sendTimeMap.get(clientTick);
-
-        if (sendTime && rttEl) {
-          const rtt = performance.now() - sendTime;
-          rttEl.textContent = `RTT: ${rtt.toFixed(1)} ms`;
-          sendTimeMap.delete(clientTick);
-        }
-
-        if (state.gameState) {
-          currentGameState = state.gameState;
-        }
-
-        const seenEids = new Set<number>();
-        // --- X2: Add separate set for gadgets ---
-        const seenGadgetEids = new Set<number>();
-        // --- Add set for med boxes ---
-        const seenMedBoxEids = new Set<number>();
-        // --- X3: Add set for grenades ---
-        const seenGrenadeEids = new Set<number>();
-
-        for (const snapshot of state.entities) {
-          const {
-            id,
-            x,
-            y,
-            z,
-            hp,
-            yaw,
-            pitch,
-            teamId,
-            kills,
-            deaths,
-            stamina,
-            // --- X2: Destructure new state ---
-            ammoCurrent,
-            ammoReserve,
-            gadgetCooldown,
-            isAmmoBox,
-            // --- MED BOX: Destructure new state ---
-            medGadgetCooldown,
-            isMedBox,
-            // --- REPAIR TOOL: Destructure new state ---
-            repairToolHeat,
-            // --- X3: Destructure new state ---
-            grenadeGadgetCooldown,
-            isGrenade,
-            grenadeTimer,
-          } = snapshot;
-
-          // --- X2: ROUTE TO CORRECT HANDLER ---
-          if (isAmmoBox) {
-            seenGadgetEids.add(id);
-            safeAddComponent(clientWorld, Transform, id);
-            safeAddComponent(clientWorld, AmmoBox, id);
-            Transform.x[id] = x;
-            Transform.y[id] = y;
-            Transform.z[id] = z;
-            getAmmoBoxObject(id, snapshot); // Renamed function
-            continue; // Go to next entity
-          }
-          // --- END X2 ---
-
-          // --- ROUTE MED BOX ---
-          if (isMedBox) {
-            seenMedBoxEids.add(id);
-            safeAddComponent(clientWorld, Transform, id);
-            safeAddComponent(clientWorld, MedBox, id);
-            Transform.x[id] = x;
-            Transform.y[id] = y;
-            Transform.z[id] = z;
-            getMedBoxObject(id, snapshot);
-            continue; // Go to next entity
-          }
-          // --- END MED BOX ---
-
-          // --- X3: ROUTE GRENADE ---
-          if (isGrenade) {
-            seenGrenadeEids.add(id);
-            safeAddComponent(clientWorld, Transform, id);
-            safeAddComponent(clientWorld, Grenade, id);
-            safeAddComponent(clientWorld, GrenadeTimer, id);
-            Transform.x[id] = x;
-            Transform.y[id] = y;
-            Transform.z[id] = z;
-            GrenadeTimer.remaining[id] = grenadeTimer ?? 0;
-            getGrenadeObject(id, snapshot);
-            continue; // Go to next entity
-          }
-          // --- END X3 ---
-
-          // If not a gadget, it's a player
-          seenEids.add(id);
-
-          const obj = getPlayerObject(id, teamId ?? 0);
-
-          if (Health.current[id] === undefined) {
-            safeAddComponent(clientWorld, Transform, id);
-            safeAddComponent(clientWorld, Velocity, id);
-            safeAddComponent(clientWorld, Health, id);
-            Health.max[id] = hp;
-            Transform.yaw[id] = yaw;
-            Transform.pitch[id] = pitch;
-            safeAddComponent(clientWorld, Team, id);
-            safeAddComponent(clientWorld, PlayerStats, id);
-            safeAddComponent(clientWorld, Stamina, id); // <-- 8. ADD STAMINA FOR NEW ENTITIES
-            Stamina.max[id] = stamina ?? 100;
-            safeAddComponent(clientWorld, Ammo, id); // <-- ADD THIS
-            safeAddComponent(clientWorld, Gadget, id); // <-- ADD THIS
-            safeAddComponent(clientWorld, MedGadget, id); // <-- ADD THIS
-            safeAddComponent(clientWorld, RepairTool, id); // <-- ADD THIS
-            RepairTool.max[id] = 100; // Default max
-            safeAddComponent(clientWorld, GrenadeGadget, id); // <-- X3: ADD THIS
-            GrenadeGadget.maxCooldown[id] = 10; // Default max
-          }
-
-          Stamina.current[id] = stamina ?? Stamina.max[id]; // <-- 9. UPDATE STAMINA
-          // --- X2: UPDATE AMMO/GADGET FOR ALL PLAYERS ---
-          Ammo.current[id] = ammoCurrent ?? Ammo.current[id];
-          Ammo.reserve[id] = ammoReserve ?? Ammo.reserve[id];
-          Gadget.cooldown[id] = gadgetCooldown ?? Gadget.cooldown[id];
-          // --- END X2 ---
-          // --- UPDATE MED GADGET ---
-          MedGadget.cooldown[id] = medGadgetCooldown ?? MedGadget.cooldown[id];
-          // --- END MED BOX ---
-          // --- UPDATE REPAIR TOOL ---
-          RepairTool.current[id] = repairToolHeat ?? RepairTool.current[id];
-          // --- END REPAIR TOOL ---
-          // --- X3: UPDATE GRENADE GADGET ---
-          GrenadeGadget.cooldown[id] =
-            grenadeGadgetCooldown ?? GrenadeGadget.cooldown[id];
-          // --- END X3 ---
-
-          Team.id[id] = teamId ?? 0;
-          PlayerStats.kills[id] = kills ?? 0;
-          PlayerStats.deaths[id] = deaths ?? 0;
-
-          if (id === localPlayerEid) {
-            const localX = Transform.x[localPlayerEid!];
-            const localZ = Transform.z[localPlayerEid!];
-
-            const error = Math.abs(localX - x) + Math.abs(localZ - z);
-            if (error > 0.01) {
-              Transform.x[localPlayerEid!] = x;
-              Transform.z[localPlayerEid!] = z;
-            }
-            Transform.y[localPlayerEid!] = y;
-
-            Health.current[localPlayerEid!] = hp;
-
-            if (
-              Health.current[localPlayerEid!] <= 0 &&
-              respawnScreenEl!.style.display === "none"
-            ) {
-              console.log("Client died, showing respawn screen.");
-              showRespawnScreen();
-            }
-          } else {
-            obj.position.set(x, y, z);
-            Transform.yaw[id] = yaw;
-            Transform.pitch[id] = pitch;
-            Health.current[id] = hp;
-
-            const newColor = teamId === 0 ? 0xff6666 : 0x6666ff;
-            (obj as THREE.Group).traverse((child) => {
-              if ((child as THREE.Mesh).isMesh) {
-                const material = (child as THREE.Mesh)
-                  .material as THREE.MeshStandardMaterial;
-                if (material.color) {
-                  material.color.setHex(newColor);
-                }
-              }
-            });
-          }
-        }
-
-        // --- BUGFIX: This is the fix for the "Ghost Entity" bug ---
-        // --- We must remove the entity from the client's ECS world ---
-
-        for (const [eid, obj] of playerObjects.entries()) {
-          if (!seenEids.has(eid)) {
-            scene.remove(obj);
-            playerObjects.delete(eid);
-            // --- BUGFIX: Manually remove all components ---
-            removeComponent(clientWorld, Transform, eid);
-            removeComponent(clientWorld, Velocity, eid);
-            removeComponent(clientWorld, Health, eid);
-            removeComponent(clientWorld, Team, eid);
-            removeComponent(clientWorld, PlayerStats, eid);
-            removeComponent(clientWorld, Stamina, eid);
-            removeComponent(clientWorld, Ammo, eid);
-            removeComponent(clientWorld, Gadget, eid);
-            removeComponent(clientWorld, MedGadget, eid);
-            removeComponent(clientWorld, RepairTool, eid);
-            removeComponent(clientWorld, GrenadeGadget, eid);
-            // --- END BUGFIX ---
-          }
-        }
-        for (const [eid, obj] of ammoBoxObjects.entries()) {
-          if (!seenGadgetEids.has(eid)) {
-            scene.remove(obj);
-            ammoBoxObjects.delete(eid);
-            // --- BUGFIX: Manually remove all components ---
-            removeComponent(clientWorld, Transform, eid);
-            removeComponent(clientWorld, AmmoBox, eid);
-            // --- END BUGFIX ---
-          }
-        }
-        // --- Clean up med boxes ---
-        for (const [eid, obj] of medBoxObjects.entries()) {
-          if (!seenMedBoxEids.has(eid)) {
-            scene.remove(obj);
-            medBoxObjects.delete(eid);
-            // --- BUGFIX: Manually remove all components ---
-            removeComponent(clientWorld, Transform, eid);
-            removeComponent(clientWorld, MedBox, eid);
-            // --- END BUGFIX ---
-          }
-        }
-        // --- X3: Clean up grenades ---
-        // --- X3-VFX: MODIFIED CLEANUP ---
-        for (const [eid, obj] of grenadeObjects.entries()) {
-          if (!seenGrenadeEids.has(eid)) {
-            // This is the trigger! The grenade was removed (exploded).
-            // Spawn the VFX at its last known position.
-            spawnExplosion(obj.position.x, obj.position.y, obj.position.z);
-
-            scene.remove(obj);
-            grenadeObjects.delete(eid);
-            // --- BUGFIX: Manually remove all components ---
-            removeComponent(clientWorld, Transform, eid);
-            removeComponent(clientWorld, Grenade, eid);
-            removeComponent(clientWorld, GrenadeTimer, eid);
-            // --- END BUGFIX ---
-          }
-        }
-        // --- END BUGFIX ---
-      } // <-- This brace closes `if (state.type === "state")`
-    } catch (error) {
-      console.error("Client Error Processing Network Message:", error);
-    }
-  });
-
-  // wait for connection and join
+  // === 5. CALL RUST `init_sim` ===
   try {
-    await adapter.awaitConnection();
-    console.log("Connection successful! Waiting for JoinMsg...");
-    await joinPromise;
-    console.log("JoinMsg received and processed. Starting game loop.");
-  } catch (err) {
-    console.error("Connection failed", err);
-    alert("Connection failed. Is the server running?");
-    menuEl.style.display = "flex";
-    hudEl.style.display = "none";
-    canvas.style.display = "none";
+    const initSnapshot: EntitySnapshot = await invoke("init_sim");
+    localPlayerEid = initSnapshot.eid;
+
+    const obj = getPlayerObject(localPlayerEid);
+
+    obj.position.set(
+      initSnapshot.transform.x,
+      initSnapshot.transform.y,
+      initSnapshot.transform.z
+    );
+
+    // Set initial HUD values
+    if (initSnapshot.health && healthEl) {
+      healthEl.textContent = `HP: ${initSnapshot.health.current.toFixed(0)}`;
+    }
+    if (initSnapshot.stamina && staminaEl) {
+      staminaEl.textContent = `STAM: ${initSnapshot.stamina.current.toFixed(0)}`;
+    }
+
+    const cameraOffset = new THREE.Vector3(0, 2, 4);
+    camera.position.copy(obj.position).add(cameraOffset);
+    camera.lookAt(obj.position);
+
+    console.log(
+      `Rust simulation initialized. Local player EID: ${localPlayerEid}`
+    );
+  } catch (e) {
+    console.error("Failed to init simulation:", e);
+    alert("Failed to init Rust simulation. Check console.");
     return;
   }
 
-  // === GAME LOOP ===
+  // === 6. GAME LOOP ===
+  // This line is CRITICAL. It finds the canvas and adds
+  // the 'onclick' listener that triggers the mouse lock.
   initInput(canvas);
 
   let last = performance.now();
-  const FIXED_DT_MS = 1000 / 60;
+  const FIXED_DT_MS = 1000 / 60; // 60hz
   let accumulator = 0;
+  let tick = 0;
 
   let frameCount = 0;
   let lastFPSUpdate = performance.now();
   let isProcessingTick = false;
 
   function loop() {
-    if (!adapter) return;
+    requestAnimationFrame(loop);
 
     const now = performance.now();
     const frameTime = Math.min(now - last, 1000);
     last = now;
-
     accumulator += frameTime;
 
-    updateInput();
+// 1. Get Mouse/Key Input
+updateInput();
+// if (canvas === document.pointerLockElement) { // <-- TEMP: Comment out
+  playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
+  playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
+  playerRotation.x = Math.max(
+    -Math.PI / 2,
+    Math.min(Math.PI / 2, playerRotation.x)
+  );
+// } // <-- TEMP: Comment out
 
-    if (respawnScreenEl!.style.display === "none") {
-      playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
-      playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
-      playerRotation.x = Math.max(
-        -Math.PI / 2,
-        Math.min(Math.PI / 2, playerRotation.x)
-      );
-    }
-
-    const inputMsg: InputMsg = {
-      type: "input",
-      tick: tick,
-      axes: {
-        ...inputState,
-        yaw: playerRotation.y,
-        pitch: playerRotation.x,
-      },
-    };
-    sendTimeMap.set(tick, performance.now());
-    adapter.send(packr.pack(inputMsg));
-
+    // 2. Run Rust simulation at a fixed 60Hz tick
     if (accumulator >= FIXED_DT_MS && !isProcessingTick) {
       isProcessingTick = true;
 
-      if (localPlayerEid !== null && Health.current[localPlayerEid] > 0) {
-        Transform.yaw[localPlayerEid] = playerRotation.y;
-        Transform.pitch[localPlayerEid] = playerRotation.x;
+      const payload: InputPayload = {
+        tick,
+        inputs: {
+          forward: inputState.forward,
+          right: inputState.right,
+          jump: inputState.jump,   // <-- FIX
+          fire: inputState.fire,   // <-- FIX
+          sprint: inputState.sprint, // <-- FIX
+        },
+      };
+      
 
-        // --- 13. UPDATE CLIENT PREDICTION FOR SPRINT ---
-        const yaw = playerRotation.y;
-        // Client prediction for stamina is tricky, so we just check the input.
-        // The server will correct us if we're out of stamina.
-        const isSprinting = inputState.sprint;
-        const currentSpeed = isSprinting ? SPRINT_SPEED : SPEED;
+      // 3. Call `step_tick`
+      invoke<WorldSnapshot>("step_tick", { payload: payload })
+        .then((snapshot) => {
+          // 4. Apply the new state from Rust
+          for (const entity of snapshot) {
+            const { eid, transform, health, stamina } = entity;
+            const obj = getPlayerObject(eid);
 
-        const forward = inputState.forward * currentSpeed; // <-- USE CURRENT SPEED
-        const right = inputState.right * currentSpeed; // <-- USE CURRENT SPEED
+            obj.position.set(transform.x, transform.y, transform.z);
 
-        Velocity.x[localPlayerEid] =
-          Math.sin(yaw) * -forward + Math.cos(yaw) * right;
-        Velocity.z[localPlayerEid] =
-          Math.cos(yaw) * -forward - Math.sin(yaw) * right;
-        Velocity.y[localPlayerEid] = 0;
-        // --- END 13 ---
-      }
-
-      const worldState = serializeWorldToRust();
-
-      invoke<WorldState>("step_tick", { world: worldState })
-        .then((newState) => {
-          deserializeWorldFromRust(newState);
-
-          const localObj =
-            localPlayerEid !== null
-              ? playerObjects.get(localPlayerEid)
-              : undefined;
-          if (localObj === undefined) {
-            renderer.render(scene, camera);
-            return;
-          }
-
-          for (const [eid, obj] of playerObjects.entries()) {
-            const isLocalPlayer = eid === localPlayerEid;
-            const isAlive = Health.current[eid] > 0;
-
-            if (Transform.x[eid] !== undefined) {
-              if (isAlive) {
-                obj.position.x = Transform.x[eid];
-                obj.position.y = Transform.y[eid];
-                obj.position.z = Transform.z[eid];
-              } else {
-                obj.position.y = -1000;
-              }
-            }
-
-            if (isLocalPlayer) {
-              obj.rotation.y = playerRotation.y;
+            // 5. Update camera and HUD for local player
+            if (eid === localPlayerEid) {
               camera.rotation.copy(playerRotation);
+              const cameraOffset = new THREE.Vector3(0, 2, 4);
+              cameraOffset.applyEuler(playerRotation);
+              camera.position.copy(obj.position).add(cameraOffset);
 
-              if (isAlive) {
-                obj.visible = true;
-
-                cameraOffset.set(0, 1.6, 3.0);
-                yawEuler.set(0, playerRotation.y, 0);
-                cameraOffset.applyEuler(yawEuler);
-
-                cameraTarget.copy(obj.position).add(cameraOffset);
-                camera.position.lerp(cameraTarget, smoothingFactor);
-              } else {
-                obj.visible = false;
+              if (health && healthEl) {
+                healthEl.textContent = `HP: ${health.current.toFixed(0)}`;
               }
-            } else {
-              obj.visible = isAlive;
-              obj.rotation.y = Transform.yaw[eid];
+              if (stamina && staminaEl) {
+                staminaEl.textContent = `STAM: ${stamina.current.toFixed(0)}`;
+              }
             }
           }
 
-          // --- X2: UPDATE AMMO BOX OBJECT TRANSFORMS ---
-          const ammoBoxes = ammoBoxQuery(clientWorld as any);
-          for (const eid of ammoBoxes) {
-            const obj = ammoBoxObjects.get(eid);
-            if (obj && Transform.x[eid] !== undefined) {
-              obj.position.x = Transform.x[eid];
-              obj.position.y = Transform.y[eid];
-              obj.position.z = Transform.z[eid];
-            }
-          }
-          // --- END X2 ---
-
-          // --- UPDATE MED BOX OBJECT TRANSFORMS ---
-          const medBoxes = medBoxQuery(clientWorld as any);
-          for (const eid of medBoxes) {
-            const obj = medBoxObjects.get(eid);
-            if (obj && Transform.x[eid] !== undefined) {
-              obj.position.x = Transform.x[eid];
-              obj.position.y = Transform.y[eid];
-              obj.position.z = Transform.z[eid];
-            }
-          }
-          // --- END MED BOX ---
-
-          // --- X3: UPDATE GRENADE OBJECT TRANSFORMS ---
-          const grenades = grenadeQuery(clientWorld as any);
-          for (const eid of grenades) {
-            const obj = grenadeObjects.get(eid);
-            if (obj && Transform.x[eid] !== undefined) {
-              obj.position.x = Transform.x[eid];
-              obj.position.y = Transform.y[eid];
-              obj.position.z = Transform.z[eid];
-            }
-          }
-          // --- END X3 ---
-
-          // --- X3-VFX: UPDATE ACTIVE EXPLOSIONS ---
-          const animationTime = performance.now(); // <-- GET FRESH TIMESTAMP
-          for (let i = activeExplosions.length - 1; i >= 0; i--) {
-            const explosion = activeExplosions[i];
-            const elapsed = animationTime - explosion.startTime; // <-- USE FRESH TIMESTAMP
-
-            if (elapsed > EXPLOSION_DURATION_MS) {
-              // Time's up, remove it
-              scene.remove(explosion.mesh);
-              activeExplosions.splice(i, 1);
-            } else {
-              // Fade out
-              const material =
-                explosion.mesh.material as THREE.MeshBasicMaterial;
-              material.opacity = 1.0 - elapsed / EXPLOSION_DURATION_MS;
-            }
-          }
-          // --- END X3-VFX ---
-
+          // 6. Render the scene
           renderer.render(scene, camera);
 
-          // --- X2: UPDATE HUD ---
-          // --- X3: UPDATE GRENADE HUD ---
-          if (localPlayerEid !== null) {
-            if (healthEl) {
-              // <-- 10. UPDATE HUD
-              const hp = Health.current[localPlayerEid];
-              if (hp !== undefined) {
-                healthEl.textContent = `HP: ${hp.toFixed(0)}`;
-              }
-            }
-            if (staminaEl) {
-              // <-- 11. ADD STAMINA TO HUD
-              const stam = Stamina.current[localPlayerEid];
-              if (stam !== undefined) {
-                staminaEl.textContent = `STAM: ${stam.toFixed(0)}`;
-              }
-            }
-            // Update Ammo
-            if (ammoEl) {
-              const ammo = Ammo.current[localPlayerEid];
-              const reserve = Ammo.reserve[localPlayerEid];
-              if (ammo !== undefined && reserve !== undefined) {
-                // --- BUGFIX 2: Floor the reserve ammo for display ---
-                ammoEl.textContent = `AMMO: ${ammo} / ${Math.floor(reserve)}`;
-              }
-            }
-            // Update Gadget Cooldown (Ammo Box)
-            if (gadgetEl) {
-              const cooldown = Gadget.cooldown[localPlayerEid];
-              if (cooldown !== undefined) {
-                if (cooldown > 0) {
-                  gadgetEl.textContent = `GADGET: ${cooldown.toFixed(1)}s`;
-                } else {
-                  gadgetEl.textContent = `GADGET: READY`;
-                }
-              }
-            }
-            // Update Med Gadget Cooldown (Med Box)
-            if (medGadgetEl) {
-              const cooldown = MedGadget.cooldown[localPlayerEid];
-              if (cooldown !== undefined) {
-                if (cooldown > 0) {
-                  medGadgetEl.textContent = `MEDBOX: ${cooldown.toFixed(1)}s`;
-                } else {
-                  medGadgetEl.textContent = `MEDBOX: READY`;
-                }
-              }
-            }
-            // Update Repair Tool Heat
-            if (repairToolEl) {
-              const heat = RepairTool.current[localPlayerEid];
-              const maxHeat = RepairTool.max[localPlayerEid];
-              if (heat !== undefined && maxHeat !== undefined) {
-                const heatPercent = (heat / maxHeat) * 100;
-                repairToolEl.textContent = `REPAIR: ${heatPercent.toFixed(0)}%`;
-              }
-            }
-            // --- X3: Update Grenade Gadget Cooldown ---
-            if (grenadeGadgetEl) {
-              const cooldown = GrenadeGadget.cooldown[localPlayerEid];
-              if (cooldown !== undefined) {
-                if (cooldown > 0) {
-                  grenadeGadgetEl.textContent = `GRENADE: ${cooldown.toFixed(
-                    1
-                  )}s`;
-                } else {
-                  grenadeGadgetEl.textContent = `GRENADE: READY`;
-                }
-              }
-            }
-            // --- END X3 ---
-          } else {
-            // Fallback if localPlayerEid is null for some reason
-            if (ammoEl) {
-              ammoEl.textContent = "AMMO: 30 / 120";
-            }
-          }
-          // --- END X2 ---
-
-          if (currentGameState) {
-            team1ScoreEl!.textContent = `Team 1: ${currentGameState.team1Tickets}`;
-            team2ScoreEl!.textContent = `Team 2: ${currentGameState.team2Tickets}`;
-
-            if (
-              currentGameState.phase === 2 &&
-              matchEndEl!.style.display === "none"
-            ) {
-              matchEndEl!.style.display = "block";
-              const winner =
-                currentGameState.team1Tickets <= 0 ? "Team 2" : "Team 1";
-              matchEndEl!.textContent = `${winner} Wins!`;
-
-              hudEl.style.display = "none";
-              scoreboardEl!.style.display = "none";
-              if (respawnScreenEl!.style.display === "flex") {
-                hideRespawnScreen();
-              }
-              if (document.pointerLockElement) {
-                document.exitPointerLock();
-              }
-            }
-          }
-
+          // Update FPS counter
           frameCount++;
           if (now - lastFPSUpdate > 250) {
             const fps = frameCount / ((now - lastFPSUpdate) / 1000);
@@ -1326,9 +276,9 @@ async function startGame(mode: "join", url: string) {
       tick++;
       accumulator -= FIXED_DT_MS;
     }
-
-    requestAnimationFrame(loop);
   }
 
   loop();
 }
+
+startGame();
