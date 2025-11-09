@@ -18,6 +18,14 @@ pub struct Velocity {
     pub z: f32,
 }
 
+// --- ADD THIS NEW COMPONENT ---
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Rotation {
+    pub yaw: f32,
+    pub pitch: f32,
+}
+// --- END OF ADDITION ---
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Health {
     pub current: f32,
@@ -31,7 +39,6 @@ pub struct Weapon {
     pub damage: f32,
 }
 
-// --- NEW: Add Stamina component (Task X1) ---
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Stamina {
     pub current: f32,
@@ -43,39 +50,46 @@ pub struct Stamina {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Player;
 
-// --- UPDATED: InputAxis to include 'sprint' ---
-// (matches input.ts)
+// --- This struct MUST match the 'PlayerInputs' interface in main.ts ---
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct InputAxis {
-    pub forward: f32,
-    pub right: f32,
-    pub jump: f32,
+pub struct PlayerInputs {
+    pub forward: f32, // This is a number (-1 to 1)
+    pub right: f32,   // This is a number (-1 to 1)
+    pub jump: bool,
     pub fire: bool,
-    pub sprint: bool, // <--- ADD THIS
+    pub sprint: bool,
+    #[serde(default)] // In case JS doesn't send it
+    #[serde(rename = "showScoreboard")] // Match JS camelCase 'showScoreboard'
+    pub show_scoreboard: bool,
 }
 
 // --- Constants ---
 pub const SPEED: f32 = 3.0;
-pub const SPRINT_SPEED: f32 = 6.0; // <--- ADD THIS
+pub const SPRINT_SPEED: f32 = 6.0;
 pub const TICK_RATE: u32 = 60;
 pub const TICK_DT: f32 = 1.0 / TICK_RATE as f32;
+pub const MOUSE_SENSITIVITY: f32 = 0.002; // <-- ADD THIS
 
 // --- Data Structures for Tauri ---
 
-// --- UPDATED: InputPayload to match InputAxis ---
+// --- This struct MUST match the 'InputPayload' interface in main.ts ---
 #[derive(Debug, Clone, Deserialize)]
 pub struct InputPayload {
     pub tick: u32,
-    pub inputs: InputAxis,
+    pub inputs: PlayerInputs, // Nested object
+    // Mouse deltas at the top level
+    pub delta_x: f32,
+    pub delta_y: f32,
 }
 
-// --- UPDATED: EntitySnapshot to include Stamina ---
+// --- This struct MUST match the 'EntitySnapshot' interface in main.ts ---
 #[derive(Debug, Clone, Serialize)]
 pub struct EntitySnapshot {
     pub eid: u32,
     pub transform: Transform,
     pub health: Option<Health>,
-    pub stamina: Option<Stamina>, // <--- ADD THIS
+    pub stamina: Option<Stamina>,
+    // You could add pub rotation: Option<Rotation> here if needed
 }
 
 pub type WorldSnapshot = Vec<EntitySnapshot>;

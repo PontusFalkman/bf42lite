@@ -6,10 +6,11 @@ mod sim;
 
 use hecs::World;
 use sim::{
-    InputAxis, InputPayload, EntitySnapshot, WorldSnapshot,
+    PlayerInputs, InputPayload, EntitySnapshot, WorldSnapshot,
     Transform, Velocity, Health, Weapon, Player,
-    Stamina, // (From sim.rs)
-    TICK_DT, SPEED, SPRINT_SPEED // (From sim.rs)
+    Stamina,
+    Rotation, // <-- IMPORT Rotation
+    TICK_DT, SPEED, SPRINT_SPEED, MOUSE_SENSITIVITY // <-- IMPORT MOUSE_SENSITIVITY
 };
 use std::sync::Mutex;
 use tauri::State;
@@ -22,7 +23,6 @@ impl Default for GameState {
     }
 }
 
-// --- UPDATED: `init_sim` ---
 #[tauri::command]
 fn init_sim(state: State<GameState>) -> EntitySnapshot {
     let mut world = state.0.lock().unwrap();
@@ -36,77 +36,94 @@ fn init_sim(state: State<GameState>) -> EntitySnapshot {
         regen_rate: 10.0,
         drain_rate: 15.0,
     };
+    let start_velocity = Velocity { x: 0.0, y: 0.0, z: 0.0 };
+    let start_weapon = Weapon { fire_rate: 0.1, cooldown: 0.0, damage: 10.0 };
+    let start_rotation = Rotation { yaw: 0.0, pitch: 0.0 }; // <-- ADD start_rotation
 
-    let player_e = world.spawn((
+    let player_eid = world.spawn((
         Player,
+        PlayerInputs {
+            forward: 0.0,
+            right: 0.0,
+            jump: false,
+            fire: false,
+            sprint: false,
+            show_scoreboard: false,
+        },
         start_transform,
-        Velocity { x: 0.0, y: 0.0, z: 0.0 },
-        // --- FIX #1: Added missing 'sprint' field ---
-        InputAxis { forward: 0.0, right: 0.0, jump: 0.0, fire: false, sprint: false },
+        start_velocity,
         start_health,
-        Weapon { fire_rate: 0.1, cooldown: 0.0, damage: 25.0 },
         start_stamina,
+        start_rotation, // <-- ADD Rotation component to player
+        start_weapon,
     ));
 
-    println!("Rust: Initialized simulation, spawned player {:?}", player_e);
-
-    // --- FIX #2: Added missing 'stamina' field ---
     EntitySnapshot {
-        eid: player_e.to_bits().get() as u32,
+        eid: player_eid.to_bits().get() as u32,
         transform: start_transform,
         health: Some(start_health),
         stamina: Some(start_stamina),
     }
 }
 
-// --- NEW: Helper function for the stamina system ---
+// --- SYSTEMS ---
 fn stamina_system(world: &mut World, dt: f32) {
-    for (_eid, (stamina, input)) in world.query_mut::<(&mut Stamina, &InputAxis)>() {
-        if input.sprint && (input.forward != 0.0 || input.right != 0.0) {
-            stamina.current -= stamina.drain_rate * dt;
+    for (_eid, (stamina, input)) in world.query_mut::<(&mut Stamina, &PlayerInputs)>() {
+        if input.sprint && input.forward > 0.0 {
+            stamina.current = (stamina.current - stamina.drain_rate * dt).max(0.0);
         } else {
-            stamina.current += stamina.regen_rate * dt;
+            stamina.current = (stamina.current + stamina.regen_rate * dt).min(stamina.max);
         }
-        stamina.current = stamina.current.clamp(0.0, stamina.max);
     }
 }
 
-// --- NEW: Helper function for the movement system ---
+// --- UPDATED: movement_system ---
+// Now queries for 'Rotation' and uses it to calculate velocity
 fn movement_system(world: &mut World, dt: f32) {
-    for (_eid, (transform, velocity, input, stamina)) in
-        world.query_mut::<(&mut Transform, &mut Velocity, &InputAxis, &Stamina)>()
+    for (_eid, (transform, velocity, stamina, input, rotation)) in world // <-- ADD rotation
+        .query_mut::<(&mut Transform, &mut Velocity, &Stamina, &PlayerInputs, &Rotation)>() // <-- ADD &Rotation
     {
-        let is_sprinting = input.sprint && stamina.current > 0.0;
+        let is_sprinting = input.sprint && input.forward > 0.0 && stamina.current > 0.0;
         let current_speed = if is_sprinting { SPRINT_SPEED } else { SPEED };
 
-        let forward_vel = input.forward * current_speed;
-        let right_vel = input.right * current_speed;
+        let forward = input.forward * current_speed;
+        let right = input.right * current_speed;
 
-        // Note: This movement is basic (no yaw). We'll fix later.
-        velocity.x = right_vel;
-        velocity.z = -forward_vel;
+        // --- USE YAW FOR MOVEMENT ---
+        let yaw = rotation.yaw;
+        let sin_yaw = yaw.sin();
+        let cos_yaw = yaw.cos();
+        
+        // This calculates camera-relative movement
+        velocity.x = sin_yaw * -forward + cos_yaw * right;
+        velocity.z = cos_yaw * -forward - sin_yaw * right;
+        // --- END OF FIX ---
 
         transform.x += velocity.x * dt;
         transform.z += velocity.z * dt;
-        transform.y = 0.5;
     }
 }
 
 // --- UPDATED: `step_tick` ---
 #[tauri::command]
-fn step_tick(
-    payload: InputPayload,
-    state: State<GameState>
-) -> WorldSnapshot {
+fn step_tick(payload: InputPayload, state: State<GameState>) -> WorldSnapshot {
     let mut world = state.0.lock().unwrap();
 
-    // 1. Apply inputs
-    for (_eid, input) in world.query_mut::<&mut InputAxis>() {
-        *input = payload.inputs;
-        break;
-    }
+    // 1. Update all player inputs and rotation
+    // --- THIS FIXES THE WARNING ---
+    for (_eid, (inputs, rotation)) in world.query_mut::<(&mut PlayerInputs, &mut Rotation)>() {
+        *inputs = payload.inputs;
+        
+        // Use the deltas to update the player's rotation
+        rotation.yaw -= payload.delta_x * MOUSE_SENSITIVITY;
+        rotation.pitch -= payload.delta_y * MOUSE_SENSITIVITY;
 
-    // 2. Run Cooldown System
+        // Clamp pitch to prevent looking upside down
+        rotation.pitch = rotation.pitch.clamp(-std::f32::consts::FRAC_PI_2, std::f32::consts::FRAC_PI_2);
+    }
+    // --- END OF FIX ---
+
+    // 2. Update weapon cooldowns
     for (_eid, weapon) in world.query_mut::<&mut Weapon>() {
         if weapon.cooldown > 0.0 {
             weapon.cooldown -= TICK_DT;
@@ -114,7 +131,10 @@ fn step_tick(
     }
 
     // 3. Run Weapon System
-    for (_eid, (input, weapon, transform)) in world.query_mut::<(&InputAxis, &mut Weapon, &Transform)>() {
+    // --- THIS FIXES THE COMPILE ERROR ---
+    // Changed query from 'InputAxis' to 'PlayerInputs'
+    for (_eid, (input, weapon, transform)) in world.query_mut::<(&PlayerInputs, &mut Weapon, &Transform)>() {
+    // --- END OF FIX ---
         if input.fire && weapon.cooldown <= 0.0 {
             weapon.cooldown = weapon.fire_rate;
             println!(
@@ -134,7 +154,6 @@ fn step_tick(
     // 6. Create snapshot
     let mut snapshot: WorldSnapshot = Vec::new();
 
-    // --- FIX #3: Added missing 'stamina' field ---
     for (eid, (transform, health, stamina)) in world
         .query::<(&Transform, Option<&Health>, Option<&Stamina>)>()
         .iter()
@@ -143,8 +162,8 @@ fn step_tick(
             eid: eid.to_bits().get() as u32,
             transform: *transform,
             health: health.copied(),
-            stamina: stamina.copied(), // <-- This was missing
-        });
+            stamina: stamina.copied(),
+    });
     }
 
     // 7. Return the new state

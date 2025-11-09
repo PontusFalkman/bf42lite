@@ -8,17 +8,20 @@ let accumulatedX = 0;
 let accumulatedY = 0;
 
 export const inputState = {
+  // --- FIX ---
+  // Changed from boolean back to number to match Rust (f32)
   forward: 0,
   right: 0,
+  // --- END FIX ---
   jump: false,
   fire: false,
   sprint: false,
 
-  // Gadgets / actions
-  useGadget: false,     // ammo box (3)
-  useMedBox: false,     // med box (4)
-  useRepairTool: false, // repair tool (5)
-  useGrenade: false,    // grenade (G)
+  // Gadgets / actions (from your file)
+  useGadget: false,
+  useMedBox: false,
+  useRepairTool: false,
+  useGrenade: false,
 
   // Mouse look
   deltaX: 0,
@@ -45,40 +48,32 @@ export function initInput(canvas: HTMLCanvasElement) {
       locked ? "locked on canvas" : "unlocked"
     );
   };
-  const onPointerLockError = (e: Event) => {
-    console.warn("[input] pointerlockerror", e);
-  };
+  document.addEventListener("pointerlockchange", onPointerLockChange, false);
+  document.addEventListener("pointerlockerror", console.error, false);
 
-  document.addEventListener("pointerlockchange", onPointerLockChange);
-  document.addEventListener("pointerlockerror", onPointerLockError);
-
-  // --- MOUSE MOVE (ONLY WHEN LOCKED TO THIS CANVAS) ---
-  const onMouseMove = (e: MouseEvent) => {
-    // if (document.pointerLockElement !== canvas) return; // <-- TEMP: Comment out
-    accumulatedX += e.movementX;
-    accumulatedY += e.movementY;
-  };
-  document.addEventListener("mousemove", onMouseMove);
-
-  // Optional: avoid right-click menu over the game
-  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  // --- MOUSE MOVE ---
+  document.addEventListener("mousemove", (e) => {
+    if (document.pointerLockElement === canvas) {
+      accumulatedX += e.movementX;
+      accumulatedY += e.movementY;
+    }
+  });
 
   // --- MOUSE BUTTONS ---
   window.addEventListener("mousedown", (e) => {
-    if (e.button === 0) {
-      keys.add("Mouse0");
-    }
+    if (e.button === 0) keys.add("Mouse0"); // Left
+    if (e.button === 1) keys.add("Mouse1"); // Middle
+    if (e.button === 2) keys.add("Mouse2"); // Right
   });
-
   window.addEventListener("mouseup", (e) => {
-    if (e.button === 0) {
-      keys.delete("Mouse0");
-    }
+    if (e.button === 0) keys.delete("Mouse0");
+    if (e.button === 1) keys.delete("Mouse1");
+    if (e.button === 2) keys.delete("Mouse2");
   });
 
-  // --- KEYBOARD ---
+  // --- KEYS ---
   window.addEventListener("keydown", (e) => {
-    // Prevent Tab from changing browser focus
+    // Prevent Tab from changing focus
     if (e.code === "Tab") {
       e.preventDefault();
     }
@@ -110,11 +105,12 @@ export function initInput(canvas: HTMLCanvasElement) {
 
 // Call this once per frame from your main loop
 export function updateInput() {
-  // Movement
-  inputState.forward =
-    (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
-  inputState.right =
-    (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
+  // --- FIX ---
+  // Movement (calculates -1, 0, or 1)
+  inputState.forward = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
+  inputState.right = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
+  // --- END FIX ---
+
   inputState.jump = keys.has("Space");
 
   // Fire / sprint
@@ -127,18 +123,17 @@ export function updateInput() {
   inputState.useRepairTool = keys.has("Digit5");
   inputState.useGrenade = keys.has("KeyG");
 
-  // Scoreboard: visible while Tab is held
+  // UI
   inputState.showScoreboard = keys.has("Tab");
-
-  // Reset one-shot Tab press
-  if (!keys.has("Tab")) {
-    keysPressed.delete("Tab");
-  }
 
   // Mouse look
   inputState.deltaX = accumulatedX;
   inputState.deltaY = accumulatedY;
 
+  // Reset accumulators
   accumulatedX = 0;
   accumulatedY = 0;
+
+  // Clear one-shot presses
+  keysPressed.clear();
 }

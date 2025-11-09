@@ -69,26 +69,30 @@ interface EntitySnapshot {
 
 type WorldSnapshot = EntitySnapshot[];
 
+// This matches the 'PlayerInputs' struct in sim.rs
+interface PlayerInputs {
+  forward: number; // This is a number (-1 to 1)
+  right: number; // This is a number (-1 to 1)
+  jump: boolean;
+  fire: boolean;
+  sprint: boolean;
+  showScoreboard: boolean;
+}
+
+// This matches the 'InputPayload' struct in sim.rs
 interface InputPayload {
   tick: number;
-  inputs: {
-    forward: number;
-    right: number;
-    jump: boolean;
-    fire: boolean;
-    sprint: boolean;
-  };
+  inputs: PlayerInputs; // Nested object
+  delta_x: number; // Mouse X at top level
+  delta_y: number; // Mouse Y at top level
 }
 // === 2. MAIN ENTRY ===
 async function startGame() {
-  // --- THIS IS THE FIX ---
-  // Make all overlays invisible to mouse clicks,
-  // so the click "passes through" to the canvas.
+  // Make overlays invisible to mouse clicks
   hudEl.style.pointerEvents = "none";
   respawnScreenEl.style.pointerEvents = "none";
   scoreboardEl.style.pointerEvents = "none";
   matchEndEl.style.pointerEvents = "none";
-  // --- END OF FIX ---
 
   // Show/Hide Logic
   menuEl.style.display = "none";
@@ -180,8 +184,6 @@ async function startGame() {
   }
 
   // === 6. GAME LOOP ===
-  // This line is CRITICAL. It finds the canvas and adds
-  // the 'onclick' listener that triggers the mouse lock.
   initInput(canvas);
 
   let last = performance.now();
@@ -201,32 +203,52 @@ async function startGame() {
     last = now;
     accumulator += frameTime;
 
-// 1. Get Mouse/Key Input
-updateInput();
-// if (canvas === document.pointerLockElement) { // <-- TEMP: Comment out
-  playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
-  playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
-  playerRotation.x = Math.max(
-    -Math.PI / 2,
-    Math.min(Math.PI / 2, playerRotation.x)
-  );
-// } // <-- TEMP: Comment out
+    // 1. Get Mouse/Key Input
+    updateInput();
+
+    // --- THIS IS THE FIX ---
+    // We must ensure we only send deltas to Rust when the pointer is locked,
+    // otherwise the player will keep spinning.
+    let delta_x_to_send = 0;
+    let delta_y_to_send = 0;
+
+    if (document.pointerLockElement === canvas) {
+      // Update the local camera rotation
+      playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
+      playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
+      playerRotation.x = Math.max(
+        -Math.PI / 2,
+        Math.min(Math.PI / 2, playerRotation.x)
+      );
+      
+      // Set the deltas to send to Rust
+      delta_x_to_send = inputState.deltaX;
+      delta_y_to_send = inputState.deltaY;
+    }
+    // --- END OF FIX ---
+
 
     // 2. Run Rust simulation at a fixed 60Hz tick
     if (accumulator >= FIXED_DT_MS && !isProcessingTick) {
       isProcessingTick = true;
 
-      const payload: InputPayload = {
-        tick,
-        inputs: {
-          forward: inputState.forward,
-          right: inputState.right,
-          jump: inputState.jump,   // <-- FIX
-          fire: inputState.fire,   // <-- FIX
-          sprint: inputState.sprint, // <-- FIX
-        },
+      // Build the inputs object for Rust
+      const inputs: PlayerInputs = {
+        forward: inputState.forward,
+        right: inputState.right,
+        jump: inputState.jump,
+        fire: inputState.fire,
+        sprint: inputState.sprint,
+        showScoreboard: inputState.showScoreboard,
       };
-      
+
+      // Build the full payload for Rust
+      const payload: InputPayload = {
+        tick: tick,
+        inputs: inputs,
+        delta_x: delta_x_to_send, // <-- Use the corrected delta
+        delta_y: delta_y_to_send, // <-- Use the corrected delta
+      };
 
       // 3. Call `step_tick`
       invoke<WorldSnapshot>("step_tick", { payload: payload })
