@@ -18,13 +18,11 @@ pub struct Velocity {
     pub z: f32,
 }
 
-// --- ADD THIS NEW COMPONENT ---
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Rotation {
     pub yaw: f32,
     pub pitch: f32,
 }
-// --- END OF ADDITION ---
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Health {
@@ -50,6 +48,26 @@ pub struct Stamina {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Player;
 
+// --- REMOVED 'Target' STRUCT ---
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub enum TeamId {
+    None,
+    TeamA,
+    TeamB,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Team {
+    pub id: TeamId,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct Score {
+    pub kills: u32,
+    pub deaths: u32,
+}
+
 // --- This struct MUST match the 'PlayerInputs' interface in main.ts ---
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct PlayerInputs {
@@ -68,28 +86,42 @@ pub const SPEED: f32 = 3.0;
 pub const SPRINT_SPEED: f32 = 6.0;
 pub const TICK_RATE: u32 = 60;
 pub const TICK_DT: f32 = 1.0 / TICK_RATE as f32;
-pub const MOUSE_SENSITIVITY: f32 = 0.002; // <-- ADD THIS
+pub const MOUSE_SENSITIVITY: f32 = 0.002;
+pub const WEAPON_MAX_RANGE: f32 = 100.0;
+pub const WEAPON_HIT_ACCURACY: f32 = 0.98;
 
-// --- Data Structures for Tauri ---
+// --- DATA STRUCTURES FOR TAURI ---
 
-// --- This struct MUST match the 'InputPayload' interface in main.ts ---
 #[derive(Debug, Clone, Deserialize)]
 pub struct InputPayload {
     pub tick: u32,
     pub inputs: PlayerInputs, // Nested object
-    // Mouse deltas at the top level
     pub delta_x: f32,
     pub delta_y: f32,
 }
 
-// --- This struct MUST match the 'EntitySnapshot' interface in main.ts ---
 #[derive(Debug, Clone, Serialize)]
 pub struct EntitySnapshot {
     pub eid: u32,
     pub transform: Transform,
     pub health: Option<Health>,
     pub stamina: Option<Stamina>,
-    // You could add pub rotation: Option<Rotation> here if needed
+    pub team: Option<Team>,
+    pub score: Option<Score>,
 }
 
 pub type WorldSnapshot = Vec<EntitySnapshot>;
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct GameModeState {
+    pub team_a_tickets: i32,
+    pub team_b_tickets: i32,
+    pub match_ended: bool,
+    pub winner: TeamId,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TickSnapshot {
+    pub entities: WorldSnapshot,
+    pub game_state: GameModeState,
+}

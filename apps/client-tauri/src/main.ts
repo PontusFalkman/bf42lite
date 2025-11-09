@@ -27,280 +27,285 @@ const matchEndEl = document.getElementById(
   "match-end-message"
 ) as HTMLDivElement | null;
 
-if (
-  !canvas ||
-  !hudEl ||
-  !menuEl ||
-  !fpsEl ||
-  !healthEl ||
-  !staminaEl ||
-  !respawnScreenEl ||
-  !scoreboardEl ||
-  !matchEndEl
-) {
-  throw new Error("UI elements not found. Check index.html.");
+// --- Get new scoreboard UI elements ---
+const teamATicketsEl = document.getElementById(
+  "team-a-tickets"
+) as HTMLSpanElement | null;
+const teamBTicketsEl = document.getElementById(
+  "team-b-tickets"
+) as HTMLSpanElement | null;
+const matchWinnerEl = document.getElementById(
+  "match-winner"
+) as HTMLSpanElement | null;
+
+// Basic null-check
+if (!canvas || !hudEl || !menuEl) {
+  throw new Error("Failed to find one or more essential UI elements!");
 }
 
-// === 1. DEFINE RUST BRIDGE TYPES ===
-interface RustTransform {
+// === 1. THREE.JS SETUP ===
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(
+  75,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+// Simple lighting so we can see the player cubes
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(5, 10, 7.5);
+scene.add(dirLight);
+
+// Simple ground plane
+const groundGeo = new THREE.PlaneGeometry(100, 100);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+// Player object map
+const playerObjects = new Map<number, THREE.Mesh>();
+const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
+const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+// === 2. RUST INTERFACES (UPDATED) ===
+// These must match 'sim.rs'
+
+interface PlayerInputs {
+  forward: number;
+  right: number;
+  jump: boolean;
+  fire: boolean;
+  sprint: boolean;
+  showScoreboard: boolean; // Must be camelCase (serde rename on Rust side)
+}
+
+interface InputPayload {
+  tick: number;
+  inputs: PlayerInputs;
+  delta_x: number;
+  delta_y: number;
+}
+
+enum TeamId {
+  None = "None",
+  TeamA = "TeamA",
+  TeamB = "TeamB",
+}
+
+interface Team {
+  id: TeamId;
+}
+
+interface Score {
+  kills: number;
+  deaths: number;
+}
+
+interface Transform {
   x: number;
   y: number;
   z: number;
 }
 
-interface RustHealth {
+interface Health {
   current: number;
   max: number;
 }
 
-interface RustStamina {
+interface Stamina {
   current: number;
   max: number;
-  regen_rate: number;
-  drain_rate: number;
 }
 
 interface EntitySnapshot {
   eid: number;
-  transform: RustTransform;
-  health: RustHealth | null;
-  stamina: RustStamina | null;
+  transform: Transform;
+  health: Health | null;
+  stamina: Stamina | null;
+  team: Team | null;
+  score: Score | null;
 }
 
-type WorldSnapshot = EntitySnapshot[];
-
-// This matches the 'PlayerInputs' struct in sim.rs
-interface PlayerInputs {
-  forward: number; // This is a number (-1 to 1)
-  right: number; // This is a number (-1 to 1)
-  jump: boolean;
-  fire: boolean;
-  sprint: boolean;
-  showScoreboard: boolean;
+interface GameModeState {
+  team_a_tickets: number;
+  team_b_tickets: number;
+  match_ended: boolean;
+  winner: TeamId;
 }
 
-// This matches the 'InputPayload' struct in sim.rs
-interface InputPayload {
-  tick: number;
-  inputs: PlayerInputs; // Nested object
-  delta_x: number; // Mouse X at top level
-  delta_y: number; // Mouse Y at top level
+interface TickSnapshot {
+  entities: EntitySnapshot[];
+  game_state: GameModeState;
 }
-// === 2. MAIN ENTRY ===
-async function startGame() {
-  // Make overlays invisible to mouse clicks
-  hudEl.style.pointerEvents = "none";
-  respawnScreenEl.style.pointerEvents = "none";
-  scoreboardEl.style.pointerEvents = "none";
-  matchEndEl.style.pointerEvents = "none";
 
-  // Show/Hide Logic
-  menuEl.style.display = "none";
-  hudEl.style.display = "block"; // Show the HUD
-  canvas.style.display = "block";
-  respawnScreenEl.style.display = "none";
-  scoreboardEl.style.display = "none";
-  matchEndEl.style.display = "none";
+// === 3. GAME STATE & HELPERS ===
+let localPlayerEid: number | null = null;
+let playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
+let tick = 0;
 
-  // === 3. THREE.JS SETUP ===
-  const renderer = new THREE.WebGLRenderer({ canvas });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x202028);
-
-  const camera = new THREE.PerspectiveCamera(
-    75,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    1000
-  );
-  camera.rotation.order = "YXZ";
-
-  const playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
-  const MOUSE_SENSITIVITY = 0.002;
-
-  const light = new THREE.DirectionalLight(0xffffff, 1.0);
-  light.position.set(10, 20, 5);
-  scene.add(light);
-  const ambientLight = new THREE.AmbientLight(0x606060, 1.5);
-  scene.add(ambientLight);
-
-  const floor = new THREE.Mesh(
-    new THREE.BoxGeometry(50, 1, 50),
-    new THREE.MeshStandardMaterial({ color: 0x444444 })
-  );
-  floor.position.y = -0.5;
-  scene.add(floor);
-
-  // === 4. CLIENT RENDER STATE ===
-  let localPlayerEid: number | null = null;
-  const playerObjects = new Map<number, THREE.Object3D>();
-  const fallbackGeometry = new THREE.BoxGeometry();
-  const fallbackMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
-
-  function getPlayerObject(eid: number): THREE.Object3D {
-    let rootObject = playerObjects.get(eid);
-    if (!rootObject) {
-      rootObject = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
-      scene.add(rootObject);
-      playerObjects.set(eid, rootObject);
-      console.log(`Created render object for new entity ${eid}`);
-    }
-    return rootObject;
+function getPlayerObject(eid: number): THREE.Mesh {
+  let obj = playerObjects.get(eid);
+  if (!obj) {
+    obj = new THREE.Mesh(playerGeo, playerMat.clone());
+    scene.add(obj);
+    playerObjects.set(eid, obj);
   }
+  return obj;
+}
 
-  // === 5. CALL RUST `init_sim` ===
+// === 4. CORE GAME LOOP ===
+
+// The gameLoop(0) call lives inside init()
+async function init() {
+  console.log("Initializing simulation...");
   try {
-    const initSnapshot: EntitySnapshot = await invoke("init_sim");
-    localPlayerEid = initSnapshot.eid;
+    const initialSnapshot: TickSnapshot = await invoke("init_sim");
 
-    const obj = getPlayerObject(localPlayerEid);
-
-    obj.position.set(
-      initSnapshot.transform.x,
-      initSnapshot.transform.y,
-      initSnapshot.transform.z
-    );
-
-    // Set initial HUD values
-    if (initSnapshot.health && healthEl) {
-      healthEl.textContent = `HP: ${initSnapshot.health.current.toFixed(0)}`;
-    }
-    if (initSnapshot.stamina && staminaEl) {
-      staminaEl.textContent = `STAM: ${initSnapshot.stamina.current.toFixed(0)}`;
+    if (initialSnapshot.entities.length > 0) {
+      localPlayerEid = initialSnapshot.entities[0].eid;
+      console.log(`Local player EID set to: ${localPlayerEid}`);
+    } else {
+      console.error("Init snapshot was empty!");
     }
 
-    const cameraOffset = new THREE.Vector3(0, 2, 4);
-    camera.position.copy(obj.position).add(cameraOffset);
-    camera.lookAt(obj.position);
+    menuEl?.classList.add("hidden");
+    hudEl?.classList.remove("hidden");
 
-    console.log(
-      `Rust simulation initialized. Local player EID: ${localPlayerEid}`
-    );
+    initInput(canvas);
+
+    // Start the game loop after init is done
+    gameLoop(0);
   } catch (e) {
     console.error("Failed to init simulation:", e);
-    alert("Failed to init Rust simulation. Check console.");
-    return;
+    alert("Failed to start simulation. See console for details.");
   }
-
-  // === 6. GAME LOOP ===
-  initInput(canvas);
-
-  let last = performance.now();
-  const FIXED_DT_MS = 1000 / 60; // 60hz
-  let accumulator = 0;
-  let tick = 0;
-
-  let frameCount = 0;
-  let lastFPSUpdate = performance.now();
-  let isProcessingTick = false;
-
-  function loop() {
-    requestAnimationFrame(loop);
-
-    const now = performance.now();
-    const frameTime = Math.min(now - last, 1000);
-    last = now;
-    accumulator += frameTime;
-
-    // 1. Get Mouse/Key Input
-    updateInput();
-
-    // --- THIS IS THE FIX ---
-    // We must ensure we only send deltas to Rust when the pointer is locked,
-    // otherwise the player will keep spinning.
-    let delta_x_to_send = 0;
-    let delta_y_to_send = 0;
-
-    if (document.pointerLockElement === canvas) {
-      // Update the local camera rotation
-      playerRotation.y -= inputState.deltaX * MOUSE_SENSITIVITY;
-      playerRotation.x -= inputState.deltaY * MOUSE_SENSITIVITY;
-      playerRotation.x = Math.max(
-        -Math.PI / 2,
-        Math.min(Math.PI / 2, playerRotation.x)
-      );
-      
-      // Set the deltas to send to Rust
-      delta_x_to_send = inputState.deltaX;
-      delta_y_to_send = inputState.deltaY;
-    }
-    // --- END OF FIX ---
-
-
-    // 2. Run Rust simulation at a fixed 60Hz tick
-    if (accumulator >= FIXED_DT_MS && !isProcessingTick) {
-      isProcessingTick = true;
-
-      // Build the inputs object for Rust
-      const inputs: PlayerInputs = {
-        forward: inputState.forward,
-        right: inputState.right,
-        jump: inputState.jump,
-        fire: inputState.fire,
-        sprint: inputState.sprint,
-        showScoreboard: inputState.showScoreboard,
-      };
-
-      // Build the full payload for Rust
-      const payload: InputPayload = {
-        tick: tick,
-        inputs: inputs,
-        delta_x: delta_x_to_send, // <-- Use the corrected delta
-        delta_y: delta_y_to_send, // <-- Use the corrected delta
-      };
-
-      // 3. Call `step_tick`
-      invoke<WorldSnapshot>("step_tick", { payload: payload })
-        .then((snapshot) => {
-          // 4. Apply the new state from Rust
-          for (const entity of snapshot) {
-            const { eid, transform, health, stamina } = entity;
-            const obj = getPlayerObject(eid);
-
-            obj.position.set(transform.x, transform.y, transform.z);
-
-            // 5. Update camera and HUD for local player
-            if (eid === localPlayerEid) {
-              camera.rotation.copy(playerRotation);
-              const cameraOffset = new THREE.Vector3(0, 2, 4);
-              cameraOffset.applyEuler(playerRotation);
-              camera.position.copy(obj.position).add(cameraOffset);
-
-              if (health && healthEl) {
-                healthEl.textContent = `HP: ${health.current.toFixed(0)}`;
-              }
-              if (stamina && staminaEl) {
-                staminaEl.textContent = `STAM: ${stamina.current.toFixed(0)}`;
-              }
-            }
-          }
-
-          // 6. Render the scene
-          renderer.render(scene, camera);
-
-          // Update FPS counter
-          frameCount++;
-          if (now - lastFPSUpdate > 250) {
-            const fps = frameCount / ((now - lastFPSUpdate) / 1000);
-            if (fpsEl) {
-              fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
-            }
-            frameCount = 0;
-            lastFPSUpdate = now;
-          }
-        })
-        .catch(console.error)
-        .finally(() => {
-          isProcessingTick = false;
-        });
-
-      tick++;
-      accumulator -= FIXED_DT_MS;
-    }
-  }
-
-  loop();
 }
 
-startGame();
+let lastTime = 0;
+let frameCount = 0;
+let lastFPSUpdate = 0;
+
+async function gameLoop(now: number) {
+  requestAnimationFrame(gameLoop);
+
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+
+  // Update input state for this frame
+  updateInput();
+
+  const deltaX = inputState.deltaX;
+  const deltaY = inputState.deltaY;
+
+  // Apply mouse look
+  playerRotation.y -= deltaX;
+  playerRotation.x -= deltaY;
+  playerRotation.x = Math.max(
+    -Math.PI / 2,
+    Math.min(Math.PI / 2, playerRotation.x)
+  );
+
+  const payload: InputPayload = {
+    tick: tick++,
+    inputs: inputState as PlayerInputs,
+    delta_x: deltaX,
+    delta_y: deltaY,
+  };
+
+  try {
+    const tickData: TickSnapshot = await invoke("step_tick", {
+      payload,
+    });
+
+    updateUI(tickData.game_state);
+
+    for (const entity of tickData.entities) {
+      const { eid, transform, health, stamina } = entity;
+      const obj = getPlayerObject(eid);
+    
+      obj.position.set(transform.x, transform.y, transform.z);
+    
+      if (eid === localPlayerEid) {
+        // hide local player model so camera is not inside it
+        obj.visible = false;
+    
+        camera.rotation.copy(playerRotation);
+        const cameraOffset = new THREE.Vector3(0, 0.6, 0); // eye height
+        camera.position.copy(obj.position).add(cameraOffset);
+    
+        if (health && healthEl) {
+          healthEl.textContent = `HP: ${health.current.toFixed(0)}`;
+        }
+        if (stamina && staminaEl) {
+          staminaEl.textContent = `STAM: ${stamina.current.toFixed(0)}`;
+        }
+      } else {
+        // show everyone else
+        obj.visible = true;
+      }
+    }    
+
+    renderer.render(scene, camera);
+
+    // FPS counter
+    frameCount++;
+    if (now - lastFPSUpdate > 250) {
+      const fps = (frameCount * 1000) / (now - lastFPSUpdate);
+      if (fpsEl) {
+        fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
+      }
+      frameCount = 0;
+      lastFPSUpdate = now;
+    }
+  } catch (e) {
+    console.error(`Error in tick ${tick}:`, e);
+  }
+}
+
+function updateUI(gameState: GameModeState) {
+  if (teamATicketsEl)
+    teamATicketsEl.textContent = String(gameState.team_a_tickets);
+  if (teamBTicketsEl)
+    teamBTicketsEl.textContent = String(gameState.team_b_tickets);
+
+  if (inputState.showScoreboard) {
+    scoreboardEl?.classList.remove("hidden");
+  } else {
+    scoreboardEl?.classList.add("hidden");
+  }
+
+  if (gameState.match_ended) {
+    hudEl?.classList.add("hidden");
+
+    if (matchEndEl && matchWinnerEl) {
+      const winnerText =
+        gameState.winner === TeamId.TeamA
+          ? "Team A Wins!"
+          : gameState.winner === TeamId.TeamB
+          ? "Team B Wins!"
+          : "Draw";
+
+      matchWinnerEl.textContent = winnerText;
+      matchEndEl.classList.remove("hidden");
+    }
+  } else {
+    hudEl?.classList.remove("hidden");
+    matchEndEl?.classList.add("hidden");
+  }
+}
+
+// === 5. STARTUP ===
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+init();

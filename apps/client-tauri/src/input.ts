@@ -8,28 +8,28 @@ let accumulatedX = 0;
 let accumulatedY = 0;
 
 export const inputState = {
-  // --- FIX ---
   // Changed from boolean back to number to match Rust (f32)
   forward: 0,
   right: 0,
-  // --- END FIX ---
+  // END FIX
   jump: false,
   fire: false,
   sprint: false,
 
-  // Gadgets / actions (from your file)
+  // Gadgets / actions
   useGadget: false,
   useMedBox: false,
   useRepairTool: false,
   useGrenade: false,
 
+  // UI
+  showScoreboard: false,
+
   // Mouse look
   deltaX: 0,
   deltaY: 0,
-
-  // UI
-  showScoreboard: false,
 };
+
 
 export function initInput(canvas: HTMLCanvasElement) {
   // --- CLICK → POINTER LOCK ---
@@ -104,24 +104,25 @@ export function initInput(canvas: HTMLCanvasElement) {
 }
 
 // Call this once per frame from your main loop
-export function updateInput() {
-  // --- THIS IS THE FIX ---
-  // Movement (calculates -1, 0, or 1)
-  inputState.forward = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
-  inputState.right = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
-  // --- END FIX ---
+export function updateInput(dt: number) {
+  // Movement
+  inputState.forward =
+    (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
+  inputState.right =
+    (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
 
   inputState.jump = keys.has("Space");
 
   // Fire / sprint
   inputState.fire = keys.has("Mouse0");
-  inputState.sprint = keys.has("ShiftLeft") || keys.has("ShiftRight");
+  inputState.sprint =
+    keys.has("ShiftLeft") || keys.has("ShiftRight");
 
   // Gadgets
-  inputState.useGadget = keys.has("Digit3");
-  inputState.useMedBox = keys.has("Digit4");
-  inputState.useRepairTool = keys.has("Digit5");
-  inputState.useGrenade = keys.has("KeyG");
+  inputState.useGadget = keysPressed.has("KeyG");
+  inputState.useMedBox = keysPressed.has("KeyH");
+  inputState.useRepairTool = keysPressed.has("KeyR");
+  inputState.useGrenade = keysPressed.has("KeyF");
 
   // UI
   inputState.showScoreboard = keys.has("Tab");
@@ -130,10 +131,15 @@ export function updateInput() {
   inputState.deltaX = accumulatedX;
   inputState.deltaY = accumulatedY;
 
+  const deltaX = inputState.deltaX;
+  const deltaY = inputState.deltaY;
+
   // Reset accumulators
   accumulatedX = 0;
   accumulatedY = 0;
 
   // Clear one-shot presses
   keysPressed.clear();
+
+  return { deltaX, deltaY };
 }

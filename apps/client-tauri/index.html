@@ -1,216 +1,176 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bf42lite</title>
     <style>
-      body { 
-        margin: 0; 
-        overflow: hidden; 
-        background-color: #202028;
+      /* --- Reset --- */
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
         color: white;
-        font-family: monospace;
+        background-color: #111;
       }
-      canvas {
-        display: block; /* Hide canvas by default */
-      }
-      #hud {
-        display: none; /* Hide HUD by default */
-        position: absolute;
-        top: 0;
-        left: 0;
-        z-index: 100;
+
+      /* --- Game Canvas --- */
+      #game {
+        display: block;
         width: 100vw;
         height: 100vh;
       }
-      #fps-counter, #rtt-counter {
+
+      /* --- UI Containers --- */
+      .ui-overlay {
         position: absolute;
-        left: 10px;
-        font-size: 20px;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        box-sizing: border-box;
       }
-      #fps-counter {
-        top: 10px;
+
+      /* --- Main Menu --- */
+      #menu {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.7);
+        pointer-events: all;
       }
-      #rtt-counter {
-        top: 60px; /* Positioned below the FPS counter */
+      #menu.hidden {
+        display: none;
       }
-      /* --- V4: HUD EXPANSION --- */
+
+      /* --- Heads Up Display (HUD) --- */
+      #hud {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      #hud.hidden {
+        display: none;
+      }
+
+      /* HUD Top: Scoreboard */
+      #scoreboard-top {
+        display: flex;
+        justify-content: space-around;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        font-size: 24px;
+      }
+      #scoreboard-top .team-a {
+        color: #61a9fa;
+      }
+      #scoreboard-top .team-b {
+        color: #fa6161;
+      }
+
+      /* HUD Bottom: Player Stats */
+      #player-stats {
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.3);
+        text-align: left;
+      }
+
+      /* HUD Center: Crosshair */
       #crosshair {
         position: absolute;
         top: 50%;
         left: 50%;
-        /* Center the '+' */
-        transform: translate(-50%, -50%); 
-        font-size: 24px;
-        color: rgba(255, 255, 255, 0.7);
-        /* Prevents text selection */
-        user-select: none; 
-      }
-      #hud-stats {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        font-size: 28px;
-        font-weight: bold;
-      }
-      #hud-stats div {
-        margin-top: 10px;
-        /* Add a slight shadow to make text readable */
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-      }
-      /* --- END V4 --- */
-      /* --- V6: RESPAWN SCREEN --- */
-      #respawn-screen {
-        display: none; /* Hidden by default */
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-color: rgba(0, 0, 0, 0.85); /* Dark overlay */
-        z-index: 150; /* Over HUD (100), under Menu (200) */
-        color: white;
-        
-        /* Center content */
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-      }
-      #respawn-screen h2 {
-        font-size: 48px;
-        color: #ff4444; /* Red "down" message */
-        margin: 0;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-      }
-      #respawn-timer {
-        font-size: 72px;
-        font-weight: bold;
-        margin: 20px 0;
-      }
-      /* --- END V6 --- */
-      /* New Menu Styles */
-      #menu {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 100vw;
-        height: 100vh;
-        z-index: 200;
-      }
-      #menu h1 {
-        font-size: 48px;
-        color: #eee;
-        margin-bottom: 40px;
-      }
-      .menu-button {
-        font-family: monospace;
-        font-size: 24px;
-        background-color: #4488ff;
-        color: white;
-        border: none;
-        padding: 15px 30px;
-        margin: 10px;
-        cursor: pointer;
-        min-width: 200px;
-      }
-      .menu-button:hover {
-        background-color: #5599ff;
-      }
-      #join-section {
-        margin-top: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      #join-section input {
-        font-family: monospace;
-        font-size: 20px;
-        padding: 10px;
-        margin-bottom: 10px;
-        background-color: #333;
-        border: 1px solid #555;
-        color: white;
-        width: 260px;
-      }
-      #scoreboard {
-        position: absolute;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        gap: 40px;
-        font-size: 24px;
-        color: white;
-        background: rgba(0, 0, 0, 0.5);
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-family: monospace;
-        text-shadow: 1px 1px 2px black;
-        z-index: 110; /* Above HUD, below respawn */
-        display: none; /* Hide by default */
+        width: 4px;
+        height: 4px;
+        background-color: white;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
       }
 
-      #match-end-message {
-        position: absolute;
-        top: 40%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 60px;
-        color: white;
-        text-shadow: 2px 2px 4px black;
-        display: none; /* Hidden by default */
-        z-index: 160; /* Above respawn screen */
-        font-family: monospace;
+      /* --- Fullscreen Overlays --- */
+
+      /* Scoreboard (Tab) */
+      #scoreboard {
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.8);
       }
-      /* ++ END G4 STYLES ++ */
-      /* Make non-interactive overlays click-through */
-#hud,
-#scoreboard,
-#match-end-message {
-  pointer-events: none;
-}
+      #scoreboard.hidden {
+        display: none;
+      }
+
+      /* Respawn Screen */
+      #respawn-screen {
+        justify-content: center;
+        align-items: center;
+        background: rgba(120, 0, 0, 0.5);
+      }
+      #respawn-screen.hidden {
+        display: none;
+      }
+
+      /* Match End Screen */
+      #match-end-message {
+        display: flex; /* <-- Display must be 'flex' */
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        background: rgba(0, 0, 100, 0.7);
+        text-align: center;
+      }
+      #match-end-message.hidden {
+        display: none;
+      }
+      #match-end-message h1 {
+        font-size: 48px;
+        margin: 0;
+      }
     </style>
   </head>
   <body>
-    <div id="menu">
+    <canvas id="game"></canvas>
+
+    <div id="menu" class="ui-overlay">
       <h1>bf42lite</h1>
-      <button id="btn-host" class="menu-button">Host (Loopback)</button>
-      <div id="join-section">
-        <input type="text" id="join-ip" value="ws://localhost:8080" />
-        <button id="btn-join" class="menu-button">Join</button>
+      <p>Loading... (Waiting for Rust)</p>
+    </div>
+
+    <div id="hud" class="ui-overlay hidden">
+      <div id="scoreboard-top">
+        <span class="team-a">
+          Team A: <span id="team-a-tickets">100</span>
+        </span>
+        <span class="team-b">
+          Team B: <span id="team-b-tickets">100</span>
+        </span>
+      </div>
+
+      <div id="crosshair">+</div>
+
+      <div id="player-stats">
+        <div id="health-counter">HP: 100</div>
+        <div id="stamina-counter">STAM: 100</div>
+        <div id="fps-counter">FPS: ...</div>
       </div>
     </div>
 
-    <div id="hud">
-      <div id="fps-counter">FPS: ...</div>
-      <div id="rtt-counter">RTT: ...</div>
-
-      <div id="crosshair">+</div>
-      <div id="hud-stats">
-        <div id="health-counter">HP: 100</div>
-        <div id="stamina-counter">STAM: 100</div>
-        <div id="ammo-counter">AMMO: 30 / 120</div>
-        <div id="gadget-counter">GADGET: READY</div>
-        <div id="med-gadget-counter">MEDBOX: READY</div>
-        <div id="repair-tool-counter">REPAIR: 0%</div>
-        <div id="grenade-gadget-counter">GRENADE: READY</div> </div>
+    <div id="respawn-screen" class="ui-overlay hidden">
+      <h1>You are dead!</h1>
     </div>
 
-    <div id="respawn-screen">
-      <h2>YOU ARE DOWN</h2>
-      <div id="respawn-timer">5</div>
-      <button id="btn-deploy" class="menu-button" disabled>DEPLOYING IN...</button>
+    <div id="scoreboard" class="ui-overlay hidden">
+      <h1>Scoreboard</h1>
+      </div>
+
+    <div id="match-end-message" class="ui-overlay hidden">
+      <h1>Match Over!</h1>
+      <h2>Winner: <span id="match-winner">TEAM A</span></h2>
     </div>
 
-    <div id="scoreboard">
-      <div class="team" id="team1-score">Team 1: 50</div>
-      <div class="team" id="team2-score">Team 2: 50</div>
-    </div>
-    <div id="match-end-message"></div>
-
-    <canvas id="game"></canvas>
-    
-    <script type="module" src="./src/main.ts"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
