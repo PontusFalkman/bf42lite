@@ -105,7 +105,7 @@ export function initInput(canvas: HTMLCanvasElement) {
 
 // Call this once per frame from your main loop
 export function updateInput() {
-  // --- FIX ---
+  // --- THIS IS THE FIX ---
   // Movement (calculates -1, 0, or 1)
   inputState.forward = (keys.has("KeyW") ? 1 : 0) - (keys.has("KeyS") ? 1 : 0);
   inputState.right = (keys.has("KeyD") ? 1 : 0) - (keys.has("KeyA") ? 1 : 0);
