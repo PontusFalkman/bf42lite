@@ -17,6 +17,7 @@ export const inputState = {
   useGadget: false, // <-- ADD THIS (Ammo Box)
   useMedBox: false, // <-- ADD THIS (Med Box)
   useRepairTool: false, // <-- ADD THIS (Repair Tool)
+  useGrenade: false, // <-- X3: ADD THIS
   deltaX: 0,
   deltaY: 0,
   // --- G4: ADD SCOREBOARD STATE ---
@@ -89,6 +90,7 @@ export function updateInput() {
   inputState.useGadget = keys.has("Digit3"); // <-- ADD THIS (Use '3' key)
   inputState.useMedBox = keys.has("Digit4"); // <-- ADD THIS (Use '4' key)
   inputState.useRepairTool = keys.has("Digit5"); // <-- ADD THIS (Use '5' key)
+  inputState.useGrenade = keys.has("KeyG"); // <-- X3: ADD THIS (Use 'G' key)
   
   // --- G4: UPDATE SCOREBOARD STATE ---
   if (!keys.has("Tab")) {

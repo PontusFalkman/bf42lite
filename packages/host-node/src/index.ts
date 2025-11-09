@@ -2,7 +2,8 @@
 
 import { WebSocket, WebSocketServer } from "ws";
 // --- X2: Import defineQuery ---
-import { addComponent, addEntity, defineQuery } from "bitecs";
+// --- X3: Import removeEntity (or not, see below) ---
+import { addComponent, addEntity, defineQuery, removeComponent } from "bitecs";
 import { Packr } from "msgpackr";
 import {
   InputMsg,
@@ -37,6 +38,12 @@ import {
   // --- IMPORT REPAIR TOOL ---
   RepairTool,
   // --- END REPAIR TOOL ---
+  // --- X3: IMPORT GRENADE COMPONENTS ---
+  GrenadeGadget,
+  Grenade,
+  GrenadeTimer,
+  Gravity,
+  // --- END X3 ---
 } from "@sim/logic";
 
 const PORT = 8080;
@@ -79,6 +86,16 @@ const REPAIR_HEAL_PS = 15.0; // HP healed per second
 const REPAIR_RANGE = 5.0; // Max distance to heal a teammate
 // --- END REPAIR TOOL CONSTANTS ---
 
+// --- X3: ADD GRENADE & PHYSICS CONSTANTS ---
+const GRENADE_COOLDOWN_SEC = 10.0;
+const GRENADE_TIMER_SEC = 3.0;
+const GRENADE_THROW_FORCE = 10.0;
+const GRENADE_DAMAGE = 80;
+const GRENADE_EXPLOSION_RADIUS_SQ = 7.0 * 7.0;
+const GRAVITY_ACCEL = -9.81 * 2.0; // A bit stronger for "game feel"
+const BOUNCE_DAMPENING = 0.5; // 50% energy loss on bounce
+// --- END X3 ---
+
 // --- G4: ADD GAME STATE CONSTANTS ---
 const STARTING_TICKETS = 50;
 const GAME_STATE_EID = addEntity(world); // Singleton entity for game state
@@ -97,6 +114,10 @@ const ammoBoxQuery = defineQuery([AmmoBox, Transform]);
 // --- Query for med boxes ---
 const medBoxQuery = defineQuery([MedBox, Transform]);
 // --- END med box ---
+// --- X3: Query for grenades & physics ---
+const grenadeQuery = defineQuery([Grenade, Transform, Velocity, GrenadeTimer]);
+const physicsQuery = defineQuery([Gravity, Transform, Velocity]);
+// --- END X3 ---
 
 let tick = 0;
 let teamCounter = 0; // --- G4: For balancing teams ---
@@ -159,6 +180,12 @@ wss.on("connection", (ws) => {
   RepairTool.max[playerEid] = REPAIR_TOOL_MAX_HEAT;
   // --- END REPAIR TOOL ---
 
+  // --- X3: ADD GRENADE GADGET ---
+  addComponent(world, GrenadeGadget, playerEid);
+  GrenadeGadget.cooldown[playerEid] = 0.0;
+  GrenadeGadget.maxCooldown[playerEid] = GRENADE_COOLDOWN_SEC;
+  // --- END X3 ---
+
   // --- G4: ADD TEAM AND STATS ---
   addComponent(world, Team, playerEid);
   Team.id[playerEid] = teamCounter % 2; // Alternate teams (0 or 1)
@@ -173,11 +200,13 @@ wss.on("connection", (ws) => {
   clients.set(ws, playerEid);
   // --- C2: Update default input state ---
   // --- X2: Add useGadget ---
-  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false }); // <-- 5. ADD SPRINT & X2 & MEDBOX & REPAIR
+  // --- X3: Add useGrenade ---
+  inputs.set(playerEid, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false, useGrenade: false }); // <-- 5. ADD SPRINT & X2 & MEDBOX & REPAIR & X3
   // --- N4: Send JoinMsg to the new client ---
   // --- C2: Add yaw/pitch to JoinMsg ---
   // --- G4: Add team/stats to JoinMsg ---
   // --- X2: Add ammo/gadget to JoinMsg ---
+  // --- X3: Add grenade gadget to JoinMsg ---
   const joinMsg: JoinMsg = {
     type: "join",
     tick: tick,
@@ -201,9 +230,11 @@ wss.on("connection", (ws) => {
     medGadgetCooldown: MedGadget.cooldown[playerEid],
     // --- REPAIR TOOL ---
     repairToolHeat: RepairTool.current[playerEid],
+    // --- X3 ---
+    grenadeGadgetCooldown: GrenadeGadget.cooldown[playerEid],
   };
   ws.send(packr.pack(joinMsg));
-  // --- End N4 & G4 & X2 & MED BOX & REPAIR ---
+  // --- End N4 & G4 & X2 & MED BOX & REPAIR & X3 ---
 
   ws.on("message", (message) => {
     const data = message as Uint8Array;
@@ -216,17 +247,33 @@ wss.on("connection", (ws) => {
     // --- END G4 ---
 
     if (msg.type === "input") {
-      // Don't overwrite fire/gadget state if it was set
-      const oldFire = inputs.get(playerEid)?.fire ?? false;
-      const oldGadget = inputs.get(playerEid)?.useGadget ?? false;
-      const oldMedBox = inputs.get(playerEid)?.useMedBox ?? false; // <-- ADD THIS
-      // Note: Repair tool is fine to be overwritten, it's a "hold" action
+      // --- BUGFIX: This is the fix for the auto-deploy bug ---
+      const oldInput = inputs.get(playerEid);
+      if (!oldInput) return; // Should not happen
+
+      // 1. Get the "new" press events.
+      // We only care about `fire` and gadgets.
+      // `fire` is true if the client *just* clicked.
+      const newFire = !oldInput.fire && msg.axes.fire;
+      
+      // `useGadget` is true if client *just* pressed and cooldown is ready.
+      const newUseGadget = !oldInput.useGadget && msg.axes.useGadget && Gadget.cooldown[playerEid] === 0;
+      const newUseMedBox = !oldInput.useMedBox && msg.axes.useMedBox && MedGadget.cooldown[playerEid] === 0;
+      const newUseGrenade = !oldInput.useGrenade && msg.axes.useGrenade && GrenadeGadget.cooldown[playerEid] === 0;
+
+      // 2. Set the new input state
       inputs.set(playerEid, {
         ...msg.axes,
-        fire: oldFire || msg.axes.fire,
-        useGadget: oldGadget || msg.axes.useGadget, // <-- ADD THIS
-        useMedBox: oldMedBox || msg.axes.useMedBox, // <-- ADD THIS
+        // Carry over the "latched" state *only* if the new input is also true.
+        // Otherwise, reset it. This consumes the input.
+        fire: oldInput.fire || newFire,
+        useGadget: oldInput.useGadget || newUseGadget,
+        useMedBox: oldInput.useMedBox || newUseMedBox,
+        useGrenade: oldInput.useGrenade || newUseGrenade,
+        // Repair tool is a "hold" action, so it's fine to be overwritten
+        useRepairTool: msg.axes.useRepairTool, 
       });
+      // --- END BUGFIX ---
     } 
     // --- G3: Handle Respawn Request ---
     else if (msg.type === "respawn") {
@@ -254,6 +301,9 @@ wss.on("connection", (ws) => {
       // --- REPAIR TOOL ---
       RepairTool.current[playerEid] = 0.0;
       // --- END REPAIR TOOL ---
+      // --- X3: RESET GRENADE ---
+      GrenadeGadget.cooldown[playerEid] = 0.0;
+      // --- END X3 ---
     }
     // --- END G3 ---
   });
@@ -282,6 +332,7 @@ function gameLoop() {
   // --- END G4 ---
 
   // --- 9. STAMINA & GADGET COOLDOWN & REPAIR HEAT LOGIC ---
+  // --- X3: ADD GRENADE COOLDOWN ---
   if (gamePhase === 1) {
     for (const eid of clients.values()) {
       const input = inputs.get(eid);
@@ -333,6 +384,15 @@ function gameLoop() {
         }
       }
       // --- END REPAIR TOOL ---
+
+      // --- X3: Grenade Cooldown ---
+      if (GrenadeGadget.cooldown[eid] > 0) {
+        GrenadeGadget.cooldown[eid] -= dt;
+        if (GrenadeGadget.cooldown[eid] < 0) {
+          GrenadeGadget.cooldown[eid] = 0;
+        }
+      }
+      // --- END X3 ---
     }
   }
   // --- END 9 ---
@@ -411,6 +471,55 @@ function gameLoop() {
         inputs.set(eid, input);
       }
       // --- END MED BOX ---
+      
+      // --- X3: HANDLE GRENADE THROW ---
+      if (input.useGrenade && GrenadeGadget.cooldown[eid] === 0) {
+        console.log(`[Host] Player ${eid} throwing Grenade.`);
+        const nadeEid = addEntity(world);
+        
+        // Add components
+        addComponent(world, Transform, nadeEid);
+        addComponent(world, Velocity, nadeEid);
+        addComponent(world, Team, nadeEid);
+        addComponent(world, Grenade, nadeEid); // Tag
+        addComponent(world, Gravity, nadeEid); // Tag
+        addComponent(world, GrenadeTimer, nadeEid);
+        
+        // Set initial state
+        Team.id[nadeEid] = Team.id[eid]; // Same team
+        GrenadeTimer.remaining[nadeEid] = GRENADE_TIMER_SEC;
+        
+        // Spawn at player's head height
+        Transform.x[nadeEid] = Transform.x[eid];
+        Transform.y[nadeEid] = Transform.y[eid] + 1.5; // Eye level
+        Transform.z[nadeEid] = Transform.z[eid];
+        
+        // Calculate throw vector
+        const pitch = Transform.pitch[eid];
+        
+        // Get forward vector (from player's aim)
+        const forwardX = Math.sin(yaw) * -1.0;
+        const forwardZ = Math.cos(yaw) * -1.0;
+        
+        // Combine horizontal (yaw) and vertical (pitch) components
+        // We use sin(pitch) for vertical velocity
+        // We use cos(pitch) to scale the horizontal velocity
+        Velocity.x[nadeEid] = forwardX * Math.cos(pitch) * GRENADE_THROW_FORCE;
+        Velocity.y[nadeEid] = Math.sin(pitch) * GRENADE_THROW_FORCE * -1.0; // Pitches are inverted
+        Velocity.z[nadeEid] = forwardZ * Math.cos(pitch) * GRENADE_THROW_FORCE;
+        
+        // Add player's current velocity so it's a "relative" throw
+        Velocity.x[nadeEid] += Velocity.x[eid];
+        Velocity.z[nadeEid] += Velocity.z[eid];
+        
+        // Start cooldown
+        GrenadeGadget.cooldown[eid] = GrenadeGadget.maxCooldown[eid];
+        
+        // Consume input
+        input.useGrenade = false;
+        inputs.set(eid, input);
+      }
+      // --- END X3 ---
     }
   }
 
@@ -505,7 +614,7 @@ function gameLoop() {
               // Set health to 0 so client can see it.
               Health.current[closestTarget] = 0; 
               // Stop processing their input
-              inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false }); // C2, X1, X2, MedBox, Repair
+              inputs.set(closestTarget, { forward: 0, right: 0, jump: false, fire: false, yaw: 0, pitch: 0, sprint: false, useGadget: false, useMedBox: false, useRepairTool: false, useGrenade: false }); // C2, X1, X2, MedBox, Repair, X3
               // Stop their movement
               Velocity.x[closestTarget] = 0;
               Velocity.y[closestTarget] = 0;
@@ -548,8 +657,119 @@ function gameLoop() {
   }
   // --- END G2 & G4 ---
 
-  // B. Run the ECS simulation step
+  // --- X3: NEW SYSTEM: PHYSICS (GRAVITY & BOUNCE) ---
+  if (gamePhase === 1) {
+    const physicsEntities = physicsQuery(world);
+    for (const eid of physicsEntities) {
+      // Apply gravity
+      Velocity.y[eid] += GRAVITY_ACCEL * dt;
+      
+      // Simple floor bounce
+      if (Transform.y[eid] <= 0 && Velocity.y[eid] < 0) {
+        Transform.y[eid] = 0; // Correct position
+        Velocity.y[eid] *= -BOUNCE_DAMPENING; // Reverse and dampen
+        // Add friction
+        Velocity.x[eid] *= 0.8;
+        Velocity.z[eid] *= 0.8;
+      }
+    }
+  }
+  // --- END X3 ---
+
+  // B. Run the ECS simulation step (updates Transform based on Velocity)
   step();
+
+// --- X3: GRENADE TIMER & EXPLOSION ---
+if (gamePhase === 1) {
+  const grenadeEntities = grenadeQuery(world);
+  const grenadesToRemove: number[] = [];
+
+  for (const nadeEid of grenadeEntities) {
+    // Guard against missing timers
+    if (GrenadeTimer.remaining[nadeEid] === undefined) {
+      GrenadeTimer.remaining[nadeEid] = GRENADE_TIMER_SEC;
+    }
+
+    GrenadeTimer.remaining[nadeEid] -= dt;
+
+    if (GrenadeTimer.remaining[nadeEid] <= 0) {
+      // --- EXPLODE ---
+      const nadeX = Transform.x[nadeEid];
+      const nadeY = Transform.y[nadeEid];
+      const nadeZ = Transform.z[nadeEid];
+      const nadeTeam = Team.id[nadeEid];
+
+      console.log(`[Host] Grenade ${nadeEid} exploded!`);
+
+        // Find all players and check distance
+        for (const [ws, playerEid] of clients.entries()) {
+          // Ignore dead players
+          if (Health.current[playerEid] <= 0) continue;
+  
+          const dx = Transform.x[playerEid] - nadeX;
+          const dy = Transform.y[playerEid] - nadeY;
+          const dz = Transform.z[playerEid] - nadeZ;
+          const distSq = dx * dx + dy * dy + dz * dz;
+  
+          if (distSq <= GRENADE_EXPLOSION_RADIUS_SQ) {
+            console.log(`[Host] Grenade hit player ${playerEid}!`);
+            Health.current[playerEid] -= GRENADE_DAMAGE;
+  
+            // Death handling (uses the updated block from step 1)
+            if (Health.current[playerEid] <= 0) {
+              console.log(`[Host] Player ${playerEid} has died from grenade.`);
+              Health.current[playerEid] = 0;
+  
+              inputs.set(playerEid, {
+                forward: 0,
+                right: 0,
+                jump: false,
+                fire: false,
+                sprint: false,
+                useGadget: false,
+                useMedBox: false,
+                useRepairTool: false,
+                useGrenade: false,
+              });
+  
+              Velocity.x[playerEid] = 0;
+              Velocity.y[playerEid] = 0;
+              Velocity.z[playerEid] = 0;
+  
+              PlayerStats.deaths[playerEid]++;
+  
+              if (Team.id[playerEid] === 0) {
+                GameState.team1Tickets[GAME_STATE_EID]--;
+              } else {
+                GameState.team2Tickets[GAME_STATE_EID]--;
+              }
+              console.log(
+                `[Host] Team 1: ${GameState.team1Tickets[GAME_STATE_EID]} | Team 2: ${GameState.team2Tickets[GAME_STATE_EID]}`
+              );
+            }
+          }
+        }
+        
+      // Move grenade underground and stop its timer/movement.
+      // Move grenade underground and stop its motion
+      Transform.y[nadeEid] = -10000;
+      Velocity.x[nadeEid] = 0;
+      Velocity.y[nadeEid] = 0;
+      Velocity.z[nadeEid] = 0;
+
+      // Mark this grenade for removal after the loop
+      grenadesToRemove.push(nadeEid);
+    }
+  }
+
+  // Now safely remove components after iteration
+  for (const nadeEid of grenadesToRemove) {
+    removeComponent(world, Gravity, nadeEid);
+    removeComponent(world, Grenade, nadeEid);
+    removeComponent(world, GrenadeTimer, nadeEid);
+  }
+}
+  // --- END X3 ---
 
   // --- X2: NEW SYSTEM: AMMO RESUPPLY ---
   if (gamePhase === 1) {
@@ -648,6 +868,9 @@ function gameLoop() {
         // --- REPAIR TOOL ---
         repairToolHeat: RepairTool.current[eid],
         // --- END REPAIR TOOL ---
+        // --- X3: ADD GRENADE GADGET ---
+        grenadeGadgetCooldown: GrenadeGadget.cooldown[eid],
+        // --- END X3 ---
       });
     }
 
@@ -685,6 +908,26 @@ function gameLoop() {
     }
     // --- END MED BOX ---
 
+    // --- X3: Grenade snapshots ---
+    const grenadeEntities = grenadeQuery(world);
+    for (const nadeEid of grenadeEntities) {
+      // Don't send "dead" grenades
+      if (Transform.y[nadeEid] < -100) continue; 
+      
+      snapshots.push({
+        id: nadeEid,
+        x: Transform.x[nadeEid],
+        y: Transform.y[nadeEid],
+        z: Transform.z[nadeEid],
+        hp: 1, // Schema needs it
+        yaw: 0,
+        pitch: 0,
+        teamId: Team.id[nadeEid],
+        isGrenade: true,
+        grenadeTimer: GrenadeTimer.remaining[nadeEid],
+      });
+    }
+    // --- END X3 ---
 
     // --- G4: GET GAME STATE SNAPSHOT ---
     const gameState: GameStateSchema = {

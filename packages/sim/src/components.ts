@@ -84,3 +84,20 @@ export const RepairTool = defineComponent({
   max: Types.f32,     // Max heat (e.g., 100.0)
 });
 // --- END REPAIR TOOL COMPONENT ---
+
+// --- X3: ADD GRENADE COMPONENTS ---
+export const GrenadeGadget = defineComponent({
+  cooldown: Types.f32, // Time remaining
+  maxCooldown: Types.f32,
+});
+
+// "Tag" component for grenade entities
+export const Grenade = defineComponent({});
+
+export const GrenadeTimer = defineComponent({
+  remaining: Types.f32, // Time until explosion
+});
+
+// "Tag" component for entities affected by gravity
+export const Gravity = defineComponent({});
+// --- END X3 ---
