@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 // --- Core Components ---
 
+// N2: Added Serialize and Deserialize
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Transform {
     pub x: f32,
@@ -24,6 +25,7 @@ pub struct Rotation {
     pub pitch: f32,
 }
 
+// N2: Added Serialize and Deserialize
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Health {
     pub current: f32,
@@ -37,6 +39,7 @@ pub struct Weapon {
     pub damage: f32,
 }
 
+// N2: Added Serialize and Deserialize
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Stamina {
     pub current: f32,
@@ -48,8 +51,6 @@ pub struct Stamina {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Player;
 
-// --- REMOVED 'Target' STRUCT ---
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub enum TeamId {
     None,
@@ -57,11 +58,13 @@ pub enum TeamId {
     TeamB,
 }
 
+// N2: Added Serialize and Deserialize
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Team {
     pub id: TeamId,
 }
 
+// N2: Added Serialize and Deserialize
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Score {
     pub kills: u32,
@@ -76,9 +79,34 @@ pub struct PlayerInputs {
     pub jump: bool,
     pub fire: bool,
     pub sprint: bool,
-    #[serde(default)] // In case JS doesn't send it
+    #[serde(default)]
     #[serde(rename = "showScoreboard")] // Match JS camelCase 'showScoreboard'
     pub show_scoreboard: bool,
+}
+
+// Wire-level representation for PlayerInputs:
+// [forward, right, jump, fire, sprint, showScoreboard]
+#[derive(Debug, Clone, Copy, Deserialize)]
+pub struct PlayerInputsWire(
+    pub f32,  // forward
+    pub f32,  // right
+    pub bool, // jump
+    pub bool, // fire
+    pub bool, // sprint
+    pub bool, // show_scoreboard
+);
+
+impl From<PlayerInputsWire> for PlayerInputs {
+    fn from(w: PlayerInputsWire) -> Self {
+        PlayerInputs {
+            forward: w.0,
+            right: w.1,
+            jump: w.2,
+            fire: w.3,
+            sprint: w.4,
+            show_scoreboard: w.5,
+        }
+    }
 }
 
 // --- Constants ---
@@ -92,15 +120,38 @@ pub const WEAPON_HIT_ACCURACY: f32 = 0.98;
 
 // --- DATA STRUCTURES FOR TAURI ---
 
-#[derive(Debug, Clone, Deserialize)]
+// High-level representation used inside the sim
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InputPayload {
     pub tick: u32,
-    pub inputs: PlayerInputs, // Nested object
+    pub inputs: PlayerInputs,
     pub delta_x: f32,
     pub delta_y: f32,
 }
 
-#[derive(Debug, Clone, Serialize)]
+// Wire-level representation used on the network:
+// [tick, PlayerInputsWire, delta_x, delta_y]
+#[derive(Debug, Clone, Deserialize)]
+pub struct InputPayloadWire(
+    pub u32,             // tick
+    pub PlayerInputsWire,
+    pub f32,             // delta_x
+    pub f32,             // delta_y
+);
+
+impl From<InputPayloadWire> for InputPayload {
+    fn from(w: InputPayloadWire) -> Self {
+        InputPayload {
+            tick: w.0,
+            inputs: w.1.into(),
+            delta_x: w.2,
+            delta_y: w.3,
+        }
+    }
+}
+
+// N2: Added Deserialize (Client will need this later)
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EntitySnapshot {
     pub eid: u32,
     pub transform: Transform,
@@ -112,6 +163,7 @@ pub struct EntitySnapshot {
 
 pub type WorldSnapshot = Vec<EntitySnapshot>;
 
+// This one is already correct
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GameModeState {
     pub team_a_tickets: i32,
@@ -120,7 +172,8 @@ pub struct GameModeState {
     pub winner: TeamId,
 }
 
-#[derive(Debug, Clone, Serialize)]
+// N2: Added Deserialize (Client will need this later)
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TickSnapshot {
     pub entities: WorldSnapshot,
     pub game_state: GameModeState,
