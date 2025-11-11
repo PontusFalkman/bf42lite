@@ -103,19 +103,40 @@
         display: none;
       }
 
-      /* Respawn Screen */
+      /* --- MODIFIED: Respawn Screen --- */
       #respawn-screen {
+        display: flex; /* <-- Set display to flex */
+        flex-direction: column; /* <-- Arrange items vertically */
         justify-content: center;
         align-items: center;
         background: rgba(120, 0, 0, 0.5);
+        text-align: center;
       }
       #respawn-screen.hidden {
         display: none;
       }
+      #respawn-screen h1 {
+        font-size: 2.5em;
+        margin-bottom: 20px;
+      }
+      #respawn-screen button {
+        padding: 15px 30px;
+        font-size: 1.5em;
+        background: #eee;
+        color: #111;
+        border: none;
+        cursor: pointer;
+        pointer-events: all; /* Allow clicking the button */
+      }
+      #respawn-screen button:disabled {
+        background: #555;
+        color: #999;
+        cursor: not-allowed;
+      }
 
       /* Match End Screen */
       #match-end-message {
-        display: flex; /* <-- Display must be 'flex' */
+        display: flex;
         justify-content: center;
         align-items: center;
         flex-direction: column;
@@ -159,12 +180,16 @@
     </div>
 
     <div id="respawn-screen" class="ui-overlay hidden">
-      <h1>You are dead!</h1>
+      <h1>
+        DEPLOYING IN...
+        <span id="respawn-timer">5</span>
+      </h1>
+      <button id="btn-deploy" disabled>DEPLOY</button>
     </div>
 
     <div id="scoreboard" class="ui-overlay hidden">
       <h1>Scoreboard</h1>
-      </div>
+    </div>
 
     <div id="match-end-message" class="ui-overlay hidden">
       <h1>Match Over!</h1>

@@ -26,6 +26,14 @@ const staminaEl = document.getElementById(
 const respawnScreenEl = document.getElementById(
   "respawn-screen"
 ) as HTMLDivElement | null;
+// --- ADDED: Respawn UI Elements ---
+const respawnTimerEl = document.getElementById(
+  "respawn-timer"
+) as HTMLSpanElement | null;
+const btnDeploy = document.getElementById(
+  "btn-deploy"
+) as HTMLButtonElement | null;
+
 const scoreboardEl = document.getElementById(
   "scoreboard"
 ) as HTMLDivElement | null;
@@ -48,9 +56,13 @@ const matchWinnerEl = document.getElementById(
 if (!canvas || !hudEl || !menuEl) {
   throw new Error("Failed to find one or more essential UI elements!");
 }
+// --- ADDED: Respawn UI Check ---
+if (!respawnScreenEl || !respawnTimerEl || !btnDeploy) {
+  throw new Error("Failed to find respawn UI elements!");
+}
 
 // === 1. THREE.JS SETUP ===
-// (This section is identical to your previous file)
+// (This section is identical)
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -75,7 +87,7 @@ const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
 const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
 // === 2. RUST INTERFACES (UPDATED) ===
-// (This section is identical to your previous file)
+// (This section is identical)
 interface PlayerInputs {
   forward: number;
   right: number;
@@ -135,10 +147,12 @@ interface TickSnapshot {
 }
 
 // === 3. GAME STATE & HELPERS ===
-// (This section is identical to your previous file)
 let localPlayerEid: number | null = null;
 let playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
 let tick = 0;
+// --- ADDED: Game State ---
+let isDeployed = false;
+let respawnInterval: number | null = null;
 
 function getPlayerObject(eid: number): THREE.Mesh {
   let obj = playerObjects.get(eid);
@@ -148,6 +162,46 @@ function getPlayerObject(eid: number): THREE.Mesh {
     playerObjects.set(eid, obj);
   }
   return obj;
+}
+
+// --- ADDED: hideRespawnScreen Function ---
+function hideRespawnScreen() {
+  respawnScreenEl!.classList.add("hidden");
+  // Only show HUD if the match isn't over
+  if (matchEndEl?.classList.contains("hidden")) {
+    hudEl?.classList.remove("hidden");
+  }
+  if (respawnInterval) {
+    clearInterval(respawnInterval);
+    respawnInterval = null;
+  }
+}
+
+// --- ADDED: showRespawnScreen Function ---
+function showRespawnScreen(duration: number = 5) {
+  respawnScreenEl!.classList.remove("hidden");
+  hudEl?.classList.add("hidden");
+
+  btnDeploy.disabled = true;
+  btnDeploy.textContent = "DEPLOYING IN...";
+
+  let remaining = duration;
+  respawnTimerEl!.textContent = remaining.toString();
+
+  if (respawnInterval) clearInterval(respawnInterval);
+
+  respawnInterval = window.setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(respawnInterval!);
+      respawnInterval = null;
+      respawnTimerEl!.textContent = "READY";
+      btnDeploy.disabled = false;
+      btnDeploy.textContent = "DEPLOY";
+    } else {
+      respawnTimerEl!.textContent = remaining.toString();
+    }
+  }, 1000);
 }
 
 // === N2: REMOVED setupHostLogic() ===
@@ -165,7 +219,9 @@ function setupClientLogic() {
   socket.onopen = () => {
     console.log("Client: WebSocket connection established!");
     menuEl?.classList.add("hidden");
-    hudEl?.classList.remove("hidden");
+    
+    // --- MODIFIED: Show respawn screen instead of HUD ---
+    showRespawnScreen();
 
     // Start the input/render loop
     initInput(canvas);
@@ -186,8 +242,11 @@ function setupClientLogic() {
         // A real "Join" message would be better.
         // Let's assume the server gives us the highest EID.
         if (tickData.entities.length > 0) {
-            localPlayerEid = tickData.entities.reduce((max, e) => Math.max(max, e.eid), 0);
-            console.log(`Client: Local player EID set to: ${localPlayerEid}`);
+          localPlayerEid = tickData.entities.reduce(
+            (max, e) => Math.max(max, e.eid),
+            0
+          );
+          console.log(`Client: Local player EID set to: ${localPlayerEid}`);
         }
       }
 
@@ -201,7 +260,7 @@ function setupClientLogic() {
         obj.position.set(transform.x, transform.y, transform.z);
 
         if (eid === localPlayerEid) {
-          // hide local player model
+          // hide local player model (standard for FPS)
           obj.visible = false;
 
           // Apply local rotation to camera
@@ -247,15 +306,22 @@ async function init() {
   console.log("Initializing client...");
   console.log("Telling Rust backend to start host...");
 
+  // --- ADDED: Deploy Button Click Handler ---
+  btnDeploy.onclick = () => {
+    hideRespawnScreen();
+    isDeployed = true;
+    console.log("Player clicked DEPLOY");
+    canvas.requestPointerLock();
+  };
+
   try {
     // N2: Tell the Rust backend to start the server
     await invoke("start_host");
     console.log("Client: Host server started by Rust.");
-    
+
     // N2: Now, this client will connect to it
     // Give the server a moment to bind
-    setTimeout(setupClientLogic, 100); 
-
+    setTimeout(setupClientLogic, 100);
   } catch (e) {
     console.error("Failed to start host:", e);
     alert("FATAL: Failed to start host. See console.");
@@ -278,32 +344,36 @@ async function gameLoop(now: number) {
   const deltaX = inputState.deltaX;
   const deltaY = inputState.deltaY;
 
-  // Apply mouse look *locally*
-  playerRotation.y -= deltaX;
-  playerRotation.x -= deltaY;
-  playerRotation.x = Math.max(
-    -Math.PI / 2,
-    Math.min(Math.PI / 2, playerRotation.x)
-  );
+  // --- MODIFIED: Only apply look if deployed ---
+  if (isDeployed) {
+    // Apply mouse look *locally*
+    playerRotation.y -= deltaX;
+    playerRotation.x -= deltaY;
+    playerRotation.x = Math.max(
+      -Math.PI / 2,
+      Math.min(Math.PI / 2, playerRotation.x)
+    );
+  }
 
   const inputs = inputState as PlayerInputs;
 
   const clientMsg = msgpackr.encode([
     tick++, // 0: tick
     [
-      inputs.forward ?? 0,          // 0: forward (f32)
-      inputs.right ?? 0,            // 1: right   (f32)
-      !!inputs.jump,                // 2: jump    (bool)
-      !!inputs.fire,                // 3: fire    (bool)
-      !!inputs.sprint,              // 4: sprint  (bool)
-      !!inputs.showScoreboard,      // 5: showScoreboard (bool)
+      inputs.forward ?? 0, // 0: forward (f32)
+      inputs.right ?? 0, // 1: right   (f32)
+      !!inputs.jump, // 2: jump    (bool)
+      !!inputs.fire, // 3: fire    (bool)
+      !!inputs.sprint, // 4: sprint  (bool)
+      !!inputs.showScoreboard, // 5: showScoreboard (bool)
     ],
     deltaX, // 2: delta_x
     deltaY, // 3: delta_y
   ]);
 
   try {
-    if (socket && socket.readyState === WebSocket.OPEN) {
+    // --- MODIFIED: Only send inputs if deployed ---
+    if (socket && socket.readyState === WebSocket.OPEN && isDeployed) {
       socket.send(clientMsg);
     }
   } catch (e) {
@@ -323,7 +393,7 @@ async function gameLoop(now: number) {
 }
 
 // === 5. UI & STARTUP ===
-// (This section is identical to your previous file)
+// (This section is identical)
 function updateUI(gameState: GameModeState) {
   if (teamATicketsEl)
     teamATicketsEl.textContent = String(gameState.team_a_tickets);
@@ -351,7 +421,10 @@ function updateUI(gameState: GameModeState) {
       matchEndEl.classList.remove("hidden");
     }
   } else {
-    hudEl?.classList.remove("hidden");
+    // --- MODIFIED: Only show HUD if not on respawn screen ---
+    if (respawnScreenEl?.classList.contains("hidden")) {
+      hudEl?.classList.remove("hidden");
+    }
     matchEndEl?.classList.add("hidden");
   }
 }
