@@ -1,219 +1,192 @@
-// apps/client-tauri/src-tauri/src/main.rs
+// File: apps/client-tauri/src-tauri/src/main.rs
 
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// --- N2: Add All Imports ---
-use futures_util::{stream::StreamExt, SinkExt};
+mod sim;
+
+use futures_util::{SinkExt, StreamExt};
+use once_cell::sync::Lazy;
+use rmp_serde::from_slice;
+use serde::Deserialize;
+use sim::{Game, TickSnapshot, TICK_DT};
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tauri::State;
+use std::time::{Duration, Instant};
 use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
+use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio_tungstenite::tungstenite::Message;
 
-// N2: Import your sim structs from lib.rs (which points to sim.rs)
-use bf42lite_lib::sim::{
-    EntitySnapshot, GameModeState, Health, InputPayload, InputPayloadWire, Score, Stamina, Team,
-    TeamId, TickSnapshot, Transform,
-};
-// --- End N2 Imports ---
+// --- Global state for the game server ---
+type ClientTx = UnboundedSender<Message>;
+static GAME: Lazy<Arc<Mutex<Game>>> = Lazy::new(|| Arc::new(Mutex::new(Game::new())));
+// This map will store the EID and the "sender" half of the websocket for each client
+static CLIENTS: Lazy<Arc<Mutex<HashMap<SocketAddr, (u32, ClientTx)>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
-// --- N2: Define the Game State ---
-#[derive(Debug, Clone)]
-struct GameState {
-    tick: u32,
-    entities: HashMap<u32, EntitySnapshot>,
-    game_mode: GameModeState,
-    next_eid: u32,
-}
+// --- Define structs to match the *exact* client message ---
+// [tick, [f, r, j, f, s, sb], delta_x, delta_y]
+#[derive(Deserialize)]
+struct ClientInputs(f32, f32, bool, bool, bool, bool);
 
-impl GameState {
-    fn new() -> Self {
-        Self {
-            tick: 0,
-            entities: HashMap::new(),
-            game_mode: GameModeState {
-                team_a_tickets: 100,
-                team_b_tickets: 100,
-                match_ended: false,
-                winner: TeamId::None,
-            },
-            next_eid: 1,
-        }
-    }
+#[derive(Deserialize)]
+struct ClientMessage(u32, ClientInputs, f32, f32);
 
-    // Creates a new player entity and returns its ID
-    fn add_player(&mut self) -> u32 {
-        let eid = self.next_eid;
-        self.next_eid += 1;
+// --- The Tokio-based asynchronous server logic ---
 
-        let player_entity = EntitySnapshot {
-            eid,
-            transform: Transform { x: 0.0, y: 1.0, z: 0.0 }, // Start at world origin
-            health: Some(Health { current: 100.0, max: 100.0 }),
-            stamina: Some(Stamina { 
-                current: 100.0, 
-                max: 100.0, 
-                regen_rate: 5.0,
-                drain_rate: 10.0
-            }),
-            team: Some(Team { id: TeamId::TeamA }),
-            score: Some(Score { kills: 0, deaths: 0 }),
-        };
+async fn handle_connection(stream: TcpStream, addr: SocketAddr) {
+    let ws_stream = tokio_tungstenite::accept_async(stream)
+        .await
+        .expect("Error during the websocket handshake");
 
-        self.entities.insert(eid, player_entity);
-        println!("Host: Added player with EID: {}", eid);
-        eid
-    }
+    println!("Client connected: {}", addr);
 
-    // Applies a client's input payload to the game state
-    fn step(&mut self, eid: u32, payload: InputPayload) {
-        self.tick = payload.tick; // Use client's tick for now
+    // Create a channel for this client
+    let (tx, mut rx) = mpsc::unbounded_channel();
 
-        if let Some(entity) = self.entities.get_mut(&eid) {
-            // This is a minimal version of your movement system
-            let speed = 3.0 / 60.0; // speed * dt
-            entity.transform.x += payload.inputs.right * speed;
-            entity.transform.z -= payload.inputs.forward * speed;
-        }
-    }
+    // Add client to the global map
+    let eid = {
+        let mut game_lock = GAME.lock().unwrap();
+        game_lock.add_player()
+    };
+    CLIENTS.lock().unwrap().insert(addr, (eid, tx));
+    println!("Client {} assigned EID {}", addr, eid);
 
-    // Creates a snapshot of the current world
-    fn get_snapshot(&self) -> TickSnapshot {
-        TickSnapshot {
-            entities: self.entities.values().cloned().collect(),
-            game_state: self.game_mode,
-        }
-    }
-}
+    let (mut ws_sender, mut ws_receiver) = ws_stream.split();
 
-// This state is managed by Tauri and shared with all commands
-struct AppState(Arc<Mutex<GameState>>);
-// --- End N2 Game State ---
-
-// --- N2: The new "start host" command ---
-#[tauri::command]
-async fn start_host(state: State<'_, AppState>) -> Result<(), String> {
-    let addr = "127.0.0.1:8080";
-    println!("Starting WebSocket host at: ws://{}", addr);
-
-    let listener = TcpListener::bind(addr).await.map_err(|e| e.to_string())?;
-
-    let game_state_arc = state.0.clone();
-
-    // Spawn the main server task. It will run forever.
-    tokio::spawn(async move {
-        while let Ok((stream, _)) = listener.accept().await {
-            // For each new connection, spawn a new task to handle it
-            tokio::spawn(accept_connection(
-                stream,
-                game_state_arc.clone(),
-            ));
+    // --- Write Task (Listens on the channel and sends to client) ---
+    let write_task = tokio::spawn(async move {
+        while let Some(message) = rx.recv().await {
+            if ws_sender.send(message).await.is_err() {
+                // Client disconnected
+                break;
+            }
         }
     });
 
-    Ok(())
-}
+    // --- Read Task (Listens to client and updates game state) ---
+    let read_task = tokio::spawn(async move {
+        while let Some(msg) = ws_receiver.next().await {
+            match msg {
+                Ok(msg) => {
+                    if msg.is_binary() {
+                        let msg_data = msg.into_data();
+                        
+                        // --- THIS IS THE CORRECT DESERIALIZATION ---
+                        match from_slice::<ClientMessage>(&msg_data) {
+                            Ok(msg) => {
+                                // msg.0 = tick (u32)
+                                // msg.1 = inputs (ClientInputs)
+                                // msg.2 = delta_x (f32)
+                                // msg.3 = delta_y (f32) (unused)
 
-// --- N2: Connection Handler ---
-async fn accept_connection(stream: TcpStream, game_state_arc: Arc<Mutex<GameState>>) {
-    let addr = stream.peer_addr().expect("Failed to get peer address");
-    println!("New client connected: {}", addr);
+                                let mut game = GAME.lock().unwrap();
+                                if let Some(player) = game.players.get_mut(&eid) {
+                                    // Manually copy inputs from the tuple
+                                    player.inputs.forward = msg.1.0;
+                                    player.inputs.right = msg.1.1;
+                                    player.inputs.jump = msg.1.2;
+                                    player.inputs.fire = msg.1.3;
+                                    player.inputs.sprint = msg.1.4;
+                                    player.inputs.show_scoreboard = msg.1.5;
 
-    let ws_stream = match accept_async(stream).await {
-        Ok(ws) => ws,
-        Err(e) => {
-            println!("WebSocket handshake error: {}", e);
-            return;
-        }
-    };
-
-    let (mut ws_write, mut ws_read) = ws_stream.split();
-
-    // --- N2: Client "Join" Logic ---
-    let player_eid = {
-        let mut state = game_state_arc.lock().unwrap();
-        state.add_player()
-    };
-    
-    let first_snapshot = {
-        let state = game_state_arc.lock().unwrap();
-        state.get_snapshot()
-    };
-
-    let snapshot_bin = rmp_serde::to_vec(&first_snapshot).expect("Failed to serialize snapshot");
-    if ws_write.send(Message::Binary(snapshot_bin)).await.is_err() {
-        println!("Failed to send first snapshot to {}", addr);
-        return;
-    }
-    // --- End N2 Join ---
-
-
-    // --- N2: Main Client Loop ---
-    while let Some(msg) = ws_read.next().await {
-        let msg = match msg {
-            Ok(msg) => msg,
-            Err(e) => {
-                println!("Error reading message from {}: {}", addr, e);
-                break;
-            }
-        };
-
-        match msg {
-            Message::Binary(bin) => {
-                // 1. Decode the client's input as tuple [tick, inputs, delta_x, delta_y]
-                let wire: InputPayloadWire = match rmp_serde::from_slice(&bin) {
-                    Ok(w) => w,
-                    Err(e) => {
-                        println!("Failed to decode InputPayloadWire: {}", e);
-                        continue;
+                                    // This is the key for the rotation fix
+                                    player.inputs.delta_x = msg.2;
+                                }
+                            }
+                            Err(e) => {
+                                println!("Failed to deserialize client msg: {}", e);
+                            }
+                        }
+                    } else if msg.is_close() {
+                        break; // Client initiated disconnect
                     }
-                };
-                let payload: InputPayload = wire.into();
-
-                // 2. Lock the state and run one simulation tick
-                let snapshot = {
-                    let mut state = game_state_arc.lock().unwrap();
-                    state.step(player_eid, payload);
-                    state.get_snapshot()
-                };
-
-                // 3. Serialize and send the new state back
-                let snapshot_bin = rmp_serde::to_vec(&snapshot).expect("Failed to serialize snapshot");
-                if ws_write.send(Message::Binary(snapshot_bin)).await.is_err() {
-                    println!("Failed to send snapshot to {}", addr);
+                }
+                Err(e) => {
+                    println!("Websocket error: {}", e);
                     break;
                 }
             }
-            Message::Text(txt) => {
-                println!("Received text message (ignoring): {}", txt);
-            }
-            Message::Close(_) => {
-                println!("Client {} disconnected.", addr);
-                break;
-            }
-            _ => {}
         }
+    });
+
+    // Wait for either task to finish (e.g., client disconnects)
+    tokio::select! {
+        _ = write_task => {},
+        _ = read_task => {},
     }
 
-    // --- N2: Client "Leave" Logic ---
-    println!("Cleaning up player EID: {}", player_eid);
-    let mut state = game_state_arc.lock().unwrap();
-    state.entities.remove(&player_eid);
-    // --- End N2 Leave ---
+    // --- Client Cleanup ---
+    println!("Client {} disconnected.", addr);
+    CLIENTS.lock().unwrap().remove(&addr);
+    GAME.lock().unwrap().remove_player(eid);
+}
+
+// --- FIX 1: Removed #[tokio::main] ---
+async fn run_server() {
+    let server = TcpListener::bind("127.0.0.1:8080")
+        .await
+        .expect("Failed to bind server");
+    println!("Server listening on ws://127.0.0.1:8080");
+
+    // --- Game Tick Loop Thread (Blocking) ---
+    let game_clone = GAME.clone();
+    std::thread::spawn(move || {
+        let mut last_tick = Instant::now();
+        loop {
+            let now = Instant::now();
+            let delta = now.duration_since(last_tick);
+
+            if delta >= Duration::from_secs_f32(TICK_DT) {
+                let mut game = game_clone.lock().unwrap();
+                game.tick(TICK_DT);
+                last_tick = now;
+            }
+            std::thread::sleep(Duration::from_millis(1)); // Prevent busy-waiting
+        }
+    });
+
+    // --- Snapshot Broadcasting Loop (Async) ---
+    let clients_clone = CLIENTS.clone();
+    tokio::spawn(async move {
+        loop {
+            // Get a snapshot from the game
+            let snapshot: TickSnapshot = {
+                let game = GAME.lock().unwrap();
+                game.get_tick_snapshot()
+            };
+            let encoded = rmp_serde::to_vec(&snapshot).unwrap();
+            let msg = Message::Binary(encoded);
+
+            // Send to all clients without holding the lock across await
+            {
+                let clients_lock = clients_clone.lock().unwrap();
+                for (_, tx) in clients_lock.values() {
+                    let _ = tx.send(msg.clone());
+                }
+            }
+
+            // Wait for the next frame
+            tokio::time::sleep(Duration::from_millis(16)).await; // ~60hz
+        }
+    });
+
+    // --- Accept Connections ---
+    while let Ok((stream, addr)) = server.accept().await {
+        tokio::spawn(handle_connection(stream, addr));
+    }
+}
+
+#[tauri::command]
+async fn start_host() -> Result<(), String> {
+    println!("Starting host server...");
+    tokio::spawn(run_server());
+    Ok(())
 }
 
 fn main() {
-    // N2: Create the game state and wrap it for sharing
-    let game_state = Arc::new(Mutex::new(GameState::new()));
-
     tauri::Builder::default()
-        // N2: Add the state to Tauri so commands can access it
-        .manage(AppState(game_state))
-        // N2: Register the one and only command
         .invoke_handler(tauri::generate_handler![start_host])
-        
-        .build(tauri::generate_context!()) 
-        .expect("Failed to build Tauri app")
-        .run(|_app_handle, _event| {}); // N2: Updated .run() for v2
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

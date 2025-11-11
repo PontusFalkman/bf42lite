@@ -99,6 +99,7 @@ name = "bf42lite"
 version = "0.0.0"
 dependencies = [
  "futures-util",
+ "once_cell",
  "rmp-serde",
  "serde",
  "serde_json",
@@ -108,6 +109,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tokio",
  "tokio-tungstenite",
+ "tungstenite",
 ]
 
 [[package]]

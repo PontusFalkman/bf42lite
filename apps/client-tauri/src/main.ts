@@ -3,13 +3,9 @@
 import * as THREE from "three";
 import { initInput, updateInput, inputState } from "./input";
 import { invoke } from "@tauri-apps/api/core";
-// N1: Import the encoder
 import { Packr } from "msgpackr";
 
-// N2: --- REMOVED LoopbackAdapter ---
-// N2: Instantiate encoder
 const msgpackr = new Packr();
-// N2: Declare the WebSocket
 let socket: WebSocket | null = null;
 
 // === 0. GET UI ELEMENTS ===
@@ -22,11 +18,9 @@ const staminaEl = document.getElementById(
   "stamina-counter"
 ) as HTMLDivElement | null;
 
-// --- Get all other overlays ---
 const respawnScreenEl = document.getElementById(
   "respawn-screen"
 ) as HTMLDivElement | null;
-// --- ADDED: Respawn UI Elements ---
 const respawnTimerEl = document.getElementById(
   "respawn-timer"
 ) as HTMLSpanElement | null;
@@ -41,7 +35,6 @@ const matchEndEl = document.getElementById(
   "match-end-message"
 ) as HTMLDivElement | null;
 
-// --- Get new scoreboard UI elements ---
 const teamATicketsEl = document.getElementById(
   "team-a-tickets"
 ) as HTMLSpanElement | null;
@@ -53,16 +46,26 @@ const matchWinnerEl = document.getElementById(
 ) as HTMLSpanElement | null;
 
 // Basic null-check
-if (!canvas || !hudEl || !menuEl) {
+if (
+  !canvas ||
+  !hudEl ||
+  !menuEl ||
+  !fpsEl ||
+  !healthEl ||
+  !staminaEl ||
+  !respawnScreenEl ||
+  !respawnTimerEl ||
+  !btnDeploy ||
+  !scoreboardEl ||
+  !matchEndEl ||
+  !teamATicketsEl ||
+  !teamBTicketsEl ||
+  !matchWinnerEl
+) {
   throw new Error("Failed to find one or more essential UI elements!");
-}
-// --- ADDED: Respawn UI Check ---
-if (!respawnScreenEl || !respawnTimerEl || !btnDeploy) {
-  throw new Error("Failed to find respawn UI elements!");
 }
 
 // === 1. THREE.JS SETUP ===
-// (This section is identical)
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(
   75,
@@ -70,6 +73,9 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   1000
 );
+// --- FIX: Give camera a default starting position ---
+camera.position.set(0, 2, 5);
+
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -78,16 +84,24 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(5, 10, 7.5);
 scene.add(dirLight);
 const groundGeo = new THREE.PlaneGeometry(100, 100);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 scene.add(ground);
+
+// DEBUG: red cube at origin so we always have something to see
+const debugCubeGeo = new THREE.BoxGeometry(1, 1, 1);
+const debugCubeMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const debugCube = new THREE.Mesh(debugCubeGeo, debugCubeMat);
+debugCube.position.set(0, 0.5, 0);
+scene.add(debugCube);
+
+
 const playerObjects = new Map<number, THREE.Mesh>();
 const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
 const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
 // === 2. RUST INTERFACES (UPDATED) ===
-// (This section is identical)
 interface PlayerInputs {
   forward: number;
   right: number;
@@ -95,12 +109,6 @@ interface PlayerInputs {
   fire: boolean;
   sprint: boolean;
   showScoreboard: boolean;
-}
-interface InputPayload {
-  tick: number;
-  inputs: PlayerInputs;
-  delta_x: number;
-  delta_y: number;
 }
 enum TeamId {
   None = "None",
@@ -150,7 +158,6 @@ interface TickSnapshot {
 let localPlayerEid: number | null = null;
 let playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
 let tick = 0;
-// --- ADDED: Game State ---
 let isDeployed = false;
 let respawnInterval: number | null = null;
 
@@ -164,10 +171,8 @@ function getPlayerObject(eid: number): THREE.Mesh {
   return obj;
 }
 
-// --- ADDED: hideRespawnScreen Function ---
 function hideRespawnScreen() {
   respawnScreenEl!.classList.add("hidden");
-  // Only show HUD if the match isn't over
   if (matchEndEl?.classList.contains("hidden")) {
     hudEl?.classList.remove("hidden");
   }
@@ -177,7 +182,6 @@ function hideRespawnScreen() {
   }
 }
 
-// --- ADDED: showRespawnScreen Function ---
 function showRespawnScreen(duration: number = 5) {
   respawnScreenEl!.classList.remove("hidden");
   hudEl?.classList.add("hidden");
@@ -204,26 +208,17 @@ function showRespawnScreen(duration: number = 5) {
   }, 1000);
 }
 
-// === N2: REMOVED setupHostLogic() ===
-
-// === N2: CLIENT LOGIC (Simplified) ===
-/**
- * Sets up the client's WebSocket connection.
- */
+// === 4. CLIENT LOGIC ===
 function setupClientLogic() {
   console.log("Client: Connecting to ws://127.0.0.1:8080...");
   socket = new WebSocket("ws://127.0.0.1:8080");
-  socket.binaryType = "arraybuffer"; // Important!
+  socket.binaryType = "arraybuffer";
 
   // 1. On Connection Open
   socket.onopen = () => {
     console.log("Client: WebSocket connection established!");
     menuEl?.classList.add("hidden");
-    
-    // --- MODIFIED: Show respawn screen instead of HUD ---
     showRespawnScreen();
-
-    // Start the input/render loop
     initInput(canvas);
     gameLoop(0); // Start the game loop
   };
@@ -231,44 +226,35 @@ function setupClientLogic() {
   // 2. On Message Received
   socket.onmessage = (event) => {
     try {
-      // Decode the binary snapshot from the server
       const tickData: TickSnapshot = msgpackr.decode(
         new Uint8Array(event.data)
       );
 
-      // N2: Find the local player EID on the first snapshot
+      // Robust EID finding
       if (localPlayerEid === null) {
-        // Find our player. This is a simple/bad way, but it works for N2.
-        // A real "Join" message would be better.
-        // Let's assume the server gives us the highest EID.
         if (tickData.entities.length > 0) {
           localPlayerEid = tickData.entities.reduce(
             (max, e) => Math.max(max, e.eid),
-            0
+            -1 // Use -1 as initial to handle EID 0
           );
           console.log(`Client: Local player EID set to: ${localPlayerEid}`);
         }
       }
 
-      // N2: All rendering logic from N1's setupClientLogic is identical
       updateUI(tickData.game_state);
 
       for (const entity of tickData.entities) {
         const { eid, transform, health, stamina } = entity;
         const obj = getPlayerObject(eid);
 
+        // --- THIS IS THE KEY ---
+        // The server's transform is ALWAYS applied to the mesh
         obj.position.set(transform.x, transform.y, transform.z);
 
         if (eid === localPlayerEid) {
-          // hide local player model (standard for FPS)
-          obj.visible = false;
+          obj.visible = false; // Hide local player
 
-          // Apply local rotation to camera
-          camera.rotation.copy(playerRotation);
-          const cameraOffset = new THREE.Vector3(0, 0.6, 0); // eye height
-          camera.position.copy(obj.position).add(cameraOffset);
-
-          // Update local HUD
+          // Update HUD from server state.
           if (health && healthEl) {
             healthEl.textContent = `HP: ${health.current.toFixed(0)}`;
           }
@@ -276,12 +262,10 @@ function setupClientLogic() {
             staminaEl.textContent = `STAM: ${stamina.current.toFixed(0)}`;
           }
         } else {
-          // show everyone else
+          // Everyone else is visible
           obj.visible = true;
         }
       }
-
-      renderer.render(scene, camera);
     } catch (e) {
       console.error("Client error processing host message:", e);
     }
@@ -301,12 +285,11 @@ function setupClientLogic() {
   };
 }
 
-// === 4. CORE GAME LOOP (Client) ===
+// === 5. CORE GAME STARTUP ===
 async function init() {
   console.log("Initializing client...");
   console.log("Telling Rust backend to start host...");
 
-  // --- ADDED: Deploy Button Click Handler ---
   btnDeploy.onclick = () => {
     hideRespawnScreen();
     isDeployed = true;
@@ -315,12 +298,10 @@ async function init() {
   };
 
   try {
-    // N2: Tell the Rust backend to start the server
+    // This calls the "start_host" command in src-tauri/src/main.rs
     await invoke("start_host");
     console.log("Client: Host server started by Rust.");
-
-    // N2: Now, this client will connect to it
-    // Give the server a moment to bind
+    // Give the server a moment to bind before connecting
     setTimeout(setupClientLogic, 100);
   } catch (e) {
     console.error("Failed to start host:", e);
@@ -328,51 +309,64 @@ async function init() {
   }
 }
 
+// === 6. CORE GAME LOOP (Client) ===
 let lastTime = 0;
 let frameCount = 0;
 let lastFPSUpdate = 0;
 
 async function gameLoop(now: number) {
-  requestAnimationFrame(gameLoop);
+  requestAnimationFrame(gameLoop); // Loop every frame
 
-  const dt = (now - lastTime) / 1000;
+  const dt = (now - lastTime) / 1000.0; // Delta time in *seconds*
   lastTime = now;
 
-  // Update input state for this frame
+  // Update input state (keyboard/mouse)
   updateInput();
 
   const deltaX = inputState.deltaX;
   const deltaY = inputState.deltaY;
+  const inputs = inputState as PlayerInputs;
 
-  // --- MODIFIED: Only apply look if deployed ---
+  // --- THIS IS THE NEW, CORRECT LOGIC ---
   if (isDeployed) {
-    // Apply mouse look *locally*
+    // 1. Apply mouse look to camera rotation
     playerRotation.y -= deltaX;
     playerRotation.x -= deltaY;
     playerRotation.x = Math.max(
       -Math.PI / 2,
       Math.min(Math.PI / 2, playerRotation.x)
     );
+    camera.rotation.copy(playerRotation);
+
+    // 2. Tell the camera to FOLLOW the player mesh
+    if (localPlayerEid !== null) {
+      const localPlayerObj = playerObjects.get(localPlayerEid);
+      if (localPlayerObj) {
+        // --- THIS IS THE FIX ---
+        // Get the position from the server-controlled mesh
+        const cameraOffset = new THREE.Vector3(0, 0.6, 0); // eye height
+        camera.position.copy(localPlayerObj.position).add(cameraOffset);
+      }
+    }
   }
+  // --- END NEW LOGIC BLOCK ---
 
-  const inputs = inputState as PlayerInputs;
-
+  // Send inputs to server
   const clientMsg = msgpackr.encode([
-    tick++, // 0: tick
+    tick++,
     [
-      inputs.forward ?? 0, // 0: forward (f32)
-      inputs.right ?? 0, // 1: right   (f32)
-      !!inputs.jump, // 2: jump    (bool)
-      !!inputs.fire, // 3: fire    (bool)
-      !!inputs.sprint, // 4: sprint  (bool)
-      !!inputs.showScoreboard, // 5: showScoreboard (bool)
+      inputs.forward ?? 0,
+      inputs.right ?? 0,
+      !!inputs.jump,
+      !!inputs.fire,
+      !!inputs.sprint,
+      !!inputs.showScoreboard,
     ],
-    deltaX, // 2: delta_x
-    deltaY, // 3: delta_y
+    deltaX,
+    deltaY,
   ]);
 
   try {
-    // --- MODIFIED: Only send inputs if deployed ---
     if (socket && socket.readyState === WebSocket.OPEN && isDeployed) {
       socket.send(clientMsg);
     }
@@ -380,7 +374,9 @@ async function gameLoop(now: number) {
     console.error(`Error sending client message ${tick}:`, e);
   }
 
-  // N2: The FPS counter can stay here
+  renderer.render(scene, camera);
+
+  // Update FPS counter
   frameCount++;
   if (now - lastFPSUpdate > 250) {
     const fps = (frameCount * 1000) / (now - lastFPSUpdate);
@@ -392,14 +388,14 @@ async function gameLoop(now: number) {
   }
 }
 
-// === 5. UI & STARTUP ===
-// (This section is identical)
+// === 7. UI & STARTUP ===
 function updateUI(gameState: GameModeState) {
   if (teamATicketsEl)
     teamATicketsEl.textContent = String(gameState.team_a_tickets);
   if (teamBTicketsEl)
     teamBTicketsEl.textContent = String(gameState.team_b_tickets);
 
+  // Scoreboard visibility is driven by local input for responsiveness
   if (inputState.showScoreboard) {
     scoreboardEl?.classList.remove("hidden");
   } else {
@@ -408,6 +404,13 @@ function updateUI(gameState: GameModeState) {
 
   if (gameState.match_ended) {
     hudEl?.classList.add("hidden");
+    scoreboardEl?.classList.add("hidden");
+    if (respawnScreenEl && !respawnScreenEl.classList.contains("hidden")) {
+      hideRespawnScreen();
+    }
+    if (document.pointerLockElement) {
+      document.exitPointerLock();
+    }
 
     if (matchEndEl && matchWinnerEl) {
       const winnerText =
@@ -421,7 +424,6 @@ function updateUI(gameState: GameModeState) {
       matchEndEl.classList.remove("hidden");
     }
   } else {
-    // --- MODIFIED: Only show HUD if not on respawn screen ---
     if (respawnScreenEl?.classList.contains("hidden")) {
       hudEl?.classList.remove("hidden");
     }
@@ -435,5 +437,5 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// N2: This one call now starts the whole new process
+// Start the entire process
 init();
