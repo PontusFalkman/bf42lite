@@ -100,6 +100,7 @@ version = "0.0.0"
 dependencies = [
  "futures-util",
  "once_cell",
+ "rand 0.8.5",
  "rmp-serde",
  "serde",
  "serde_json",

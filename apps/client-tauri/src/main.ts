@@ -8,427 +8,323 @@ import { Packr } from "msgpackr";
 const msgpackr = new Packr();
 let socket: WebSocket | null = null;
 
-// === 0. GET UI ELEMENTS ===
-const canvas = document.getElementById("game") as HTMLCanvasElement | null;
-const hudEl = document.getElementById("hud") as HTMLDivElement | null;
-const menuEl = document.getElementById("menu") as HTMLDivElement | null;
-const fpsEl = document.getElementById("fps-counter") as HTMLDivElement | null;
-const healthEl = document.getElementById("health-counter") as HTMLDivElement | null;
-const staminaEl = document.getElementById(
-  "stamina-counter"
-) as HTMLDivElement | null;
+// === 1. CSS INJECTION (Fix #1: CSS & DOM Visibilty) ===
+const style = document.createElement("style");
+style.textContent = `
+  html, body { margin:0; height:100%; overflow:hidden; background:#000; }
+  #game { display:block; width:100vw; height:100vh; position:relative; z-index:0; }
+  #hud { position:absolute; top:8px; left:8px; z-index:10; color:#fff; font:14px monospace; }
+  #menu, #respawn-screen { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; z-index:20; }
+  .hidden { display:none !important; }
+`;
+document.head.appendChild(style);
 
-const respawnScreenEl = document.getElementById(
-  "respawn-screen"
-) as HTMLDivElement | null;
-const respawnTimerEl = document.getElementById(
-  "respawn-timer"
-) as HTMLSpanElement | null;
-const btnDeploy = document.getElementById(
-  "btn-deploy"
-) as HTMLButtonElement | null;
+// === 2. UI ELEMENTS ===
+let canvasEl = document.getElementById("game") as HTMLCanvasElement | null;
+const hudEl = document.getElementById("hud");
+const menuEl = document.getElementById("menu");
+const fpsEl = document.getElementById("fps-counter");
+const healthEl = document.getElementById("health-counter");
+const staminaEl = document.getElementById("stamina-counter");
+const respawnScreenEl = document.getElementById("respawn-screen");
+const respawnTimerEl = document.getElementById("respawn-timer");
+const btnDeploy = document.getElementById("btn-deploy") as HTMLButtonElement;
 
-const scoreboardEl = document.getElementById(
-  "scoreboard"
-) as HTMLDivElement | null;
-const matchEndEl = document.getElementById(
-  "match-end-message"
-) as HTMLDivElement | null;
+const missing: string[] = [];
+if (!hudEl) missing.push("#hud");
+if (!menuEl) missing.push("#menu");
+if (!fpsEl) missing.push("#fps-counter");
+if (!healthEl) missing.push("#health-counter");
+if (!staminaEl) missing.push("#stamina-counter");
+if (!respawnScreenEl) missing.push("#respawn-screen");
+if (!respawnTimerEl) missing.push("#respawn-timer");
+if (!btnDeploy) missing.push("#btn-deploy");
+if (!document.getElementById("scoreboard-top")) missing.push("#scoreboard-top");
+if (!document.getElementById("team-a-tickets")) missing.push("#team-a-tickets");
+if (!document.getElementById("team-b-tickets")) missing.push("#team-b-tickets");
+if (!document.getElementById("crosshair")) missing.push("#crosshair");
+if (!document.getElementById("scoreboard")) missing.push("#scoreboard");
+if (!document.getElementById("match-end-message")) missing.push("#match-end-message");
+if (!document.getElementById("match-winner")) missing.push("#match-winner");
 
-const teamATicketsEl = document.getElementById(
-  "team-a-tickets"
-) as HTMLSpanElement | null;
-const teamBTicketsEl = document.getElementById(
-  "team-b-tickets"
-) as HTMLSpanElement | null;
-const matchWinnerEl = document.getElementById(
-  "match-winner"
-) as HTMLSpanElement | null;
+if (missing.length)
+  console.warn("Missing UI ids:", missing.join(", "));
 
-// Basic null-check
-if (
-  !canvas ||
-  !hudEl ||
-  !menuEl ||
-  !fpsEl ||
-  !healthEl ||
-  !staminaEl ||
-  !respawnScreenEl ||
-  !respawnTimerEl ||
-  !btnDeploy ||
-  !scoreboardEl ||
-  !matchEndEl ||
-  !teamATicketsEl ||
-  !teamBTicketsEl ||
-  !matchWinnerEl
-) {
-  throw new Error("Failed to find one or more essential UI elements!");
+
+// === 3. RENDERER SETUP (Fix #1: Guarantee Canvas) ===
+if (!canvasEl) {
+  console.warn("Canvas #game missing, creating fallback.");
+  canvasEl = document.createElement("canvas");
+  canvasEl.id = "game";
+  document.body.appendChild(canvasEl);
 }
 
-// === 1. THREE.JS SETUP ===
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(
-  75,
-  window.innerWidth / window.innerHeight,
-  0.1,
-  1000
-);
-// --- FIX: Give camera a default starting position ---
-camera.position.set(0, 2, 5);
-
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
 renderer.setSize(window.innerWidth, window.innerHeight);
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-scene.add(ambientLight);
+renderer.shadowMap.enabled = true;
+
+// CROSSHAIR
+const crosshairEl = document.createElement("div");
+crosshairEl.style.position = "absolute";
+crosshairEl.style.top = "50%";
+crosshairEl.style.left = "50%";
+crosshairEl.style.width = "10px";
+crosshairEl.style.height = "10px";
+crosshairEl.style.border = "2px solid white";
+crosshairEl.style.borderRadius = "50%"; 
+crosshairEl.style.transform = "translate(-50%, -50%)";
+crosshairEl.style.pointerEvents = "none"; 
+crosshairEl.style.zIndex = "100";
+document.body.appendChild(crosshairEl);
+
+// === 4. THREE.JS SCENE ===
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 20, 30);
+camera.lookAt(0, 0, 0);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(5, 10, 7.5);
+dirLight.position.set(50, 100, 50);
+dirLight.castShadow = true;
 scene.add(dirLight);
-const groundGeo = new THREE.PlaneGeometry(100, 100);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+
+const groundGeo = new THREE.PlaneGeometry(200, 200);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
 scene.add(ground);
+scene.add(new THREE.GridHelper(200, 50));
 
-// DEBUG: red cube at origin so we always have something to see
-const debugCubeGeo = new THREE.BoxGeometry(1, 1, 1);
-const debugCubeMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-const debugCube = new THREE.Mesh(debugCubeGeo, debugCubeMat);
-debugCube.position.set(0, 0.5, 0);
-scene.add(debugCube);
+// Pillars
+const pillarGeo = new THREE.BoxGeometry(1, 4, 1);
+const pillarMat = new THREE.MeshStandardMaterial({ color: 0x555555 });
+const pillars = [ {x: 5, z: 5}, {x: -5, z: 5}, {x: 5, z: -5}, {x: -5, z: -5} ];
+pillars.forEach(p => {
+    const mesh = new THREE.Mesh(pillarGeo, pillarMat);
+    mesh.position.set(p.x, 2, p.z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+});
 
-
+const playerGeo = new THREE.BoxGeometry(2, 2, 2);
+const localMat = new THREE.MeshStandardMaterial({ color: 0x0044ff }); 
+const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); 
 const playerObjects = new Map<number, THREE.Mesh>();
-const playerGeo = new THREE.BoxGeometry(1, 1.8, 1);
-const playerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 
-// === 2. RUST INTERFACES (UPDATED) ===
-interface PlayerInputs {
-  forward: number;
-  right: number;
-  jump: boolean;
-  fire: boolean;
-  sprint: boolean;
-  showScoreboard: boolean;
-}
-enum TeamId {
-  None = "None",
-  TeamA = "TeamA",
-  TeamB = "TeamB",
-}
-interface Team {
-  id: TeamId;
-}
-interface Score {
-  kills: number;
-  deaths: number;
-}
-interface Transform {
-  x: number;
-  y: number;
-  z: number;
-}
-interface Health {
-  current: number;
-  max: number;
-}
-interface Stamina {
-  current: number;
-  max: number;
-}
-interface EntitySnapshot {
-  eid: number;
-  transform: Transform;
-  health: Health | null;
-  stamina: Stamina | null;
-  team: Team | null;
-  score: Score | null;
-}
-interface GameModeState {
-  team_a_tickets: number;
-  team_b_tickets: number;
-  match_ended: boolean;
-  winner: TeamId;
-}
-interface TickSnapshot {
-  entities: EntitySnapshot[];
-  game_state: GameModeState;
-}
-
-// === 3. GAME STATE & HELPERS ===
+// === 5. GAME STATE ===
 let localPlayerEid: number | null = null;
-let playerRotation = new THREE.Euler(0, 0, 0, "YXZ");
+let cameraYaw = 0;
+let cameraPitch = 0;
 let tick = 0;
 let isDeployed = false;
-let respawnInterval: number | null = null;
+let respawnInterval: number | null = null; 
+let lastMe = { x: 0, y: 0, z: 0, has: false };
+let frames = 0;
+let lastFPS = performance.now();
+let lastYaw = 0; // radians from server
 
-function getPlayerObject(eid: number): THREE.Mesh {
+const debugCube = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshNormalMaterial());
+debugCube.position.set(0,1,0);
+scene.add(debugCube);
+
+interface PlayerInputs { forward: number; right: number; jump: boolean; fire: boolean; sprint: boolean; showScoreboard: boolean; }
+interface TickSnapshot { entities: any[]; game_state: any; }
+interface ServerEnvelope { your_id: number; snapshot: TickSnapshot; }
+
+// === 6. INPUT ===
+window.addEventListener("mousemove", (event) => {
+  if (document.pointerLockElement !== canvasEl || !isDeployed) return;
+  cameraYaw   -= event.movementX * 0.002;
+  cameraPitch -= event.movementY * 0.002;
+  cameraPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, cameraPitch));
+});
+
+function getPlayerObject(eid: number, isLocal: boolean): THREE.Mesh {
   let obj = playerObjects.get(eid);
   if (!obj) {
-    obj = new THREE.Mesh(playerGeo, playerMat.clone());
+    const mat = isLocal ? localMat : enemyMat;
+    obj = new THREE.Mesh(playerGeo, mat.clone());
+    obj.castShadow = true;
+    obj.receiveShadow = true;
     scene.add(obj);
     playerObjects.set(eid, obj);
   }
   return obj;
 }
 
-function hideRespawnScreen() {
-  respawnScreenEl!.classList.add("hidden");
-  if (matchEndEl?.classList.contains("hidden")) {
-    hudEl?.classList.remove("hidden");
-  }
-  if (respawnInterval) {
-    clearInterval(respawnInterval);
-    respawnInterval = null;
-  }
-}
-
+// === 7. UI LOGIC ===
 function showRespawnScreen(duration: number = 5) {
-  respawnScreenEl!.classList.remove("hidden");
+  isDeployed = false;
+  document.exitPointerLock();
+  crosshairEl.style.display = "none"; 
+  respawnScreenEl?.classList.remove("hidden");
   hudEl?.classList.add("hidden");
-
-  btnDeploy.disabled = true;
-  btnDeploy.textContent = "DEPLOYING IN...";
-
+  if(btnDeploy) {
+    btnDeploy.disabled = true;
+    btnDeploy.textContent = "DEPLOYING IN...";
+  }
   let remaining = duration;
-  respawnTimerEl!.textContent = remaining.toString();
-
-  if (respawnInterval) clearInterval(respawnInterval);
-
+  if(respawnTimerEl) respawnTimerEl.textContent = remaining.toString();
+  if (respawnInterval) window.clearInterval(respawnInterval);
   respawnInterval = window.setInterval(() => {
     remaining--;
     if (remaining <= 0) {
-      clearInterval(respawnInterval!);
+      window.clearInterval(respawnInterval!);
       respawnInterval = null;
-      respawnTimerEl!.textContent = "READY";
-      btnDeploy.disabled = false;
-      btnDeploy.textContent = "DEPLOY";
+      if(respawnTimerEl) respawnTimerEl.textContent = "READY";
+      if(btnDeploy) {
+        btnDeploy.disabled = false;
+        btnDeploy.textContent = "DEPLOY";
+      }
     } else {
-      respawnTimerEl!.textContent = remaining.toString();
+      if(respawnTimerEl) respawnTimerEl.textContent = remaining.toString();
     }
   }, 1000);
 }
 
-// === 4. CLIENT LOGIC ===
+function hideRespawnScreen() {
+  respawnScreenEl?.classList.add("hidden");
+  hudEl?.classList.remove("hidden");
+  crosshairEl.style.display = "block"; 
+  if (respawnInterval) { window.clearInterval(respawnInterval); respawnInterval = null; }
+}
+
+// === 8. NETWORKING ===
+
+// (Patch C: Modified init function)
+async function init() {
+  console.log("[BOOT] init");
+  try { await invoke("start_host"); } catch(e) { console.error(e); }
+  setupClientLogic();
+
+  // debug auto-deploy so inputs flow
+  hideRespawnScreen();
+  isDeployed = true;
+  canvasEl!.requestPointerLock();
+
+  // start the render loop exactly once here
+  gameLoop(0);
+}
+
 function setupClientLogic() {
-  console.log("Client: Connecting to ws://127.0.0.1:8080...");
   socket = new WebSocket("ws://127.0.0.1:8080");
   socket.binaryType = "arraybuffer";
 
-  // 1. On Connection Open
   socket.onopen = () => {
-    console.log("Client: WebSocket connection established!");
-    menuEl?.classList.add("hidden");
-    showRespawnScreen();
-    initInput(canvas);
-    gameLoop(0); // Start the game loop
+    console.log("[WS] open");
+    initInput(canvasEl!); // use the guaranteed canvas
+    // (Patch C: Removed gameLoop(0) from here)
   };
 
-  // 2. On Message Received
-  socket.onmessage = (event) => {
+  socket.onerror = (ev) => { console.error("[WS] error", ev); };
+  socket.onclose = (ev) => { console.warn("[WS] close", ev.code, ev.reason); };
+
+  // (Patch A: Replaced entire onmessage handler)
+  socket.onmessage = async (event) => {
+    // robust Blob/ArrayBuffer handling
+    let ab: ArrayBuffer;
+    if (event.data instanceof Blob) ab = await event.data.arrayBuffer();
+    else if (event.data instanceof ArrayBuffer) ab = event.data;
+    else if (event.data?.buffer instanceof ArrayBuffer) ab = event.data.buffer as ArrayBuffer;
+    else { console.error("[WS] unknown event.data type", typeof event.data); return; }
+  
+    // decode
+    let tickData: TickSnapshot;
+    let yourId: number | null = null;
     try {
-      const tickData: TickSnapshot = msgpackr.decode(
-        new Uint8Array(event.data)
-      );
-
-      // Robust EID finding
-      if (localPlayerEid === null) {
-        if (tickData.entities.length > 0) {
-          localPlayerEid = tickData.entities.reduce(
-            (max, e) => Math.max(max, e.eid),
-            -1 // Use -1 as initial to handle EID 0
-          );
-          console.log(`Client: Local player EID set to: ${localPlayerEid}`);
-        }
-      }
-
-      updateUI(tickData.game_state);
-
-      for (const entity of tickData.entities) {
-        const { eid, transform, health, stamina } = entity;
-        const obj = getPlayerObject(eid);
-
-        // --- THIS IS THE KEY ---
-        // The server's transform is ALWAYS applied to the mesh
-        obj.position.set(transform.x, transform.y, transform.z);
-
-        if (eid === localPlayerEid) {
-          obj.visible = false; // Hide local player
-
-          // Update HUD from server state.
-          if (health && healthEl) {
-            healthEl.textContent = `HP: ${health.current.toFixed(0)}`;
-          }
-          if (stamina && staminaEl) {
-            staminaEl.textContent = `STAM: ${stamina.current.toFixed(0)}`;
-          }
-        } else {
-          // Everyone else is visible
-          obj.visible = true;
-        }
-      }
-    } catch (e) {
-      console.error("Client error processing host message:", e);
+      const raw = msgpackr.decode(new Uint8Array(ab)) as any;  // NOTE: Uint8Array
+      const hasEnvelope = raw && typeof raw === "object" && "snapshot" in raw && "your_id" in raw;
+      if (hasEnvelope) { yourId = (raw as ServerEnvelope).your_id; tickData = (raw as ServerEnvelope).snapshot; }
+      else { tickData = raw as TickSnapshot; }
+    } catch (e) { console.error("[WS] decode failed", e); return; }
+  
+    if (!tickData?.entities?.length) return;
+  
+    // lock my id before loop
+    if (localPlayerEid === null) {
+      localPlayerEid = yourId ?? (tickData.entities[0]?.eid ?? null);
+      console.log("[NET] my id =", localPlayerEid);
     }
-  };
-
-  // 3. On Connection Close
-  socket.onclose = () => {
-    console.error("Client: WebSocket connection lost!");
-    hudEl?.classList.add("hidden");
-    menuEl?.classList.remove("hidden");
-    menuEl!.textContent = "CONNECTION LOST";
-  };
-
-  // 4. On Error
-  socket.onerror = (err) => {
-    console.error("Client: WebSocket error:", err);
-  };
-}
-
-// === 5. CORE GAME STARTUP ===
-async function init() {
-  console.log("Initializing client...");
-  console.log("Telling Rust backend to start host...");
-
-  btnDeploy.onclick = () => {
-    hideRespawnScreen();
-    isDeployed = true;
-    console.log("Player clicked DEPLOY");
-    canvas.requestPointerLock();
-  };
-
-  try {
-    // This calls the "start_host" command in src-tauri/src/main.rs
-    await invoke("start_host");
-    console.log("Client: Host server started by Rust.");
-    // Give the server a moment to bind before connecting
-    setTimeout(setupClientLogic, 100);
-  } catch (e) {
-    console.error("Failed to start host:", e);
-    alert("FATAL: Failed to start host. See console.");
-  }
-}
-
-// === 6. CORE GAME LOOP (Client) ===
-let lastTime = 0;
-let frameCount = 0;
-let lastFPSUpdate = 0;
+  
+    // sync meshes + capture my transform
+    let meFound = false;
+    for (const e of tickData.entities) {
+      const isMe = (e.eid === localPlayerEid);
+      const obj = getPlayerObject(e.eid, isMe);
+  
+      const px = e.transform.x ?? 0;
+      const py = e.transform.y ?? 0;
+      const pz = e.transform.z ?? 0;
+  
+      obj.position.set(px, py, pz);
+      if (typeof e.transform.yaw === "number") obj.rotation.y = e.transform.yaw;
+  
+      obj.visible = true;
+  
+      if (isMe) {
+        meFound = true;
+        lastMe.x = px; lastMe.y = py; lastMe.z = pz; lastMe.has = true;
+        if (typeof e.transform.yaw === "number") lastYaw = e.transform.yaw;
+      }
+    }
+  
+    if (!meFound) {
+      const e = tickData.entities[0];
+      lastMe.x = e.transform.x ?? 0; lastMe.y = e.transform.y ?? 0; lastMe.z = e.transform.z ?? 0; lastMe.has = true;
+      if (typeof e.transform.yaw === "number") lastYaw = e.transform.yaw;
+    }
+  };  
+};
 
 async function gameLoop(now: number) {
-  requestAnimationFrame(gameLoop); // Loop every frame
+  requestAnimationFrame(gameLoop);
 
-  const dt = (now - lastTime) / 1000.0; // Delta time in *seconds*
-  lastTime = now;
-
-  // Update input state (keyboard/mouse)
-  updateInput();
-
-  const deltaX = inputState.deltaX;
-  const deltaY = inputState.deltaY;
-  const inputs = inputState as PlayerInputs;
-
-  // --- THIS IS THE NEW, CORRECT LOGIC ---
-  if (isDeployed) {
-    // 1. Apply mouse look to camera rotation
-    playerRotation.y -= deltaX;
-    playerRotation.x -= deltaY;
-    playerRotation.x = Math.max(
-      -Math.PI / 2,
-      Math.min(Math.PI / 2, playerRotation.x)
-    );
-    camera.rotation.copy(playerRotation);
-
-    // 2. Tell the camera to FOLLOW the player mesh
-    if (localPlayerEid !== null) {
-      const localPlayerObj = playerObjects.get(localPlayerEid);
-      if (localPlayerObj) {
-        // --- THIS IS THE FIX ---
-        // Get the position from the server-controlled mesh
-        const cameraOffset = new THREE.Vector3(0, 0.6, 0); // eye height
-        camera.position.copy(localPlayerObj.position).add(cameraOffset);
-      }
-    }
+  // (Patch B: Replaced camera logic with first-person)
+  if (lastMe.has) {
+    const dist = 6;
+    const height = 2;
+    const offX = -Math.sin(lastYaw) * dist;
+    const offZ = -Math.cos(lastYaw) * dist;
+    camera.position.set(lastMe.x + offX, lastMe.y + height, lastMe.z + offZ);
+    camera.lookAt(lastMe.x, lastMe.y + 1.2, lastMe.z);
+  } else {
+    camera.position.set(0, 20, 30);
+    camera.lookAt(0, 0, 0);
   }
-  // --- END NEW LOGIC BLOCK ---
+  
 
-  // Send inputs to server
-  const clientMsg = msgpackr.encode([
-    tick++,
-    [
-      inputs.forward ?? 0,
-      inputs.right ?? 0,
-      !!inputs.jump,
-      !!inputs.fire,
-      !!inputs.sprint,
-      !!inputs.showScoreboard,
-    ],
-    deltaX,
-    deltaY,
-  ]);
+  debugCube.rotation.y += 0.01;
 
-  try {
-    if (socket && socket.readyState === WebSocket.OPEN && isDeployed) {
-      socket.send(clientMsg);
-    }
-  } catch (e) {
-    console.error(`Error sending client message ${tick}:`, e);
-  }
-
-  renderer.render(scene, camera);
-
-  // Update FPS counter
-  frameCount++;
-  if (now - lastFPSUpdate > 250) {
-    const fps = (frameCount * 1000) / (now - lastFPSUpdate);
+  frames++;
+  const nowMs = performance.now();
+  if (nowMs - lastFPS > 250) {
+    const fps = (frames * 1000) / (nowMs - lastFPS);
     if (fpsEl) {
       fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
     }
-    frameCount = 0;
-    lastFPSUpdate = now;
+    frames = 0;
+    lastFPS = nowMs;
   }
-}
-
-// === 7. UI & STARTUP ===
-function updateUI(gameState: GameModeState) {
-  if (teamATicketsEl)
-    teamATicketsEl.textContent = String(gameState.team_a_tickets);
-  if (teamBTicketsEl)
-    teamBTicketsEl.textContent = String(gameState.team_b_tickets);
-
-  // Scoreboard visibility is driven by local input for responsiveness
-  if (inputState.showScoreboard) {
-    scoreboardEl?.classList.remove("hidden");
-  } else {
-    scoreboardEl?.classList.add("hidden");
+  
+  if (socket && socket.readyState === WebSocket.OPEN && isDeployed) {
+    updateInput();
+    const inputs = inputState as PlayerInputs;
+    const msg = msgpackr.encode([
+      tick++,
+      [inputs.forward||0, inputs.right||0, !!inputs.jump, !!inputs.fire, !!inputs.sprint, !!inputs.showScoreboard],
+      inputState.deltaX,
+      inputState.deltaY
+    ]);
+    socket.send(msg);
   }
-
-  if (gameState.match_ended) {
-    hudEl?.classList.add("hidden");
-    scoreboardEl?.classList.add("hidden");
-    if (respawnScreenEl && !respawnScreenEl.classList.contains("hidden")) {
-      hideRespawnScreen();
-    }
-    if (document.pointerLockElement) {
-      document.exitPointerLock();
-    }
-
-    if (matchEndEl && matchWinnerEl) {
-      const winnerText =
-        gameState.winner === TeamId.TeamA
-          ? "Team A Wins!"
-          : gameState.winner === TeamId.TeamB
-          ? "Team B Wins!"
-          : "Draw";
-
-      matchWinnerEl.textContent = winnerText;
-      matchEndEl.classList.remove("hidden");
-    }
-  } else {
-    if (respawnScreenEl?.classList.contains("hidden")) {
-      hudEl?.classList.remove("hidden");
-    }
-    matchEndEl?.classList.add("hidden");
-  }
+  
+  renderer.render(scene, camera);
 }
 
 window.addEventListener("resize", () => {
@@ -437,5 +333,4 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Start the entire process
 init();

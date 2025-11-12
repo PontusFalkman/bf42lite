@@ -1,191 +1,196 @@
-// File: apps/client-tauri/src-tauri/src/main.rs
+// apps/client-tauri/src-tauri/src/main.rs
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod sim;
-
-use futures_util::{SinkExt, StreamExt};
-use once_cell::sync::Lazy;
-use rmp_serde::from_slice;
-use serde::Deserialize;
-use sim::{Game, TickSnapshot, TICK_DT};
 use std::collections::HashMap;
-use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tauri::State;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc::{self, UnboundedSender};
-use tokio_tungstenite::tungstenite::Message;
+use tokio::time::sleep;
+use futures_util::{SinkExt, StreamExt};
+use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
+use tokio::sync::Mutex as AsyncMutex;          // NEW
+use rmp_serde::to_vec as rmp_to_vec;            // NEW
 
-// --- Global state for the game server ---
-type ClientTx = UnboundedSender<Message>;
-static GAME: Lazy<Arc<Mutex<Game>>> = Lazy::new(|| Arc::new(Mutex::new(Game::new())));
-// This map will store the EID and the "sender" half of the websocket for each client
-static CLIENTS: Lazy<Arc<Mutex<HashMap<SocketAddr, (u32, ClientTx)>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
+// Define the module (assumes sim.rs is in the same folder)
+mod sim;
+use sim::{SimState, ClientMessage, TickSnapshot, ServerEnvelope};
 
-// --- Define structs to match the *exact* client message ---
-// [tick, [f, r, j, f, s, sb], delta_x, delta_y]
-#[derive(Deserialize)]
-struct ClientInputs(f32, f32, bool, bool, bool, bool);
-
-#[derive(Deserialize)]
-struct ClientMessage(u32, ClientInputs, f32, f32);
-
-// --- The Tokio-based asynchronous server logic ---
-
-async fn handle_connection(stream: TcpStream, addr: SocketAddr) {
-    let ws_stream = tokio_tungstenite::accept_async(stream)
-        .await
-        .expect("Error during the websocket handshake");
-
-    println!("Client connected: {}", addr);
-
-    // Create a channel for this client
-    let (tx, mut rx) = mpsc::unbounded_channel();
-
-    // Add client to the global map
-    let eid = {
-        let mut game_lock = GAME.lock().unwrap();
-        game_lock.add_player()
-    };
-    CLIENTS.lock().unwrap().insert(addr, (eid, tx));
-    println!("Client {} assigned EID {}", addr, eid);
-
-    let (mut ws_sender, mut ws_receiver) = ws_stream.split();
-
-    // --- Write Task (Listens on the channel and sends to client) ---
-    let write_task = tokio::spawn(async move {
-        while let Some(message) = rx.recv().await {
-            if ws_sender.send(message).await.is_err() {
-                // Client disconnected
-                break;
-            }
-        }
-    });
-
-    // --- Read Task (Listens to client and updates game state) ---
-    let read_task = tokio::spawn(async move {
-        while let Some(msg) = ws_receiver.next().await {
-            match msg {
-                Ok(msg) => {
-                    if msg.is_binary() {
-                        let msg_data = msg.into_data();
-                        
-                        // --- THIS IS THE CORRECT DESERIALIZATION ---
-                        match from_slice::<ClientMessage>(&msg_data) {
-                            Ok(msg) => {
-                                // msg.0 = tick (u32)
-                                // msg.1 = inputs (ClientInputs)
-                                // msg.2 = delta_x (f32)
-                                // msg.3 = delta_y (f32) (unused)
-
-                                let mut game = GAME.lock().unwrap();
-                                if let Some(player) = game.players.get_mut(&eid) {
-                                    // Manually copy inputs from the tuple
-                                    player.inputs.forward = msg.1.0;
-                                    player.inputs.right = msg.1.1;
-                                    player.inputs.jump = msg.1.2;
-                                    player.inputs.fire = msg.1.3;
-                                    player.inputs.sprint = msg.1.4;
-                                    player.inputs.show_scoreboard = msg.1.5;
-
-                                    // This is the key for the rotation fix
-                                    player.inputs.delta_x = msg.2;
-                                }
-                            }
-                            Err(e) => {
-                                println!("Failed to deserialize client msg: {}", e);
-                            }
-                        }
-                    } else if msg.is_close() {
-                        break; // Client initiated disconnect
-                    }
-                }
-                Err(e) => {
-                    println!("Websocket error: {}", e);
-                    break;
-                }
-            }
-        }
-    });
-
-    // Wait for either task to finish (e.g., client disconnects)
-    tokio::select! {
-        _ = write_task => {},
-        _ = read_task => {},
-    }
-
-    // --- Client Cleanup ---
-    println!("Client {} disconnected.", addr);
-    CLIENTS.lock().unwrap().remove(&addr);
-    GAME.lock().unwrap().remove_player(eid);
-}
-
-// --- FIX 1: Removed #[tokio::main] ---
-async fn run_server() {
-    let server = TcpListener::bind("127.0.0.1:8080")
-        .await
-        .expect("Failed to bind server");
-    println!("Server listening on ws://127.0.0.1:8080");
-
-    // --- Game Tick Loop Thread (Blocking) ---
-    let game_clone = GAME.clone();
-    std::thread::spawn(move || {
-        let mut last_tick = Instant::now();
-        loop {
-            let now = Instant::now();
-            let delta = now.duration_since(last_tick);
-
-            if delta >= Duration::from_secs_f32(TICK_DT) {
-                let mut game = game_clone.lock().unwrap();
-                game.tick(TICK_DT);
-                last_tick = now;
-            }
-            std::thread::sleep(Duration::from_millis(1)); // Prevent busy-waiting
-        }
-    });
-
-    // --- Snapshot Broadcasting Loop (Async) ---
-    let clients_clone = CLIENTS.clone();
-    tokio::spawn(async move {
-        loop {
-            // Get a snapshot from the game
-            let snapshot: TickSnapshot = {
-                let game = GAME.lock().unwrap();
-                game.get_tick_snapshot()
-            };
-            let encoded = rmp_serde::to_vec(&snapshot).unwrap();
-            let msg = Message::Binary(encoded);
-
-            // Send to all clients without holding the lock across await
-            {
-                let clients_lock = clients_clone.lock().unwrap();
-                for (_, tx) in clients_lock.values() {
-                    let _ = tx.send(msg.clone());
-                }
-            }
-
-            // Wait for the next frame
-            tokio::time::sleep(Duration::from_millis(16)).await; // ~60hz
-        }
-    });
-
-    // --- Accept Connections ---
-    while let Ok((stream, addr)) = server.accept().await {
-        tokio::spawn(handle_connection(stream, addr));
-    }
+struct AppState {
+    sim: Arc<Mutex<SimState>>,
+    inputs: Arc<Mutex<HashMap<u32, ClientMessage>>>,
 }
 
 #[tauri::command]
-async fn start_host() -> Result<(), String> {
-    println!("Starting host server...");
-    tokio::spawn(run_server());
+async fn start_host(state: State<'_, AppState>) -> Result<(), String> {
+    let addr = "127.0.0.1:8080";
+    println!("Starting Host at ws://{}", addr);
+
+    let listener = TcpListener::bind(addr).await.map_err(|e| e.to_string())?;
+    
+    let sim_state = state.sim.clone();
+    let inputs_state = state.inputs.clone();
+
+    let loop_sim = sim_state.clone();
+    let loop_inputs = inputs_state.clone();
+    
+    tokio::spawn(async move {
+        let tick_rate = Duration::from_millis(16); // ~60 FPS
+        loop {
+            let start = Instant::now();
+            {
+                let mut sim = loop_sim.lock().unwrap();
+                let mut inputs = loop_inputs.lock().unwrap();
+                
+                sim.update(0.016, &inputs); 
+
+                for msg in inputs.values_mut() {
+                    msg.2 = 0.0; // Reset dx
+                    msg.3 = 0.0; // Reset dy
+                }
+            }
+            let elapsed = start.elapsed();
+            if elapsed < tick_rate {
+                sleep(tick_rate - elapsed).await;
+            }
+        }
+    });
+
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            tokio::spawn(accept_connection(
+                stream,
+                sim_state.clone(),
+                inputs_state.clone(),
+            ));
+        }
+    });
+
     Ok(())
 }
 
+async fn accept_connection(
+    stream: TcpStream,
+    sim: Arc<Mutex<SimState>>,
+    inputs: Arc<Mutex<HashMap<u32, ClientMessage>>>,
+) {
+    let addr = stream.peer_addr().expect("Failed to get peer address");
+    println!("Client connected: {}", addr);
+
+    let ws_stream = match accept_async(stream).await {
+        Ok(ws) => ws,
+        Err(e) => { println!("Handshake error: {}", e); return; }
+    };
+
+    // FIX: split then wrap writer in AsyncMutex
+    let (ws_write_raw, mut ws_read) = ws_stream.split();
+    let ws_write = Arc::new(AsyncMutex::new(ws_write_raw)); // shareable writer
+
+
+    // 1) assign id
+    let my_id = {
+        let mut s = sim.lock().unwrap();
+        let id = s.players.len() as u32 + 1;
+        s.handle_join(id);
+        id
+    };
+
+    // 2) initial snapshot
+    let initial_bin = {
+        let mut s = sim.lock().unwrap();
+        let snapshot: TickSnapshot = s.update(0.0, &HashMap::new());
+        rmp_to_vec(&ServerEnvelope { your_id: my_id, snapshot }).unwrap()
+    };
+
+    if ws_write.lock().await
+        .send(Message::Binary(initial_bin))
+        .await
+        .is_err()
+    {
+        println!("Failed to send initial snapshot to {}", addr);
+        return;
+    }
+
+    // 4) periodic snapshots at 20 Hz
+    {
+        let sim_for_send = Arc::clone(&sim);
+        let ws_for_send  = Arc::clone(&ws_write);
+        let my_id_send   = my_id;
+
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_millis(50));
+            loop {
+                interval.tick().await;
+
+                let snapshot: TickSnapshot = {
+                    let mut s = sim_for_send.lock().unwrap();
+                    s.update(0.0, &HashMap::new())
+                };
+
+                let bytes = match rmp_to_vec(&ServerEnvelope { your_id: my_id_send, snapshot }) {
+                    Ok(b) => b,
+                    Err(_) => break,
+                };
+
+                if ws_for_send.lock().await
+                    .send(Message::Binary(bytes))
+                    .await
+                    .is_err()
+                {
+                    break; // client disconnected
+                }
+            }
+        });
+    }
+
+
+    // 3. Client Loop
+    while let Some(msg) = ws_read.next().await {
+        match msg {
+            Ok(Message::Binary(bin)) => {
+                if let Ok(client_msg) = rmp_serde::from_slice::<ClientMessage>(&bin) {
+                    inputs.lock().unwrap().insert(my_id, client_msg);
+
+                    let envelope = {
+                        let mut s = sim.lock().unwrap();
+                        let snapshot = s.update(0.0, &HashMap::new());
+                        ServerEnvelope { your_id: my_id, snapshot }
+                    };
+
+                    let bytes = rmp_to_vec(&envelope).unwrap();
+                    if ws_write.lock().await
+                        .send(Message::Binary(bytes))
+                        .await
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            }
+            Ok(Message::Close(_)) => break,
+            _ => {}
+        }
+    }
+
+    // 4. Disconnect
+    {
+        let mut s = sim.lock().unwrap();
+        s.handle_disconnect(my_id);
+    }
+    {
+        let mut inp = inputs.lock().unwrap();
+        inp.remove(&my_id);
+    }
+    println!("Client {} disconnected", addr);
+}
+
 fn main() {
+    let sim = Arc::new(Mutex::new(SimState::new()));
+    let inputs = Arc::new(Mutex::new(HashMap::new()));
+
     tauri::Builder::default()
+        .manage(AppState { sim, inputs })
         .invoke_handler(tauri::generate_handler![start_host])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -28,6 +28,9 @@ tokio-tungstenite = "0.23"
 futures-util = "0.3"
 rmp-serde = "1.3"
 
+# --- Gameplay Dependencies ---
+rand = "0.8" # Added for mechanics (spread, random spawns)
+
 # --- ADDED THESE 2 LINES TO FIX COMPILE ERRORS ---
 once_cell = "1.19.0"
 tungstenite = "0.23"
