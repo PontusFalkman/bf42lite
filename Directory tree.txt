@@ -54,7 +54,13 @@ bf42lite/
 │       │   │   ├── lib.rs
 │       │   │   ├── main.rs
 │       │   │   ├── network.rs
-│       │   │   └── sim.rs
+│       │   │   ├── player.rs
+│       │   │   ├── protocol.rs
+│       │   │   ├── sim.rs
+│       │   │   └── systems/
+│       │   │       ├── combat.rs
+│       │   │       ├── mod.rs
+│       │   │       └── movement.rs
 │       │   └── tauri.conf.json
 │       ├── tsconfig.json
 │       └── vite.config.ts

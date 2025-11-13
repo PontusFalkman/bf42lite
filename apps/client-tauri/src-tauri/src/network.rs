@@ -1,5 +1,4 @@
 // apps/client-tauri/src-tauri/src/network.rs
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -10,7 +9,8 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
 use rmp_serde::to_vec as rmp_to_vec;
 
-use crate::sim::{SimState, ClientMessage, TickSnapshot, ServerEnvelope};
+use crate::sim::SimState;
+use crate::protocol::{ClientMessage, TickSnapshot, ServerEnvelope}; // <-- Updated Import
 
 pub async fn start_server(
     addr: &str,

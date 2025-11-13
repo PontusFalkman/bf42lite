@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
 
-use crate::sim::{SimState, ClientMessage};
+// === FIX: Import ClientMessage from protocol, not sim ===
+use crate::sim::SimState;
+use crate::protocol::ClientMessage; 
 
 pub async fn run(
     sim_state: Arc<Mutex<SimState>>, 

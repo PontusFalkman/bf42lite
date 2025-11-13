@@ -6,16 +6,21 @@ import { UIManager } from "./UIManager";
 import { Renderer } from "./Renderer";
 import { NetworkClient, TickSnapshot } from "./NetworkClient";
 
+// === CONFIGURATION ===
+// Set this to TRUE if you want to skip the menu and spawn instantly (good for testing physics)
+// Set this to FALSE to test the full game flow (Deploy screen -> Game)
+const DEBUG_AUTO_DEPLOY = false; 
+
 // === STATE ===
 let localPlayerEid: number | null = null;
-let isDeployed = false;
+let isDeployed = false; // Determines if we send inputs and lock cursor
 let tick = 0;
 let frames = 0;
 let lastFPS = performance.now();
 
 // Camera & Movement state
 let cameraYaw = 0;
-let cameraPitch = 0; // Note: Pitch is currently visual-only in this client refactor
+let cameraPitch = 0;
 let lastMe = { x: 0, y: 0, z: 0, has: false };
 let lastYaw = 0;
 
@@ -26,11 +31,20 @@ const renderer = new Renderer(ui.canvasEl);
 // Setup Mouse Look
 window.addEventListener("mousemove", (event) => {
   if (document.pointerLockElement !== ui.canvasEl || !isDeployed) return;
-  // We update the camera yaw locally for smooth feel, 
-  // though the server authorizes position.
+  
   cameraYaw   -= event.movementX * 0.002;
   cameraPitch -= event.movementY * 0.002;
   cameraPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, cameraPitch));
+});
+
+// Handle Pointer Lock Errors (e.g. user pressed ESC)
+document.addEventListener("pointerlockchange", () => {
+  if (document.pointerLockElement !== ui.canvasEl && isDeployed) {
+    // If the user pressed ESC to get their cursor back, we pause inputs
+    // but we don't necessarily "undeploy" (kill them).
+    // For this Lite version, we just let them be "paused".
+    console.log("[Input] Pointer lock lost");
+  }
 });
 
 const net = new NetworkClient(
@@ -38,16 +52,14 @@ const net = new NetworkClient(
   (tickData: TickSnapshot, yourId: number | null) => {
     if (!tickData?.entities?.length) return;
   
-    // Lock my id
     if (localPlayerEid === null) {
       localPlayerEid = yourId ?? (tickData.entities[0]?.eid ?? null);
       console.log("[NET] my id =", localPlayerEid);
     }
 
-    // Update Renderer
     renderer.updateEntities(tickData.entities, localPlayerEid);
 
-    // Capture my own state for camera logic
+    // Sync Camera
     let meFound = false;
     for (const e of tickData.entities) {
       if (e.eid === localPlayerEid) {
@@ -61,7 +73,6 @@ const net = new NetworkClient(
     }
     
     if (!meFound) {
-      // Fallback if I'm not in the list (dead?)
       const e = tickData.entities[0];
       lastMe.x = e.transform.x ?? 0; 
       lastMe.y = e.transform.y ?? 0; 
@@ -72,11 +83,31 @@ const net = new NetworkClient(
   },
   // onConnect
   () => {
+    console.log("[NET] Connected");
     initInput(ui.canvasEl);
+
+    if (DEBUG_AUTO_DEPLOY) {
+        handleDeploy();
+    } else {
+        // Show the initial deploy screen with a 3-second timer
+        ui.showRespawnScreen(3, handleDeploy);
+    }
   }
 );
 
-// === GAME LOOP ===
+// === CORE FUNCTIONS ===
+
+function handleDeploy() {
+    console.log("[GAME] Deploying...");
+    ui.hideRespawnScreen();
+    isDeployed = true;
+    
+    // Lock the cursor
+    // Note: requestPointerLock() only works if triggered by a user gesture (click).
+    // Since handleDeploy is called by the "Deploy" button click, this works.
+    ui.canvasEl.requestPointerLock();
+}
+
 async function gameLoop(now: number) {
   requestAnimationFrame(gameLoop);
 
@@ -97,8 +128,8 @@ async function gameLoop(now: number) {
 
   // 3. Send Inputs
   if (isDeployed) {
-    updateInput();
-    // inputs: [fwd, right, jump, fire, sprint, scoreboard]
+    updateInput(0);
+    ui.setScoreboardVisible(inputState.showScoreboard);
     const inputs = [
       inputState.forward||0, 
       inputState.right||0, 
@@ -110,7 +141,6 @@ async function gameLoop(now: number) {
     
     net.sendInput(tick++, inputs, inputState.deltaX, inputState.deltaY);
   }
-
   // 4. Render
   renderer.render();
 }
@@ -118,17 +148,13 @@ async function gameLoop(now: number) {
 // === BOOT ===
 async function init() {
   console.log("[BOOT] init");
-  // Start Host (Tauri specific)
   try { await invoke("start_host"); } catch(e) { console.error(e); }
 
-  // Connect Network
+  // Connect Network (triggers onConnect -> showRespawnScreen)
   net.connect("ws://127.0.0.1:8080");
 
-  // Auto-deploy logic (for now)
-  ui.hideRespawnScreen();
-  isDeployed = true;
-  
-  // Start Loop
+  // Start Render Loop
   gameLoop(0);
 }
+
 init();

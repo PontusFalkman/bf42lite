@@ -9,6 +9,7 @@ export class UIManager {
   respawnTimerEl: HTMLElement | null;
   btnDeploy: HTMLButtonElement | null;
   crosshairEl: HTMLElement;
+  scoreboardEl: HTMLElement | null;
   
   private respawnInterval: number | null = null;
 
@@ -23,7 +24,7 @@ export class UIManager {
       this.canvasEl.id = "game";
       document.body.appendChild(this.canvasEl);
     }
-
+    this.scoreboardEl = document.getElementById("scoreboard");
     this.hudEl = document.getElementById("hud");
     this.menuEl = document.getElementById("menu");
     this.fpsEl = document.getElementById("fps-counter");
@@ -39,7 +40,8 @@ export class UIManager {
     if (!this.respawnScreenEl) missing.push("#respawn-screen");
     if (!this.respawnTimerEl) missing.push("#respawn-timer");
     if (!this.btnDeploy) missing.push("#btn-deploy");
-    
+    if (this.scoreboardEl) this.scoreboardEl.classList.add("hidden");
+
     // Check for elements not yet used in logic, but present in DOM
     if (!document.getElementById("scoreboard-top")) missing.push("#scoreboard-top");
     if (!document.getElementById("team-a-tickets")) missing.push("#team-a-tickets");
@@ -50,7 +52,9 @@ export class UIManager {
     if (!document.getElementById("match-winner")) missing.push("#match-winner");
 
     if (missing.length) console.warn("Missing UI ids:", missing.join(", "));
-
+    if (this.menuEl) {
+      this.menuEl.classList.add("hidden");
+   }
     // CROSSHAIR (Dynamic creation matches your original logic)
     this.crosshairEl = document.createElement("div");
     // ... (Styles same as before) ...
@@ -60,7 +64,14 @@ export class UIManager {
   updateFPS(fps: number) {
     if (this.fpsEl) this.fpsEl.textContent = `FPS: ${fps.toFixed(1)}`;
   }
-
+setScoreboardVisible(visible: boolean) {
+    if (!this.scoreboardEl) return;
+    if (visible) {
+      this.scoreboardEl.classList.remove("hidden");
+    } else {
+      this.scoreboardEl.classList.add("hidden");
+    }
+  }
   showRespawnScreen(duration: number, onDeploy: () => void) {
     document.exitPointerLock();
     this.crosshairEl.style.display = "none"; 

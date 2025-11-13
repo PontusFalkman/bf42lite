@@ -1,5 +1,4 @@
 // apps/client-tauri/src-tauri/src/main.rs
-
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::collections::HashMap;
@@ -7,11 +6,15 @@ use std::sync::{Arc, Mutex};
 use tauri::State;
 
 // === MODULES ===
+mod protocol; // NEW
+mod player;   // NEW
+mod systems;  // NEW
 mod sim;
-mod gameloop; // NEW
-mod network;  // NEW
+mod gameloop; 
+mod network; 
 
-use sim::{SimState, ClientMessage};
+use sim::SimState;
+use protocol::ClientMessage; // Updated import
 
 struct AppState {
     sim: Arc<Mutex<SimState>>,
