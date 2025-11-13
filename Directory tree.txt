@@ -18,8 +18,11 @@ bf42lite/
 │       ├── package.json
 │       ├── public/
 │       │   └── models/
-│       │       └── soldier.glb  <-- ADDED
+│       │       └── soldier.glb
 │       ├── src/
+│       │   ├── NetworkClient.ts
+│       │   ├── Renderer.ts
+│       │   ├── UIManager.ts
 │       │   ├── input.ts
 │       │   └── main.ts
 │       ├── src-tauri/
@@ -47,8 +50,10 @@ bf42lite/
 │       │   │   ├── icon.ico
 │       │   │   └── icon.png
 │       │   ├── src/
+│       │   │   ├── gameloop.rs
 │       │   │   ├── lib.rs
 │       │   │   ├── main.rs
+│       │   │   ├── network.rs
 │       │   │   └── sim.rs
 │       │   └── tauri.conf.json
 │       ├── tsconfig.json
@@ -97,5 +102,9 @@ bf42lite/
         │   ├── components.ts
         │   ├── index.ts
         │   ├── loop.ts
-        │   └── systems.ts
+        │   └── systems/
+        │       ├── gamemode.ts
+        │       ├── index.ts
+        │       ├── movement.ts
+        │       └── stats.ts
         └── tsconfig.json
