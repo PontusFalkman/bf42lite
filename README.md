@@ -1,11 +1,3 @@
-Here is the new `README.md` for the root of your repository. It aligns with the \*\*v1.3 Hybrid Authority\*\* architecture and the new directory structure.
-
-
-
-\### `README.md`
-
-
-
 \# bf42lite
 
 
