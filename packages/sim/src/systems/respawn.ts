@@ -1,4 +1,4 @@
-import { defineSystem, defineQuery, addComponent, removeComponent } from 'bitecs';
+import { defineSystem, defineQuery, addComponent, removeComponent, hasComponent } from 'bitecs';
 import { Transform, Velocity, Health, RespawnTimer, SimWorld } from '../components';
 
 const RESPAWN_TIME = 3.0; // 3 Seconds delay
@@ -16,8 +16,8 @@ export const createRespawnSystem = () => {
     for (let i = 0; i < entities.length; ++i) {
       const id = entities[i];
       
-      // If dead but NO timer yet, start the respawn process
-      if (Health.isDead[id] && !world.hasComponent(RespawnTimer, id)) {
+      // FIXED: Use standalone hasComponent(world, component, eid)
+      if (Health.isDead[id] && !hasComponent(world, RespawnTimer, id)) {
          addComponent(world, RespawnTimer, id);
          RespawnTimer.timeLeft[id] = RESPAWN_TIME;
          

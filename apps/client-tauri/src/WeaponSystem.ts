@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
+import { NetworkManager } from './managers/NetworkManager';
 import { PlayerInput } from '@bf42lite/sim';
 
 export class WeaponSystem {
@@ -10,10 +11,12 @@ export class WeaponSystem {
   // Reusable Raycaster to save memory
   private raycaster = new THREE.Raycaster();
 
-  constructor(private renderer: Renderer) {}
+  constructor(
+      private renderer: Renderer,
+      private net: NetworkManager
+  ) {}
 
-  // FIXED: Renamed 'dt' to '_dt' to silence unused variable warning
-  update(_dt: number, myEntityId: number) {
+  update(_dt: number, myEntityId: number, currentTick: number) {
     // 1. Check Input (Is holding click?)
     // Note: We check the Component state (PlayerInput), not the raw key
     const isShooting = PlayerInput.shoot[myEntityId] === 1;
@@ -22,13 +25,13 @@ export class WeaponSystem {
       const now = performance.now() / 1000; // Current time in seconds
       
       if (now - this.lastFireTime > this.fireRate) {
-        this.fire();
+        this.fire(currentTick);
         this.lastFireTime = now;
       }
     }
   }
 
-  private fire() {
+  private fire(tick: number) {
     const camera = this.renderer.getCamera();
 
     // 1. Setup Raycast from Camera Center
@@ -39,10 +42,17 @@ export class WeaponSystem {
     
     // ray.direction is a normalized vector pointing forward
     const direction = this.raycaster.ray.direction.clone();
-    const end = start.clone().add(direction.multiplyScalar(this.range));
+    const end = start.clone().add(direction.clone().multiplyScalar(this.range));
 
-    // 3. TODO: Check for hits (Intersection with Enemy Meshes)
-    
+    // 3. Send "Fire Proposal" to Server
+    // We send the visual start (gun barrel) or camera start? 
+    // For accuracy, we usually send Camera Position for the ray origin.
+    this.net.sendFire(
+        { x: start.x, y: start.y, z: start.z },
+        { x: direction.x, y: direction.y, z: direction.z },
+        tick
+    );
+
     // 4. Draw the Tracer
     // Move start point slightly down/right to simulate coming from a gun barrel
     const visualStart = start.clone().add(new THREE.Vector3(0.2, -0.2, 0.5).applyQuaternion(camera.quaternion));

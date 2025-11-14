@@ -1,7 +1,7 @@
-// bf42lite-main/packages/protocol/src/schema.ts
 import { z } from 'zod';
 
-// 1. CLIENT -> SERVER
+// --- 1. CLIENT -> SERVER ---
+
 export const ClientInputSchema = z.object({
   type: z.literal('input'),
   tick: z.number(),
@@ -15,6 +15,15 @@ export const ClientInputSchema = z.object({
   })
 });
 
+// NEW: Fire Proposal
+export const ClientFireSchema = z.object({
+  type: z.literal('fire'),
+  tick: z.number(),
+  origin: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  direction: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  weaponId: z.number().default(1)
+});
+
 export const JoinRequestSchema = z.object({
   type: z.literal('join'),
   name: z.string()
@@ -22,10 +31,12 @@ export const JoinRequestSchema = z.object({
 
 export const ClientMessageSchema = z.union([
   ClientInputSchema,
+  ClientFireSchema, // Add to union
   JoinRequestSchema
 ]);
 
-// 2. SERVER -> CLIENT
+// --- 2. SERVER -> CLIENT ---
+
 export const EntityStateSchema = z.object({
   id: z.number(),
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
@@ -36,7 +47,14 @@ export const EntityStateSchema = z.object({
   lastProcessedTick: z.number().optional() 
 });
 
-// --- UPDATED SNAPSHOT ---
+// NEW: Hit Confirmation (for hitmarkers)
+export const HitConfirmedSchema = z.object({
+  type: z.literal('hitConfirmed'),
+  shooterId: z.number(),
+  targetId: z.number(),
+  damage: z.number()
+});
+
 export const SnapshotSchema = z.object({
   type: z.literal('snapshot'),
   tick: z.number(),
@@ -56,10 +74,12 @@ export const WelcomeSchema = z.object({
 
 export const ServerMessageSchema = z.union([
   SnapshotSchema,
-  WelcomeSchema
+  WelcomeSchema,
+  HitConfirmedSchema // Add to union
 ]);
 
 export type ClientInput = z.infer<typeof ClientInputSchema>;
+export type ClientFire = z.infer<typeof ClientFireSchema>;
 export type Snapshot = z.infer<typeof SnapshotSchema>;
 export type EntityState = z.infer<typeof EntityStateSchema>;
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
