@@ -1,15 +1,19 @@
-import { createWorld, addEntity, addComponent, pipe } from 'bitecs';
+import { createWorld, addEntity, addComponent, pipe, defineQuery } from 'bitecs';
 import { Transform, Velocity, PlayerInput, Player, SimWorld } from './components';
 import { createMovementSystem } from './systems/movement';
 import { createRespawnSystem } from './systems/respawn';
 import { createCombatSystem } from './systems/combat';
+import { createGameLoopSystem } from './systems/gameloop';
 
+// --- FIX: Added 'defineQuery' to this list ---
+export { addEntity, addComponent, createWorld, pipe, defineQuery };
+// --------------------------------------------
 
 export * from './components';
 export * from './systems/respawn';
+export * from './systems/gameloop';
 
 export const createSimulation = () => {
-  // Cast the generic world to our SimWorld interface
   const world = createWorld() as SimWorld;
   world.time = 0;
   world.dt = 1 / 60;
@@ -17,7 +21,8 @@ export const createSimulation = () => {
   const pipeline = pipe(
     createMovementSystem(),
     createCombatSystem(),
-    createRespawnSystem()
+    createRespawnSystem(),
+    createGameLoopSystem()
   );
 
   const step = (dt: number) => {

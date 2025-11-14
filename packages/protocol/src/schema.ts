@@ -9,8 +9,8 @@ export const ClientInputSchema = z.object({
     right: z.number(),
     jump: z.boolean(),
     shoot: z.boolean(),
-    yaw: z.number(),    // <--- ADDED
-    pitch: z.number()   // <--- ADDED
+    yaw: z.number(),
+    pitch: z.number()
   })
 });
 
@@ -29,24 +29,21 @@ export const EntityStateSchema = z.object({
   id: z.number(),
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
   rot: z.number(),
-  vel: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional(),
   health: z.number(),
   isDead: z.boolean()
 });
 
+// --- UPDATED SNAPSHOT ---
 export const SnapshotSchema = z.object({
   type: z.literal('snapshot'),
   tick: z.number(),
+  // New Game State Block
+  game: z.object({
+    ticketsAxis: z.number(),
+    ticketsAllies: z.number(),
+    state: z.number()
+  }),
   entities: z.array(EntityStateSchema)
-});
-
-export const HitEventSchema = z.object({
-  type: z.literal('hit'),
-  tick: z.number(),
-  shooterId: z.number(),
-  targetId: z.number(),
-  damage: z.number(),
-  isKill: z.boolean()
 });
 
 export const WelcomeSchema = z.object({
@@ -57,7 +54,6 @@ export const WelcomeSchema = z.object({
 
 export const ServerMessageSchema = z.union([
   SnapshotSchema,
-  HitEventSchema,
   WelcomeSchema
 ]);
 
