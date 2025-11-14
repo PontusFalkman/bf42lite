@@ -1,20 +1,9 @@
-// apps/client-tauri/src-tauri/src/lib.rs
+// This file is intentionally empty for the v1.3 Client Container.
+// All game logic is currently handled in TypeScript or the Node.js Host.
 
-// === 1. Register the Modules ===
-// This allows the library to see the files we created.
-pub mod protocol;
-pub mod player;
-pub mod systems;
-pub mod sim;
-pub mod gameloop;
-pub mod network;
-
-// === 2. Standard Tauri Entry Point ===
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  // Note: Your main.rs handles the real logic now, but this 
-  // must still compile for the build to succeed.
-  tauri::Builder::default()
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    tauri::Builder::default()
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
 }

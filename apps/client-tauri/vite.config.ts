@@ -1,12 +1,15 @@
-import { defineConfig } from "vite";
+import { defineConfig } from 'vite';
+
 export default defineConfig({
-  root: "./",
-  server: { port: 5173 },
-  // FIX: Mark @tauri-apps/api/tauri as external so Rollup doesn't try to bundle it.
-  build: { 
-    outDir: "dist",
-    rollupOptions: {
-      external: ["@tauri-apps/api/tauri"]
-    }
+  clearScreen: false,
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
+  envPrefix: ['VITE_', 'TAURI_'],
+  build: {
+    target: 'esnext',
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
+    sourcemap: !!process.env.TAURI_DEBUG,
   },
 });

@@ -1,81 +1,62 @@
-/**
- * Task N1: Local client <-> host message pipeline.
- *
- * This simulates a zero-latency, high-reliability network connection
- * by queueing messages and processing them on the *next* event loop tick.
- * This simulates the asynchronous nature of a real network.
- */
+import { NetworkAdapter, NetworkStats } from './types';
+import { ClientMessage, ServerMessage } from '@bf42lite/protocol';
 
-// Per the design, all messages are binary
-type Message = Uint8Array;
-type MessageHandler = (msg: Message) => void;
+export class LoopbackAdapter implements NetworkAdapter {
+  private connected = false;
+  private peer: LoopbackAdapter | null = null;
+  
+  private onMsgCallbacks: ((msg: any) => void)[] = [];
+  private onConnectCallbacks: (() => void)[] = [];
+  
+  public latencyMs = 0; 
 
-export class LoopbackAdapter {
-  private clientMessageHandler: MessageHandler | null = null;
-  private hostMessageHandler: MessageHandler | null = null;
+  constructor() {}
 
-  // Simulates the "wire"
-  private clientQueue: Message[] = [];
-  private hostQueue: Message[] = [];
-
-  private isProcessing = false;
-
-  /**
-   * Called by the client-side logic to receive messages from the host.
-   */
-  public onClientMessage(handler: MessageHandler) {
-    this.clientMessageHandler = handler;
+  static pair(): [LoopbackAdapter, LoopbackAdapter] {
+    const a = new LoopbackAdapter();
+    const b = new LoopbackAdapter();
+    a.peer = b;
+    b.peer = a;
+    return [a, b];
   }
 
-  /**
-   * Called by the host-side logic to receive messages from the client.
-   */
-  public onHostMessage(handler: MessageHandler) {
-    this.hostMessageHandler = handler;
+  async connect(_url: string): Promise<void> {
+    setTimeout(() => {
+      this.connected = true;
+      this.onConnectCallbacks.forEach(cb => cb());
+    }, 10);
   }
 
-  /**
-   * Called by the client to send a binary message to the host.
-   */
-  public sendClientMessage(msg: Message) {
-    this.clientQueue.push(msg);
-    this.scheduleProcessing();
+  disconnect() {
+    this.connected = false;
   }
 
-  /**
-   * Called by the host to send a binary message to the client.
-   */
-  public sendHostMessage(msg: Message) {
-    this.hostQueue.push(msg);
-    this.scheduleProcessing();
-  }
+  isConnected() { return this.connected; }
 
-  private scheduleProcessing() {
-    if (this.isProcessing) return;
-    this.isProcessing = true;
-    // Process on the next tick using a promise
-    Promise.resolve().then(() => this.processQueues());
-  }
+  send(msg: ClientMessage | ServerMessage) {
+    const peer = this.peer; // Capture locally to satisfy TS in setTimeout
+    if (!peer) return;
+    
+    const data = JSON.parse(JSON.stringify(msg));
 
-  private processQueues() {
-    // Process all client->host messages
-    if (this.hostMessageHandler) {
-      while (this.clientQueue.length > 0) {
-        // We just checked length, so this is safe
-        const msg = this.clientQueue.shift()!; 
-        this.hostMessageHandler(msg);
-      }
+    if (this.latencyMs > 0) {
+      setTimeout(() => peer.receive(data), this.latencyMs);
+    } else {
+      peer.receive(data);
     }
+  }
 
-    // Process all host->client messages
-    if (this.clientMessageHandler) {
-      while (this.hostQueue.length > 0) {
-        // We just checked length, so this is safe
-        const msg = this.hostQueue.shift()!;
-        this.clientMessageHandler(msg);
-      }
+  private receive(msg: any) {
+    if (this.connected) {
+      this.onMsgCallbacks.forEach(cb => cb(msg));
     }
+  }
 
-    this.isProcessing = false;
+  onMessage(cb: (msg: any) => void) { this.onMsgCallbacks.push(cb); }
+  onConnect(cb: () => void) { this.onConnectCallbacks.push(cb); }
+  onDisconnect(_cb: (reason?: string) => void) {}
+  
+  getStats(): NetworkStats {
+    return { rtt: 0, loss: 0, bytesIn: 0, bytesOut: 0 };
   }
 }

@@ -1,2 +1,3 @@
-export * from "./LoopbackAdapter";
-export * from "./WebSocketAdapter";
+export * from './types';
+export * from './WebSocketAdapter';
+export * from './LoopbackAdapter';

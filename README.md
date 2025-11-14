@@ -1,45 +1,178 @@
-bf42lite
-A simple LAN/local multiplayer first-person shooter inspired by Battlefield 1942, built with a modern TypeScript ECS stack.
+Here is the new `README.md` for the root of your repository. It aligns with the \*\*v1.3 Hybrid Authority\*\* architecture and the new directory structure.
 
-How to Run
-This project is a pnpm workspace.
 
-Install Dependencies From the root bf42lite/ directory, run:
 
-Bash
+\### `README.md`
+
+
+
+\# bf42lite
+
+
+
+> \*\*A simplified LAN multiplayer FPS inspired by Battlefield 1942.\*\* > \*Built with TypeScript (Client Physics), Three.js (Rendering), and Rust (Server Authority).\*
+
+
+
+\## Vision
+
+
+
+\*\*bf42lite\*\* is designed for fast, consistently readable LAN parties. It prioritizes \*\*gameplay stability\*\* and \*\*instant feedback\*\* over graphical fidelity.
+
+
+
+\* \*\*Genre:\*\* Local / LAN Multiplayer FPS
+
+\* \*\*Players:\*\* 2–12 (Optimized for 2–4)
+
+\* \*\*Architecture:\*\* Hybrid Authority (Client Prediction + Server Reconciliation)
+
+
+
+\## Architecture: Hybrid Authority
+
+
+
+Unlike typical web games, `bf42lite` uses a strict separation of concerns to ensure high-performance networking:
+
+
+
+1\.  \*\*Client (TS):\*\* Runs continuous physics for movement and aiming. It predicts results instantly (0ms latency feel).
+
+2\.  \*\*Server (Rust):\*\* The "Referee." It maintains the authoritative state, validates hits, manages health/tickets, and reconciles divergent client states.
+
+3\.  \*\*Shared Protocol:\*\* Both sides speak a strict binary protocol defined in `packages/protocol`.
+
+
+
+\## Repository Structure
+
+
+
+This is a monorepo managed by \*\*pnpm\*\*.
+
+
+
+bf42lite/
+
+├── apps/
+
+│   └── client-tauri/      # THE GAME (Three.js Renderer, Input Handling, UI)
+
+├── src-tauri/             # THE SERVER (Rust Authority, Hit Validation, State)
+
+├── packages/
+
+│   ├── sim/               # SHARED BRAIN (Pure TS ECS, Physics logic - No Rendering)
+
+│   ├── protocol/          # THE LAW (Zod Schemas, Message Types)
+
+│   ├── net/               # THE WIRE (Transport adapters, Interpolation helpers)
+
+│   └── common/            # UTILITIES (Math, Constants)
+
+└── docs/                  # DOCUMENTATION (Architecture \& Design definitions)
+
+
+
+\## Quick Start
+
+
+
+\### Prerequisites
+
+
+
+&nbsp; \* \*\*Node.js\*\* (v18+)
+
+&nbsp; \* \*\*pnpm\*\* (`npm install -g pnpm`)
+
+&nbsp; \* \*\*Rust\*\* (latest stable)
+
+
+
+\### Installation
+
+
+
+```bash
+
+\# 1. Clone the repo
+
+git clone \[https://github.com/PontusFalkman/bf42lite.git](https://github.com/PontusFalkman/bf42lite.git)
+
+cd bf42lite
+
+
+
+\# 2. Install dependencies (for all packages)
 
 pnpm install
-Run the Dev Servers This command will start both the client (Vite) and the host (Node) servers in parallel:
 
-Bash
+```
 
-pnpm dev
-Play
 
-The host server will run at ws://localhost:8080.
 
-The client is available at http://localhost:5173.
+\### Running the Game
 
-Tech Stack
-Client (apps/client-tauri):
 
-Renderer: three.js
 
-Simulation: bitecs (ECS)
+Since the Host is embedded in the Rust backend (Phase 2+), you just need to run the Tauri app.
 
-Dev Server: Vite
 
-Server (packages/host-node):
 
-Runtime: Node.js / tsx
+```bash
 
-Networking: ws (WebSockets)
+\# Run the development build (Hot Reloading enabled)
 
-Networking (packages/net & packages/protocol):
+pnpm tauri dev
 
-Protocol: msgpackr for binary encoding and zod for validation.
+```
 
-Adapters: WebSocketAdapter for network play and LoopbackAdapter for local testing.
 
-Documentation
-All project documentation, including the Game Design Document (GDD) and Technical Design, is located in the /docs folder.
+
+&nbsp; \* \*\*Host a Match:\*\* Click "Host" in the main menu (starts the internal Rust server).
+
+&nbsp; \* \*\*Join a Match:\*\* Enter the Host's LAN IP and click "Join".
+
+
+
+\## Documentation
+
+
+
+Detailed design documents are located in the \[`docs/`](https://www.google.com/search?q=./docs) folder:
+
+
+
+&nbsp; \* \[\*\*Vision \& Core Goals\*\*] - The "Why" and "What".
+
+&nbsp; \* \[\*\*Gameplay Design\*\*] - Classes, weapons, and modes.
+
+&nbsp; \* \[\*\*Simulation Architecture\*\*] - How the ECS and Hybrid Authority work.
+
+&nbsp; \* \[\*\*Network Protocol\*\*] - Binary message specifications.
+
+&nbsp; \* \[\*\*Development Backlog\*\*] - Current progress and phase checklists.
+
+
+
+\## Contributing
+
+
+
+1\.  \*\*Logic goes in `packages/sim`:\*\* If it affects how players move or interact, it belongs here.
+
+2\.  \*\*Visuals go in `apps/client-tauri`:\*\* If it's just for show (particles, models), it belongs here.
+
+3\.  \*\*Validation goes in `src-tauri`:\*\* If it prevents cheating or syncing errors, it belongs here.
+
+
+
+-----
+
+
+
+\*Updated for v1.3 Docs\*
+

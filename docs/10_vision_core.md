@@ -1,58 +1,21 @@
-\# Vision \& Core Goals (v1.2)
+# Vision & Core Goals (v1.3)
 
+**Project:** bf42lite
+**Genre:** LAN / Local Multiplayer FPS
+**Inspiration:** Battlefield 1942
+**Players:** 2–12 (MVP: 2–4)
+**Platforms:** Windows (primary), Linux (AppImage), macOS (later)
+**Engine Stack:** JS/TS (Client Physics) + Three.js + Tauri + Rust (Server State)
 
+## Vision
+Deliver fast and responsive LAN battles with smooth movement, readable visuals, and consistent state.
+Use Client Authority for movement and aiming, while the server ensures consistent results for health, tickets, and confirmed hits.
 
-\## Project Overview
+## Core Principles
+* **Client controls continuous physics** (movement, aiming).
+* **Server controls all discrete game rules** (health, kills, scores).
+* **Hits feel instant** (client prediction) but are reconciled by the server so all players see the same outcome.
+* **Minimal setup:** single host, quick join.
 
-\*\*Name:\*\* bf42lite  
-
-\*\*Genre:\*\* LAN / Local Multiplayer First-Person Shooter  
-
-\*\*Inspiration:\*\* Battlefield 1942 (simplified)  
-
-\*\*Perspective:\*\* First-person  
-
-\*\*Players:\*\* 2–12 (focus on 2–4 for MVP)  
-
-\*\*Target Platforms:\*\* Windows (primary), Linux (AppImage), macOS (later)
-
-
-
-\## Vision
-
-Provide fast, deterministic LAN battles with a retro look and clear, readable combat.  
-
-Stability, predictability, and modularity are more important than realism or visual fidelity.
-
-
-
-\## Core Principles
-
-\- \*\*Deterministic simulation:\*\* Fixed 60 Hz tick, predictable results.
-
-\- \*\*Modular architecture:\*\* Simulation, networking, protocol, and client kept separate.
-
-\- \*\*Rust-ready:\*\* Simulation can migrate from TypeScript to Rust without rewriting client/UI.
-
-\- \*\*Low friction:\*\* Single binary can host and join matches; minimal setup.
-
-
-
-\## Scope by Phase
-
-\- \*\*Phase 1:\*\* Local ECS movement + renderer.
-
-\- \*\*Phase 2:\*\* LAN loopback and snapshot sync.
-
-\- \*\*Phase 3:\*\* Visual polish, HUD, basic map.
-
-\- \*\*Phase 4:\*\* Core gameplay (combat, tickets, optional Rust tick bridge).
-
-\- \*\*Phase 5:\*\* Modern features, gadgets, optional vehicles and dedicated server.
-
-
-
-Next: \[20\_design\_gameplay.md](./20\_design\_gameplay.md)
-
-
-
+## Focus
+LAN gameplay (no anti-cheat, but full consistency). Updated for Client-Predicted, Server-Reconciled Hits.

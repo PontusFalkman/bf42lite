@@ -1,26 +1,70 @@
 {
-  "productName": "bf42lite-client",
-  "version": "0.1.0",
-  "identifier": "com.bf42lite.client",
-  "app": {
-    "windows": [
-      {
-        "title": "bf42lite-client",
-        "width": 800,
-        "height": 600
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build",
+    "devPath": "http://localhost:5173",
+    "distDir": "../dist",
+    "withGlobalTauri": true
+  },
+  "package": {
+    "productName": "bf42lite",
+    "version": "1.3.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "open": true
       }
-    ],
+    },
+    "bundle": {
+      "active": true,
+      "category": "Game",
+      "copyright": "",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "com.bf42lite.game",
+      "longDescription": "",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
     "security": {
       "csp": null
-    }
-  },
-  "build": {
-    "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "pnpm dev:vite",
-    "beforeBuildCommand": "pnpm build"
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all"
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "bf42lite",
+        "width": 1280,
+        "height": 720
+      }
+    ]
   }
 }
