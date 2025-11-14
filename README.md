@@ -142,7 +142,7 @@ pnpm tauri dev
 
 
 
-Detailed design documents are located in the \[`docs/`](https://www.google.com/search?q=./docs) folder:
+Detailed design documents are located in the \[`docs/`](./docs) folder:
 
 
 
