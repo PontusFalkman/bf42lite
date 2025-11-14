@@ -21,7 +21,7 @@ export class NetworkManager {
     // Callbacks
     public onWelcome?: (serverId: number) => void;
     public onSnapshot?: (msg: any) => void;
-
+    public onHitConfirmed?: (damage: number) => void;
     constructor() {
         this.net = new WebSocketAdapter();
         
@@ -37,8 +37,11 @@ export class NetworkManager {
             // Note: 'hitConfirmed' can be handled here or passed to a callback later
             else if (msg.type === 'hitConfirmed') {
                 console.log(`[Net] Hit Confirmed! Damage: ${msg.damage}`);
-                // TODO: Trigger Hit Marker UI here in future steps
-            }
+// Trigger the callback if it exists
+if (this.onHitConfirmed) {
+    this.onHitConfirmed(msg.damage);            
+}
+}
         });
     }
 

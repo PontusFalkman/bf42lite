@@ -10,10 +10,13 @@ export class UIManager {
         ticketsAllies: HTMLElement | null;
         fps: HTMLElement | null;
         rtt: HTMLElement | null;
+        hitmarker: HTMLElement | null;
+        gameOverScreen: HTMLElement | null;
+        endTitle: HTMLElement | null;
     };
     private selectedSpawnId = -1;
     private onSpawnRequest: () => void;
-
+    private hitTimeout: number | null = null;
     constructor(onSpawnRequest: () => void) {
         this.onSpawnRequest = onSpawnRequest;
         
@@ -26,7 +29,10 @@ export class UIManager {
             ticketsAxis: document.getElementById('tickets-axis'),
             ticketsAllies: document.getElementById('tickets-allies'),
             fps: document.getElementById('fps'),
-            rtt: document.getElementById('rtt')
+            rtt: document.getElementById('rtt'),
+            hitmarker: document.getElementById('hitmarker'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            endTitle: document.getElementById('end-title')
         };
 
         this.initListeners();
@@ -55,8 +61,37 @@ export class UIManager {
             });
         }
     }
+    public setGameOver(isGameOver: boolean, winningTeam: string) {
+        if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
 
-    public setDeployMode(isDeploying: boolean) {
+        if (isGameOver) {
+            this.ui.gameOverScreen.classList.add('visible');
+            this.ui.endTitle.innerText = winningTeam; // "AXIS WINS" or "ALLIES WINS"
+            
+            // Hide other UI layers
+            document.exitPointerLock();
+        } else {
+            this.ui.gameOverScreen.classList.remove('visible');
+        }
+    }
+    public showHitMarker() {
+        if (!this.ui.hitmarker) return;
+
+        // 1. Show immediately
+        this.ui.hitmarker.classList.add('hit-active');
+
+        // 2. Clear previous timer if we hit multiple times fast
+        if (this.hitTimeout) {
+            clearTimeout(this.hitTimeout);
+        }
+
+        // 3. Hide after 200ms
+        this.hitTimeout = window.setTimeout(() => {
+            this.ui.hitmarker?.classList.remove('hit-active');
+            this.hitTimeout = null;
+        }, 200);
+    }
+        public setDeployMode(isDeploying: boolean) {    
         if (isDeploying) {
             this.ui.deployScreen?.classList.remove('hidden');
             this.ui.hudLayer?.classList.add('hidden');

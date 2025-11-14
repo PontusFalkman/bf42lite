@@ -24,6 +24,7 @@ export class ClientGame {
     private localEntityId = -1; 
     private currentTick = 0;
     private lastFrameTime = 0;
+    private lastGameState = 0;
     
     private playerQuery = defineQuery([Transform, Player]);
 
@@ -47,10 +48,33 @@ export class ClientGame {
         this.net.onWelcome = (serverId) => {
             this.net.registerLocalPlayer(serverId, this.localEntityId);
         };
+        this.net.onHitConfirmed = (_damage) => {
+          this.ui.showHitMarker();
+      };
 
         this.net.onSnapshot = (msg) => {
-            this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
-            
+          this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
+
+          // === NEW: CHECK GAME OVER STATE ===
+          // msg.game.state comes from the server (0 = Active, 1 = Game Over)
+          if (msg.game.state !== this.lastGameState) {
+              this.lastGameState = msg.game.state;
+
+              if (msg.game.state === 1) {
+                  // Logic: If Axis ran out of tickets, Allies win.
+                  let winner = "DRAW";
+                  if (msg.game.ticketsAxis <= 0) winner = "ALLIES VICTORY";
+                  else if (msg.game.ticketsAllies <= 0) winner = "AXIS VICTORY";
+
+                  this.ui.setGameOver(true, winner);
+              } else {
+                  // Game reset back to 0
+                  this.ui.setGameOver(false, "");
+                  
+                  // Optional: Respawn local player on reset
+                  Health.isDead[this.localEntityId] = 1; // Force respawn logic
+              }
+          }
             // 1. Spawn/Despawn/Buffer Remote Players
             this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
 

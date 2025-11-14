@@ -160,12 +160,26 @@ wss.on('connection', (ws) => {
              };
              ws.send(pack(confirmMsg));
 
-             // Check Death (Simple logic for now, fully implemented in Step 3)
-             if (newHp === 0) {
-                 Health.isDead[targetId] = 1;
-                 console.log(`[Combat] Player ${targetId} ELIMINATED by ${entityId}`);
-             }
-          }
+// Check Death
+if (newHp === 0) {
+  Health.isDead[targetId] = 1;
+  console.log(`[Combat] Player ${targetId} ELIMINATED by ${entityId}`);
+
+  // === NEW: DEDUCT TICKET ===
+  // Get the victim's team
+  const victimTeam = Team.id[targetId];
+  
+  // Deduct from that team
+  if (victimTeam === 1) {
+     GameRules.ticketsAxis[rulesId]--;
+     console.log(`[Game] Axis Ticket Lost. Remaining: ${GameRules.ticketsAxis[rulesId]}`);
+  }
+  else if (victimTeam === 2) {
+     GameRules.ticketsAllies[rulesId]--;
+     console.log(`[Game] Allies Ticket Lost. Remaining: ${GameRules.ticketsAllies[rulesId]}`);
+  }
+}
+}
         }
       }
 
