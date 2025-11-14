@@ -1,394 +1,201 @@
-### bf42lite Simplified Modular Docs (v1.2)
+bf42lite Simplified Modular Docs (v1.3)
+Updated for: Client-Predicted, Server-Reconciled Hits
+Focus: LAN gameplay (no anti-cheat, but full consistency)
+1. Vision & Core Goals
 
----
+Project: bf42lite
+Genre: LAN / Local Multiplayer FPS
+Inspiration: Battlefield 1942
+Players: 2–12 (MVP: 2–4)
+Platforms: Windows (primary), Linux (AppImage), macOS (later)
+Engine Stack: JS/TS (Client Physics) + Three.js + Tauri + Rust (Server State)
 
-## 1. Vision & Core Goals
+Vision:
+Deliver fast and responsive LAN battles with smooth movement, readable visuals, and consistent state.
+Use Client Authority for movement and aiming, while the server ensures consistent results for health, tickets, and confirmed hits.
 
-**Project:** bf42lite
-**Genre:** LAN / Local Multiplayer FPS
-**Inspiration:** *Battlefield 1942*
-**Perspective:** First-person
-**Players:** 2–12 (MVP: 2–4)
-**Platforms:** Windows (primary), Linux (AppImage), macOS (later)
-**Engine Stack:** JS/TS + Three.js + bitecs ECS + Tauri (Rust bridge later)
+Core Principles:
 
-**Vision:**
-Deliver fast, deterministic LAN battles with readable visuals, modular systems, and stable netcode.
-Prioritize predictability, clarity, and cross-language parity (JS ↔ Rust).
+Client controls continuous physics (movement, aiming).
 
-**Core Principles:**
+Server controls all discrete game rules (health, kills, scores).
 
-* Deterministic 60 Hz tick.
-* Modular ECS and protocol separation.
-* Rust-ready simulation backend.
-* Minimal setup: single binary host/join.
+Hits feel instant (client prediction) but are reconciled by the server so all players see the same outcome.
 
-**Phase Roadmap:**
+Minimal setup: single host, quick join.
 
-1. Local ECS + Renderer
-2. LAN Loopback
-3. Visual Polish
-4. Core Gameplay (Combat, Rust Tick)
-5. Expansion (Vehicles, Gadgets, Dedicated Host)
+2. Gameplay Design
+Core Loop
 
----
+Host or join → Spawn → Move, shoot, capture flags → Die and respawn → Tickets or time expire.
 
-## 2. Gameplay Design
+Modes
+Mode	Description	Phase
+Conquest	Hold control points to drain enemy tickets.	4+
+Team DM	Eliminate enemies; tickets = respawns.	4+
+Sandbox	Physics/weapons testing.	2+
+Classes (Later)
 
-**Core Loop:**
-Host or join → Select class/spawn → Move, shoot, capture → Die and respawn → Repeat until tickets/time expire.
+Assault, Engineer, Support, Recon (light roles only).
 
-**Game Modes:**
+Weapons (Phases 2–4)
 
-| Mode            | Description                                | Phase |
-| --------------- | ------------------------------------------ | ----- |
-| Conquest        | Capture/hold control points; drain tickets | 4+    |
-| Team Deathmatch | Eliminate enemies; respawn tickets         | 4+    |
-| Sandbox         | Physics/weapons testing                    | 2+    |
+Rifle, SMG, Sniper, Grenade.
 
-**Classes (Phase 3+):**
+Maps
 
-| Class    | Role         | Traits              |
-| -------- | ------------ | ------------------- |
-| Assault  | Frontline    | Med pen, grenade    |
-| Engineer | Anti-vehicle | Repair tool, rocket |
-| Support  | Resupply     | Ammo box, LMG       |
-| Recon    | Scouting     | Sniper, spot/ping   |
+Warehouse (MVP)
 
-**Weapons (Phase 2–4):**
+Island (Phase 5)
 
-| Weapon  | Type         | Traits                  |
-| ------- | ------------ | ----------------------- |
-| Rifle   | Medium range | Moderate recoil         |
-| SMG     | Close range  | High ROF                |
-| LMG     | Support      | Heavy recoil, large mag |
-| Sniper  | Long range   | High damage, low ROF    |
-| Grenade | Throwable    | Area damage             |
+3. Simulation Architecture (Hybrid Authority)
 
-**Maps:**
+The architecture explicitly avoids cross-language determinism by splitting continuous vs. discrete responsibilities.
 
-| Map       | Style                 | Size   | Phase |
-| --------- | --------------------- | ------ | ----- |
-| Warehouse | Industrial interior   | Small  | 1–3   |
-| Island    | Shoreline + elevation | Medium | 5 +   |
+Authority Split
+Feature	Authority	Location	Reason
+Movement Physics	Client	packages/sim (TS)	Instant input response.
+Collision (visual)	Client	TS	Immediate feedback.
+Hit Detection (final)	Server	Rust	Ensures both players see the same result.
+Health/Death	Server	Rust	Centralized game rules.
+Scoring/Tickets	Server	Rust	Consistent match flow.
+Rate Limits	Server	Rust	Prevents accidental spam.
+Hit Model: Predict + Reconcile
 
----
+Client
 
-## 3. Simulation Module
+Performs raycast.
 
-### 3.1 Architecture
+Shows hit spark / marker immediately.
 
-**Framework:**
+Sends a fire proposal:
 
-* `bitecs` ECS in `/packages/sim`.
-* Future: `hecs` / `legion` Rust ports.
+{ type: "fire", origin, direction, weaponId, clientTick }
 
-**Core Components:**
-`Transform {x,y,z}`, `Velocity {x,y,z}`, `InputAxis {forward,right,jump}`
-Later: `Health`, `Weapon`, `Projectile`, `Team`, `Score`.
 
-**Core Systems:**
-Movement → Shooting → Damage → Respawn → Tickets
+Server
 
-**Determinism:**
+Re-runs the raycast using authoritative positions.
 
-* Fixed `dt = 1/60` s.
-* No `Math.random()`. Use tick-seeded RNG.
-* Reproducible results from input + seed.
+Confirms if the hit is valid.
 
-**Simulation Interface:**
+Computes damage.
 
-```ts
-function step(world, dt): void
-```
+Broadcasts a final event:
 
-Later Rust:
+{ type: "hitConfirmed", shooterId, targetId, damage }
 
-```rust
-fn step(world_state: &mut WorldState, dt: f32)
-```
 
-**Boundaries:**
+This avoids “I was behind cover on my screen” even on LAN.
 
-* `/packages/sim`: ECS only.
-* `/packages/net`: Transport/adapters only.
-* `/packages/protocol`: Schemas/versioning.
-* `/apps/client-tauri`: Rendering + input + HUD.
+Determinism Rules
 
----
+Client runs fixed timestep (1/60).
 
-### 3.2 Movement System
+Server stores authoritative transforms from client reports.
 
-**Purpose:**
-Deterministic player locomotion identical in JS and Rust.
+Server validates movement with simple checks (max speed, max teleport).
 
-**Components:**
+Server performs only discrete logic (health, respawns, tickets).
 
-```ts
-Transform {x,y,z}
-Velocity  {x,y,z}
-InputAxis {forward,right,jump}
-```
+4. Networking Protocol
+Transport
 
-**Tick Logic (`dt = 1/60`):**
+UDP: State updates (positions, rotations).
 
-```ts
-Velocity.x = InputAxis.right * SPEED
-Velocity.z = -InputAxis.forward * SPEED
-Transform += Velocity * dt
-Transform.y = 0
-```
+TCP/WebSocket: Reliable events (joins, hits, killfeed, system messages).
 
-**Constants:**
+Message Structure
 
-| Param    | Value | Description      |
-| -------- | ----- | ---------------- |
-| SPEED    | 3 u/s | Walk speed       |
-| GRAVITY  | 9.81  | Reserved         |
-| FRICTION | 0.8   | Phase 2+ damping |
+Client → Server
 
-Quantize inputs if needed.
-Use fixed dt regardless of frame time.
+State Update:
+{ type: 'update', x, y, z, yaw }
 
-**Future Extensions:**
-Phase 2 – Jump/Fall
-Phase 3 – Sprint/Stamina
-Phase 4 – Capsule Collision
+Fire Proposal:
+{ type: 'fire', origin, direction, weaponId, clientTick }
 
----
+Actions:
+{ type: 'respawn', classId }, etc.
 
-### 3.3 Weapons System
+Server → Client
 
-**Purpose:**
-Deterministic firing, damage, and death events.
+Snapshot:
+{ type: 'snapshot', entities: [...], scores, tickets }
 
-**Components:**
+Hit Confirmation:
+{ type: 'hitConfirmed', shooterId, targetId, damage }
 
-```ts
-Weapon { fireRate, cooldown, damage }
-Health { current, max }
-Projectile (later) {pos,dir,speed,ttl}
-```
+Death Event:
+{ type: 'death', victimId, killerId }
 
-**Flow (Hitscan MVP):**
+Encoding
 
-1. Client sends “fire” input.
-2. Host checks `Weapon.cooldown <= 0`.
-3. Perform hitscan.
-4. Apply damage if hit.
-5. Reset cooldown = 1 / fireRate.
-6. Each tick → `cooldown -= dt`.
+msgpackr for binary transport
 
-**Death:**
+zod schemas for strict validation (packages/protocol)
 
-```ts
-if (Health.current <= 0) trigger death/respawn
-```
+Snapshot Rate
 
-**Determinism:**
-All recoil/spread use seeded RNG per tick.
-No wall-clock dependency.
+Target: 10–20 Hz snapshots, client interpolates to 60 FPS.
 
----
+5. Client Rendering
+Tech
 
-## 4. Networking Module
+Three.js + React overlay.
 
-### 4.1 Protocol
+Interpolation
 
-**Purpose:**
-Binary messages shared across JS and Rust.
+Local player: Immediate (predicted).
 
-**Encoding:** `msgpackr`
-**Validation:** `zod` schemas
+Remote players: Interpolated between last two snapshots for smoothness.
 
-**Message Types:**
+Visual Style
 
-```ts
-InputMsg = { type:"input", tick, axes:{forward,right,jump} }
-StateMsg = { type:"state", tick, entities:[EntitySnapshot] }
-EventMsg = { type:"event", tick, eventType, payload }
-```
+Low-poly, flat shading, readable silhouettes.
+Target 60 FPS on basic GPUs/APUs.
 
-**Rules:**
+6. Development Backlog (Phases)
 
-* Add protocol version field.
-* Schema changes additive.
+Current: Phase 4 — Core Gameplay & Hit Reconciliation
 
----
+Phase	Goal	Deliverables
+1	Core MVP	Movement, ECS loop, glTF models
+2	LAN Loopback	Host/join, basic messages
+3	Visual Polish	Camera, HUD, map
+4	Core Gameplay	Shooting, hit reconcile, death/respawn, tickets
+5	Expansion	Vehicles, Island map, class roles
+Phase 4 Acceptance Criteria
 
-### 4.2 Transport & Topology
+ Player movement is smooth on other clients via interpolation.
 
-**Phase 2 Model:**
+ Client proposes fire; server validates and confirms hits.
 
-* Embedded host inside same binary.
-* Clients connect via WebSocket LAN.
-* Later: Rust UDP / WebRTC.
+ Server applies damage, death, respawn logic.
 
-**Rates:**
+ Tickets drain reliably and reach Game Over state.
 
-* Sim tick: 60 Hz
-* Snapshot broadcast: 30 Hz
-* Inputs: per tick or bundled
-
-**Reliability:**
-
-* WebSocket → ordered, reliable.
-* Client predicts, host reconciles.
-* Simple rewind/replay correction.
-
-**Targets:**
-
-| Metric        | Goal          |
-| ------------- | ------------- |
-| RTT (LAN)     | ≤ 5 ms        |
-| Snapshot size | ≤ 5 KB/player |
-| Desync rate   | ≤ 1 per 30 s  |
-
----
-
-## 5. Client Module
-
-**Renderer:** Three.js
-**Scene:** Directional + ambient light, low-poly meshes.
-**Target:** 1080p @ 120 fps.
-
-**Camera:**
-
-* First-person or chase view.
-* Smooth lerp/spring follow.
-* Pointer lock mouse look.
-
-**HUD:**
-Crosshair | Health | Ammo | FPS | RTT
-
-**Input Mapping:**
-Keyboard → WASD, Space jump, Shift sprint
-Mouse → Look + Left click fire
-Browser events → ECS InputAxis + buttons
-
----
-
-## 6. Backlogs (Phases 1–5)
-
-### Phase 1 – Core MVP
-
-**Scope:** Local movement + rendering; no networking.
-**Tasks:**
-
-| ID                                                              | Task            | Output                         |
-| --------------------------------------------------------------- | --------------- | ------------------------------ |
-| M1                                                              | Workspace setup | pnpm builds without errors     |
-| C1                                                              | Renderer        | Visible cube                   |
-| C2                                                              | Input system    | WASD + pointer lock            |
-| C3                                                              | ECS world       | Transform, Velocity, InputAxis |
-| C4                                                              | Movement system | Cube moves via ECS             |
-| C5                                                              | HUD (FPS)       | FPS overlay                    |
-| **Acceptance:** No errors, smooth ECS movement, 120 fps stable. |                 |                                |
-
----
-
-### Phase 2 – LAN Loopback
-
-**Scope:** Embedded host + WebSocket LAN.
-**Tasks:**
-
-| ID                                                                                    | Task                  | Output                        |
-| ------------------------------------------------------------------------------------- | --------------------- | ----------------------------- |
-| N1                                                                                    | LoopbackAdapter       | Local client ↔ host pipeline  |
-| N2                                                                                    | WebSocket server      | 2–4 clients                   |
-| N3                                                                                    | Snapshot broadcast    | 30 Hz state deltas            |
-| N4                                                                                    | Client reconciliation | Input buffering + corrections |
-| N5                                                                                    | Ping/RTT display      | HUD RTT indicator             |
-| N6                                                                                    | Host/Join UI          | Basic LAN menu                |
-| **Acceptance:** 2 PCs LAN control independent entities; RTT ≤ 5 ms; no rubberbanding. |                       |                               |
-
----
-
-### Phase 3 – Visual Polish
-
-**Scope:** Graphics & UX refinement.
-**Tasks:**
-
-| ID                                                               | Task             | Output                  |
-| ---------------------------------------------------------------- | ---------------- | ----------------------- |
-| V1                                                               | Player mesh      | Low-poly soldier        |
-| V2                                                               | Warehouse map    | Walls/floor/cover       |
-| V3                                                               | Lighting         | Baked/simple runtime    |
-| V4                                                               | HUD expansion    | Health, ammo, crosshair |
-| V5                                                               | Camera smoothing | Lerp/spring             |
-| V6                                                               | Spawn UI         | Countdown screen        |
-| **Acceptance:** Loads < 3 s; 1080p @ 120 fps; clear UI feedback. |                  |                         |
-
----
-
-### Phase 4 – Core Gameplay
-
-**Scope:** Combat loop + Rust tick.
-**Tasks:**
-
-| ID                                                                                            | Task              | Output                    |
-| --------------------------------------------------------------------------------------------- | ----------------- | ------------------------- |
-| G1                                                                                            | Health + damage   | Health component          |
-| G2                                                                                            | Weapon fire       | Hitscan shooting          |
-| G3                                                                                            | Death & respawn   | Death events + respawn    |
-| G4                                                                                            | Tickets & scoring | Conquest/TDM rules        |
-| G5                                                                                            | Rust tick bridge  | Tauri command `step_tick` |
-| **Acceptance:** Full match flow spawn→fight→end; JS = Rust results; headless Rust mode works. |                   |                           |
-
----
-
-### Phase 5 – Expansion
-
-**Scope:** Advanced mechanics + scaling.
-**Tasks:**
-
-| ID                                                                                       | Task              | Output                         |
-| ---------------------------------------------------------------------------------------- | ----------------- | ------------------------------ |
-| X1                                                                                       | Sprint + stamina  | Movement state machine         |
-| X2                                                                                       | Gadgets           | Ammo box, med kit, repair tool |
-| X3                                                                                       | Grenades          | Projectile arc + explosion     |
-| X4                                                                                       | Ping/spot system  | Team markers                   |
-| X5                                                                                       | Vehicle prototype | Simple jeep physics            |
-| X6                                                                                       | Dedicated server  | Headless host (Rust/Node)      |
-| **Acceptance:** 12-player LAN stable ≥ 30 min; feature flags; CI tests both host/client. |                   |                                |
-
----
-
-## 7. Infrastructure & Repo Structure
-
-**Layout:**
-
-```
+7. Infrastructure & Repo Layout
 bf42lite/
 ├─ apps/
-│  └─ client-tauri/     # Renderer + UI
+│  └─ client-tauri/     # Renderer, client physics
 ├─ packages/
-│  ├─ sim/              # ECS systems
-│  ├─ net/              # Networking adapters
-│  ├─ protocol/         # Message schemas
-│  ├─ host-node/        # Node or Rust host
-│  └─ common/           # Shared utils
+│  ├─ sim/              # Physics, movement, shared types
+│  ├─ net/              # Networking helpers
+│  ├─ protocol/         # Binary schemas
+│  ├─ host-node/        # Dev-only host
+│  └─ common/           # Shared utilities
+├─ src-tauri/           # Rust Host (state, validation, relay)
 ├─ assets/
-│  └─ tuning/           # JSON configs
+│  └─ tuning/           # Weapon + gameplay configs
 └─ docs/                # Modular documentation
-```
 
-**Conventions:**
+Conventions
 
-* One system per file in `/sim`.
-* No DOM logic in sim.
-* Protocol owns schemas; net transports only.
-* Tune via JSON, not hard-coded values.
+Client handles continuous math.
 
-**Commit Rules:**
+Server handles discrete logic and final truth.
 
-1. `pnpm lint` + `pnpm build` pass.
-2. Maintain ≥ 120 fps through Phase 3.
-3. Networking RTT and desync within phase targets.
-4. Merge only after phase acceptance met.
+Protocol strictly defines the contract.
 
----
-
-### End of bf42lite Simplified Docs (v1.2)
-
-Each numbered module (1 → 7) can be isolated and edited per session while remaining context-safe for GPT-5.
+End of v1.4
