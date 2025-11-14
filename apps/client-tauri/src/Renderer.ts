@@ -25,7 +25,8 @@ export class Renderer {
     this.scene.background = new THREE.Color(0x87ceeb);
 
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 20, 30);
+    // Default start position before any update
+    this.camera.position.set(0, 5, 10);
 
     // Lights & Ground
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.5));
@@ -81,8 +82,6 @@ export class Renderer {
   }
 
   updateEntities(entities: any[], localPlayerEid: number | null) {
-    // In a real system, we would hide objects that aren't in the list anymore
-    // For this refactor, we simply update positions
     for (const e of entities) {
       const isMe = (e.eid === localPlayerEid);
       const obj = this.getPlayerObject(e.eid, isMe);
@@ -97,14 +96,27 @@ export class Renderer {
     }
   }
 
-  updateCamera(x: number, y: number, z: number, yaw: number) {
-    const dist = 6;
-    const height = 2;
-    const offX = -Math.sin(yaw) * dist;
-    const offZ = -Math.cos(yaw) * dist;
-    this.camera.position.set(x + offX, y + height, z + offZ);
-    this.camera.lookAt(x, y + 1.2, z);
-  }
+  // --- FIX: Added pitch and Spherical math ---
+// apps/client-tauri/src/Renderer.ts
+
+updateCamera(x: number, y: number, z: number, yaw: number, pitch: number) {
+  // 1. Set Camera at Eye Level (approx 1.6 - 1.8 units high)
+  const eyeHeight = 1.7;
+  this.camera.position.set(x, y + eyeHeight, z);
+
+  // 2. Calculate "Look Target" based on Yaw/Pitch
+  // We project a point 10 units in front of the face to tell the camera where to point.
+  // This math aligns with your 'WASD' movement logic so 'Forward' is truly 'Forward'.
+  const lookDist = 10;
+  
+  // Calculate the target point in 3D space
+  // Note: We use +sin/cos here (instead of -sin/cos) because we are looking OUT, not IN.
+  const targetX = x + (Math.sin(yaw) * Math.cos(pitch) * lookDist);
+  const targetY = y + eyeHeight + (Math.sin(pitch) * lookDist);
+  const targetZ = z + (Math.cos(yaw) * Math.cos(pitch) * lookDist);
+
+  this.camera.lookAt(targetX, targetY, targetZ);
+}
 
   render() {
     this.debugCube.rotation.y += 0.01;

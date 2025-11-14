@@ -10,18 +10,12 @@ const MOUSE_SENSITIVITY: f32 = 0.002;
 
 pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, ClientMessage>, dt: f32, frame_count: u64) {
     for (id, player) in players.iter_mut() {
-        // Skip movement if dead
         if player.is_dead { continue; }
 
         if let Some(msg) = input_map.get(id) {
             let ClientMessage(_tick, inputs, dx, dy) = msg;
             let ClientInputs(fwd, right, _jump, _fire, sprint, _scoreboard) = inputs;
 
-            // Debug Logging
-            if frame_count % 60 == 0 && (*fwd != 0.0 || *right != 0.0) {
-                println!("[INPUT] Player {} moving: Fwd={:.1} Right={:.1}", id, fwd, right);
-            }
-            
             // Mouse Look
             player.transform.yaw -= dx * MOUSE_SENSITIVITY;
             player.transform.pitch -= dy * MOUSE_SENSITIVITY;
@@ -31,23 +25,27 @@ pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, Clien
             let yaw = player.transform.yaw;
             let speed = if *sprint { MOVE_SPEED * SPRINT_MULTIPLIER } else { MOVE_SPEED };
             
-            let vec_fwd_x = -yaw.sin();
-            let vec_fwd_z = -yaw.cos();
-            let vec_right_x = -yaw.cos(); 
-            let vec_right_z = yaw.sin();
+            // --- FIX: Removed Negative Signs to match Client WASD ---
+            // Was: -yaw.sin(), -yaw.cos()
+            // Now: yaw.sin(), yaw.cos()
+            let vec_fwd_x = yaw.sin();
+            let vec_fwd_z = yaw.cos();
+            
+            // Was: -yaw.cos(), yaw.sin() (Inverted Left/Right)
+            // Now: yaw.cos(), -yaw.sin() (Matches Client)
+            let vec_right_x = yaw.cos(); 
+            let vec_right_z = -yaw.sin();
 
             let move_x = (vec_fwd_x * fwd) + (vec_right_x * right);
             let move_z = (vec_fwd_z * fwd) + (vec_right_z * right);
 
             let len = (move_x * move_x + move_z * move_z).sqrt();
             if len > 0.0 {
-                let old_x = player.transform.x;
-                let old_z = player.transform.z;
                 player.transform.x += (move_x / len) * speed * dt;
                 player.transform.z += (move_z / len) * speed * dt;
 
                 if frame_count % 30 == 0 {
-                        println!("[PHYSICS] Player {} Moved: ({:.2}, {:.2}) -> ({:.2}, {:.2})", id, old_x, old_z, player.transform.x, player.transform.z);
+                        println!("[PHYSICS] Player {} Moved: {:.2}, {:.2}", id, player.transform.x, player.transform.z);
                 }
             }
         }
