@@ -1,3 +1,4 @@
+// bf42lite-main/packages/protocol/src/schema.ts
 import { z } from 'zod';
 
 // 1. CLIENT -> SERVER
@@ -28,16 +29,17 @@ export const ClientMessageSchema = z.union([
 export const EntityStateSchema = z.object({
   id: z.number(),
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  vel: z.object({ x: z.number(), y: z.number(), z: z.number() }),
   rot: z.number(),
   health: z.number(),
-  isDead: z.boolean()
+  isDead: z.boolean(),
+  lastProcessedTick: z.number().optional() 
 });
 
 // --- UPDATED SNAPSHOT ---
 export const SnapshotSchema = z.object({
   type: z.literal('snapshot'),
   tick: z.number(),
-  // New Game State Block
   game: z.object({
     ticketsAxis: z.number(),
     ticketsAllies: z.number(),

@@ -5,6 +5,7 @@ import {
   spawnPlayer, 
   PlayerInput, 
   Transform, 
+  Velocity, // <--- Make sure Velocity is imported
   Health,
   GameRules, 
   Team,
@@ -48,7 +49,6 @@ wss.on('connection', (ws) => {
   // --- ASSIGN TEAM ---
   addComponent(world, Team, entityId);
   Team.id[entityId] = nextTeam;
-  // Toggle for next player
   nextTeam = nextTeam === 1 ? 2 : 1;
   
   // Initialize Health
@@ -74,6 +74,9 @@ wss.on('connection', (ws) => {
         PlayerInput.shoot[entityId] = msg.axes.shoot ? 1 : 0;
         PlayerInput.yaw[entityId] = msg.axes.yaw;
         PlayerInput.pitch[entityId] = msg.axes.pitch;
+        
+        // --- CRITICAL FOR RTT: Save the Tick ---
+        PlayerInput.lastTick[entityId] = msg.tick; 
       }
     } catch (e) {
       console.error('[Host] Invalid message', e);
@@ -103,9 +106,17 @@ setInterval(() => {
         y: Transform.y[eid], 
         z: Transform.z[eid] 
       },
+      // --- CRITICAL FOR RECONCILIATION: Send Velocity ---
+      vel: {
+        x: Velocity.x[eid],
+        y: Velocity.y[eid],
+        z: Velocity.z[eid]
+      },
       rot: Transform.rotation[eid],
       health: Health.current[eid],
-      isDead: Boolean(Health.isDead[eid])
+      isDead: Boolean(Health.isDead[eid]),
+      // --- CRITICAL FOR RTT: Send back the stored Tick ---
+      lastProcessedTick: PlayerInput.lastTick[eid]
     });
   }
 
@@ -117,7 +128,7 @@ setInterval(() => {
   const snapshot: Snapshot = {
     type: 'snapshot',
     tick: Math.floor(world.time * 60),
-    game: { ticketsAxis, ticketsAllies, state }, // <--- INJECT STATE
+    game: { ticketsAxis, ticketsAllies, state },
     entities
   };
 

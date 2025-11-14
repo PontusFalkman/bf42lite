@@ -4,114 +4,121 @@ export class Renderer {
   private scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private renderer: THREE.WebGLRenderer;
-  private meshes = new Map<number, THREE.Mesh>();
   
-  // Reusable geometry/material to save memory
-  private playerGeo = new THREE.BoxGeometry(1, 2, 1);
-  private localMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green = Me
-  private remoteMat = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Red = Enemy
+  // FIXED: This map was missing, causing the build error
+  private entities = new Map<number, THREE.Mesh>();
 
   constructor() {
-    // 1. Setup Basic Scene
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x87CEEB); // Sky Blue
-    
-    // 2. Lights
-    const light = new THREE.DirectionalLight(0xffffff, 1);
-    light.position.set(10, 20, 10);
-    this.scene.add(light);
-    this.scene.add(new THREE.AmbientLight(0x404040));
+    this.scene.background = new THREE.Color(0x87CEEB); // Sky blue background
+    this.scene.fog = new THREE.Fog(0x87CEEB, 20, 100); // Simple fog for depth
 
-    // 3. Floor
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(100, 100),
-      new THREE.MeshStandardMaterial({ color: 0x333333 })
+    // 1. Basic Floor
+    // We create a large grid to give a sense of scale and speed
+    const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(200, 200),
+        new THREE.MeshStandardMaterial({ color: 0x2a3b2a })
     );
-    floor.rotation.x = -Math.PI / 2;
-    this.scene.add(floor);
+    plane.rotation.x = -Math.PI / 2;
+    this.scene.add(plane);
 
-    // 4. Camera & Canvas
+    // 2. Lighting
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(20, 50, 20);
+    light.castShadow = true;
+    this.scene.add(light);
+    this.scene.add(new THREE.AmbientLight(0x404040)); // Soft fill light
+
+    // 3. Camera Setup
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    // Set rotation order to YXZ to prevent camera flipping weirdly when looking up/down
-    this.camera.rotation.order = 'YXZ'; 
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    // 4. Renderer Setup
+    // We attach to the existing <canvas id="game"> from index.html
+    const canvas = document.getElementById('game') as HTMLCanvasElement;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.renderer.domElement);
-
-    // Resize Handler
+    this.renderer.shadowMap.enabled = true;
+    
+    // Handle Window Resize
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
     });
   }
 
-  // Sync ECS state to Three.js Meshes
-  updateEntity(id: number, x: number, y: number, z: number, yaw: number, pitch: number, isLocal: boolean) {
-    let mesh = this.meshes.get(id);
-    
-    // Create if new
+  // Called every frame by ClientGame loop
+  public updateEntity(id: number, x: number, y: number, z: number, rot: number, pitch: number, isMe: boolean) {
+    let mesh = this.entities.get(id);
+
+    // A. Create Mesh if it doesn't exist
     if (!mesh) {
-      mesh = new THREE.Mesh(this.playerGeo, isLocal ? this.localMat : this.remoteMat);
-      this.scene.add(mesh);
-      this.meshes.set(id, mesh);
+        // Simple capsule representation for players
+        const geometry = new THREE.CapsuleGeometry(0.4, 1.8, 4, 8);
+        const material = new THREE.MeshStandardMaterial({ 
+            color: isMe ? 0x00ff00 : 0xff0000 // Green for me, Red for enemies
+        });
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        
+        this.scene.add(mesh);
+        this.entities.set(id, mesh);
     }
 
-    // 1. Update Mesh Position & Rotation
-    // Lift by 1.0 because pivot is center, but game y=0 is floor
-    mesh.position.set(x, y + 1.0, z);
-    mesh.rotation.y = yaw; // Horizontal rotation
+    // B. Update Visual Position
+    // The physics position (x,y,z) is at the feet/center bottom. 
+    // We lift the mesh up by half height (0.9) so it stands ON the ground, not IN it.
+    mesh.position.set(x, y + 0.9, z); 
+    mesh.rotation.set(0, rot, 0);
 
-    // 2. Camera Logic (FPS vs TPS)
-    if (isLocal) {
-      // === FPS MODE ===
-      // Hide our own body so we don't clip through it
-      mesh.visible = false; 
-
-      // Place camera at "Eye Level" (1.6m is standard human eye height)
-      this.camera.position.set(x, y + 1.6, z);
-      
-      // Apply look rotation
-      this.camera.rotation.y = yaw;   // Look Left/Right
-      this.camera.rotation.x = pitch; // Look Up/Down
+    // C. Update Camera (First Person View)
+    if (isMe) {
+        // Camera goes at "Eye Level" (approx 1.6 units up)
+        this.camera.position.set(x, y + 1.6, z);
+        
+        // Apply Look Rotation (YXZ order prevents gimbal lock)
+        this.camera.rotation.set(pitch, rot, 0, 'YXZ');
+        
+        // Hide my own body mesh so I don't clip through it
+        mesh.visible = false; 
     } else {
-      // Show enemies
-      mesh.visible = true;
+        mesh.visible = true;
     }
   }
 
-  removeEntity(id: number) {
-    const mesh = this.meshes.get(id);
+  // FIXED: This method handles cleaning up disconnected players
+  public removeEntity(id: number) {
+    const mesh = this.entities.get(id);
     if (mesh) {
-      this.scene.remove(mesh);
-      this.meshes.delete(id);
+        this.scene.remove(mesh);
+        // Important: Dispose geometry/material to prevent memory leaks
+        if (mesh.geometry) mesh.geometry.dispose();
+        this.entities.delete(id);
     }
   }
-// Expose camera for Raycasting
-getCamera(): THREE.PerspectiveCamera {
-  return this.camera;
-}
 
-// Visual: Draw a laser/bullet line that fades out
-drawTracer(start: THREE.Vector3, end: THREE.Vector3) {
-  // Create a line geometry
-  const points = [start, end];
-  const geometry = new THREE.BufferGeometry().setFromPoints(points);
-  const material = new THREE.LineBasicMaterial({ color: 0xffff00 }); // Yellow tracer
-  
-  const line = new THREE.Line(geometry, material);
-  this.scene.add(line);
-
-  // Simple "cleanup" - remove after 100ms
-  setTimeout(() => {
-    this.scene.remove(line);
-    geometry.dispose();
-    material.dispose();
-  }, 100);
-}
-
-  render() {
+  public render() {
     this.renderer.render(this.scene, this.camera);
+  }
+
+  public getCamera() {
+      return this.camera;
+  }
+
+  // Visual effect for shooting
+  public drawTracer(start: THREE.Vector3, end: THREE.Vector3) {
+      const material = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+      const points = [start, end];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, material);
+      
+      this.scene.add(line);
+      
+      // Remove the tracer line after 100ms
+      setTimeout(() => {
+          this.scene.remove(line);
+          geometry.dispose();
+          material.dispose();
+      }, 100);
   }
 }

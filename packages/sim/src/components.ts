@@ -14,7 +14,7 @@ export const CombatState = defineComponent({
   lastFireTime: Types.f32
 });
 
-// --- NEW: Game State ---
+// --- Game State ---
 export const GameRules = defineComponent({
   ticketsAxis: Types.i16,
   ticketsAllies: Types.i16,
@@ -24,7 +24,6 @@ export const GameRules = defineComponent({
 export const Team = defineComponent({
   id: Types.ui8 // 1 = Axis, 2 = Allies
 });
-// -----------------------
 
 export interface SimWorld extends IWorld {
   time: number;
@@ -47,7 +46,10 @@ export const PlayerInput = defineComponent({
   jump: Types.ui8,
   shoot: Types.ui8,
   yaw: Types.f32,
-  pitch: Types.f32
+  // FIXED: Added comma here
+  pitch: Types.f32, 
+  // NEW: Store the tick index associated with this input
+  lastTick: Types.ui32 
 });
 
 export const Player = defineComponent();

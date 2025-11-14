@@ -8,13 +8,10 @@ export class InputManager {
   private buttons = new Set<number>();
   
   // === 1. Camera State Initialization ===
-  // 0, 0 means "Looking straight forward at the horizon"
   private yaw = 0;
   private pitch = 0; 
 
   // === 2. Realistic Constraints ===
-  // Limit looking up/down to ~85 degrees. 
-  // 90 would be straight up/down, which can cause mathematical glitches (Gimbal lock).
   private readonly MAX_PITCH = toRad(85);
 
   constructor() {
@@ -32,21 +29,19 @@ export class InputManager {
         const sensitivity = 0.002;
         
         // Update Angles
-        // Note: If controls feel inverted, swap '-=' with '+='
         this.yaw -= e.movementX * sensitivity;
         this.pitch -= e.movementY * sensitivity;
 
-        // === 3. Apply Clamp (The "Neck" Limit) ===
-        // This prevents the camera from flipping 360 degrees vertically
+        // === 3. Apply Clamp ===
         this.pitch = Math.max(-this.MAX_PITCH, Math.min(this.MAX_PITCH, this.pitch));
       }
     });
 
     // Click to Capture
     document.addEventListener('click', () => {
-      const canvas = document.getElementById('game'); // Ensure your canvas has id="game" or use document.body
+      // FIXED: Removed unused 'canvas' variable
       if (!document.pointerLockElement) {
-        document.body.requestPointerLock(); // Usually safer to lock body or canvas
+        document.body.requestPointerLock(); 
       }
     });
   }

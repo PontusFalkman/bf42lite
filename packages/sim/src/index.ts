@@ -1,17 +1,16 @@
-import { createWorld, addEntity, addComponent, pipe, defineQuery } from 'bitecs';
+import { createWorld, addEntity, removeEntity, addComponent, pipe, defineQuery } from 'bitecs';
 import { Transform, Velocity, PlayerInput, Player, SimWorld } from './components';
 import { createMovementSystem } from './systems/movement';
 import { createRespawnSystem } from './systems/respawn';
 import { createCombatSystem } from './systems/combat';
 import { createGameLoopSystem } from './systems/gameloop';
 
-// --- FIX: Added 'defineQuery' to this list ---
-export { addEntity, addComponent, createWorld, pipe, defineQuery };
-// --------------------------------------------
+export { addEntity, removeEntity, addComponent, createWorld, pipe, defineQuery };
 
 export * from './components';
 export * from './systems/respawn';
 export * from './systems/gameloop';
+export * from './systems/movement';
 
 export const createSimulation = () => {
   const world = createWorld() as SimWorld;
