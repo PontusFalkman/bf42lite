@@ -3,12 +3,16 @@ import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { InputManager } from './InputManager';
 import { Renderer } from './Renderer';
 import { addComponent, defineQuery } from 'bitecs';
+import { WeaponSystem } from './WeaponSystem';
 
 export class ClientGame {
   private sim = createSimulation();
   private net: NetworkAdapter;
   private input = new InputManager();
-  private renderer = new Renderer();
+  
+  // Initialize Renderer ONCE
+  private renderer = new Renderer(); 
+  private weaponSystem: WeaponSystem;
   
   private localEntityId = -1;
   private currentTick = 0;
@@ -17,6 +21,9 @@ export class ClientGame {
 
   constructor() {
     this.net = new WebSocketAdapter();
+    
+    // Initialize WeaponSystem
+    this.weaponSystem = new WeaponSystem(this.renderer);
     
     // Connect
     this.net.onConnect(() => {
@@ -45,14 +52,24 @@ export class ClientGame {
     // 2. Apply to Sim (PREDICTION)
     PlayerInput.forward[this.localEntityId] = cmd.axes.forward;
     PlayerInput.right[this.localEntityId] = cmd.axes.right;
-    PlayerInput.yaw[this.localEntityId] = cmd.axes.yaw;      // <--- APPLY LOOK
-    PlayerInput.pitch[this.localEntityId] = cmd.axes.pitch;  // <--- APPLY LOOK
+    PlayerInput.yaw[this.localEntityId] = cmd.axes.yaw;      
+    PlayerInput.pitch[this.localEntityId] = cmd.axes.pitch;  
+    PlayerInput.jump[this.localEntityId] = cmd.axes.jump ? 1 : 0; 
     
+    // --- THIS WAS MISSING ---
+    PlayerInput.shoot[this.localEntityId] = cmd.axes.shoot ? 1 : 0;
+    // ------------------------
+
     this.sim.step(1/60);
     this.currentTick++;
 
     // 3. Send to Server
     this.net.send(cmd);
+    
+    // Update Weapons (Visuals)
+    if (this.localEntityId >= 0) {
+        this.weaponSystem.update(1/60, this.localEntityId);
+    }
 
     // 4. Render
     const entities = this.playerQuery(this.sim.world);
@@ -60,11 +77,16 @@ export class ClientGame {
       const eid = entities[i];
       const isMe = eid === this.localEntityId;
       
+      const yaw = Transform.rotation[eid]; 
+      const pitch = PlayerInput.pitch[eid];
+
       this.renderer.updateEntity(
         eid,
         Transform.x[eid],
         Transform.y[eid],
         Transform.z[eid],
+        yaw,   
+        pitch, 
         isMe
       );
     }

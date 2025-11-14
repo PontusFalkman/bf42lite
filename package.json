@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
-    "dev:client": "pnpm --filter @app/client-tauri dev:tauri",
-    "dev:host": "pnpm --filter @host/node dev",
+    "dev:client": "pnpm --filter client-tauri tauri dev",
+    "dev:host": "pnpm --filter @bf42lite/host-node dev",
     "build": "pnpm -r run build"
   },
   "private": true,

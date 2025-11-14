@@ -6,7 +6,8 @@ import {
   PlayerInput, 
   Transform, 
   Velocity,
-  SimWorld
+  SimWorld,
+  Health
 } from '@bf42lite/sim';
 import { 
   ClientMessage, 
@@ -54,6 +55,8 @@ wss.on('connection', (ws) => {
         PlayerInput.right[entityId] = msg.axes.right;
         PlayerInput.jump[entityId] = msg.axes.jump ? 1 : 0;
         PlayerInput.shoot[entityId] = msg.axes.shoot ? 1 : 0;
+        PlayerInput.yaw[entityId] = msg.axes.yaw;
+        PlayerInput.pitch[entityId] = msg.axes.pitch;
       }
     } catch (e) {
       console.error('[Host] Invalid message', e);
@@ -87,7 +90,9 @@ setInterval(() => {
         y: Transform.y[eid], 
         z: Transform.z[eid] 
       },
-      rot: Transform.rotation[eid]
+      rot: Transform.rotation[eid],
+      health: Health.current[eid],
+      isDead: Boolean(Health.isDead[eid])
     });
   }
 

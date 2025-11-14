@@ -1,5 +1,18 @@
 import { defineComponent, Types, IWorld } from 'bitecs';
 
+export const RespawnTimer = defineComponent({
+  timeLeft: Types.f32 // How many seconds until respawn?
+});
+export const Health = defineComponent({
+  max: Types.ui8,
+  current: Types.ui8,
+  isDead: Types.ui8 // Boolean flag
+});
+
+// Track firing cooldowns server-side
+export const CombatState = defineComponent({
+  lastFireTime: Types.f32
+});
 // 1. Define the Custom World Interface
 export interface SimWorld extends IWorld {
   time: number;

@@ -1,8 +1,12 @@
 import { createWorld, addEntity, addComponent, pipe } from 'bitecs';
 import { Transform, Velocity, PlayerInput, Player, SimWorld } from './components';
 import { createMovementSystem } from './systems/movement';
+import { createRespawnSystem } from './systems/respawn';
+import { createCombatSystem } from './systems/combat';
+
 
 export * from './components';
+export * from './systems/respawn';
 
 export const createSimulation = () => {
   // Cast the generic world to our SimWorld interface
@@ -11,7 +15,9 @@ export const createSimulation = () => {
   world.dt = 1 / 60;
 
   const pipeline = pipe(
-    createMovementSystem()
+    createMovementSystem(),
+    createCombatSystem(),
+    createRespawnSystem()
   );
 
   const step = (dt: number) => {

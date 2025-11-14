@@ -1,12 +1,21 @@
 import { ClientInput } from '@bf42lite/protocol';
 
+// Helper: Convert degrees to radians
+const toRad = (deg: number) => deg * (Math.PI / 180);
+
 export class InputManager {
   private keys = new Set<string>();
   private buttons = new Set<number>();
   
-  // Camera State
+  // === 1. Camera State Initialization ===
+  // 0, 0 means "Looking straight forward at the horizon"
   private yaw = 0;
-  private pitch = 0;
+  private pitch = 0; 
+
+  // === 2. Realistic Constraints ===
+  // Limit looking up/down to ~85 degrees. 
+  // 90 would be straight up/down, which can cause mathematical glitches (Gimbal lock).
+  private readonly MAX_PITCH = toRad(85);
 
   constructor() {
     // Keyboard
@@ -21,19 +30,23 @@ export class InputManager {
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement) {
         const sensitivity = 0.002;
+        
+        // Update Angles
+        // Note: If controls feel inverted, swap '-=' with '+='
         this.yaw -= e.movementX * sensitivity;
         this.pitch -= e.movementY * sensitivity;
 
-        // Clamp Pitch (Don't break your neck)
-        this.pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.pitch));
+        // === 3. Apply Clamp (The "Neck" Limit) ===
+        // This prevents the camera from flipping 360 degrees vertically
+        this.pitch = Math.max(-this.MAX_PITCH, Math.min(this.MAX_PITCH, this.pitch));
       }
     });
 
     // Click to Capture
     document.addEventListener('click', () => {
-      const canvas = document.getElementById('game');
-      if (canvas && !document.pointerLockElement) {
-        canvas.requestPointerLock();
+      const canvas = document.getElementById('game'); // Ensure your canvas has id="game" or use document.body
+      if (!document.pointerLockElement) {
+        document.body.requestPointerLock(); // Usually safer to lock body or canvas
       }
     });
   }
@@ -55,8 +68,8 @@ export class InputManager {
         right,
         jump: this.keys.has('Space'),
         shoot: this.buttons.has(0),
-        yaw: this.yaw,     // <--- Send Look
-        pitch: this.pitch  // <--- Send Look
+        yaw: this.yaw,
+        pitch: this.pitch
       }
     };
   }

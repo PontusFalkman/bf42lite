@@ -2,6 +2,8 @@ import { defineSystem, defineQuery } from 'bitecs';
 import { Transform, Velocity, PlayerInput, SimWorld } from '../components';
 
 const MOVE_SPEED = 10.0;
+const JUMP_FORCE = 8.0;   // Initial upward burst
+const GRAVITY = -20.0;    // Downward acceleration per second
 
 export const createMovementSystem = () => {
   const query = defineQuery([Transform, Velocity, PlayerInput]);
@@ -31,12 +33,27 @@ export const createMovementSystem = () => {
       Velocity.x[id] = dx * MOVE_SPEED;
       Velocity.z[id] = dz * MOVE_SPEED;
 
-      // 3. INTEGRATE POSITION
+      // 3. GRAVITY & JUMPING
+      
+      // Apply Gravity
+      Velocity.y[id] += GRAVITY * dt;
+
+      // Check Jump (Must be on the floor to jump)
+      if (Transform.y[id] <= 0.001 && PlayerInput.jump[id]) {
+        Velocity.y[id] = JUMP_FORCE;
+      }
+
+      // 4. INTEGRATE POSITION
       Transform.x[id] += Velocity.x[id] * dt;
       Transform.z[id] += Velocity.z[id] * dt;
+      Transform.y[id] += Velocity.y[id] * dt;
 
-      // Floor Constraint
-      if (Transform.y[id] < 0) Transform.y[id] = 0;
+      // 5. FLOOR COLLISION
+      // If we fall below zero, snap back to zero and stop falling
+      if (Transform.y[id] < 0) {
+        Transform.y[id] = 0;
+        Velocity.y[id] = 0;
+      }
     }
     return world;
   });

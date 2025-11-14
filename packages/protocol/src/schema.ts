@@ -29,7 +29,9 @@ export const EntityStateSchema = z.object({
   id: z.number(),
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
   rot: z.number(),
-  vel: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional()
+  vel: z.object({ x: z.number(), y: z.number(), z: z.number() }).optional(),
+  health: z.number(),
+  isDead: z.boolean()
 });
 
 export const SnapshotSchema = z.object({
