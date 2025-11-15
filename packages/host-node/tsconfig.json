@@ -5,7 +5,13 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "outDir": "dist",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "composite": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../sim" },
+    { "path": "../protocol" },
+    { "path": "../games/bf42" }
+  ]
 }

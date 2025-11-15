@@ -1,27 +1,27 @@
-import { createWorld, addEntity, removeEntity, addComponent, pipe, defineQuery } from 'bitecs';
-import { Transform, Velocity, PlayerInput, Player, SimWorld } from './components';
+import { createWorld, addEntity, removeEntity, addComponent, pipe, defineQuery, IWorld } from 'bitecs';
+import { SimWorld } from './components';
 import { createMovementSystem } from './systems/movement';
-import { createRespawnSystem } from './systems/respawn';
-import { createCombatSystem } from './systems/combat';
-import { createGameLoopSystem } from './systems/gameloop';
 
 export { addEntity, removeEntity, addComponent, createWorld, pipe, defineQuery };
-
 export * from './components';
-export * from './systems/respawn';
-export * from './systems/gameloop';
 export * from './systems/movement';
 
-export const createSimulation = () => {
+// FIX: Define the System type manually since bitecs might not export ISystem
+export type System = (world: SimWorld) => SimWorld;
+export type SystemFactory = () => System;
+
+export const createSimulation = (gameSystems: SystemFactory[] = []) => {
   const world = createWorld() as SimWorld;
   world.time = 0;
   world.dt = 1 / 60;
 
+  const coreSystems = [
+    createMovementSystem() 
+  ];
+
   const pipeline = pipe(
-    createMovementSystem(),
-    createCombatSystem(),
-    createRespawnSystem(),
-    createGameLoopSystem()
+    ...coreSystems,
+    ...gameSystems.map(create => create())
   );
 
   const step = (dt: number) => {
@@ -31,18 +31,4 @@ export const createSimulation = () => {
   };
 
   return { world, step };
-};
-
-export const spawnPlayer = (world: SimWorld, x: number, z: number) => {
-  const eid = addEntity(world);
-  addComponent(world, Transform, eid);
-  addComponent(world, Velocity, eid);
-  addComponent(world, PlayerInput, eid);
-  addComponent(world, Player, eid);
-
-  Transform.x[eid] = x;
-  Transform.y[eid] = 0;
-  Transform.z[eid] = z;
-  
-  return eid;
 };

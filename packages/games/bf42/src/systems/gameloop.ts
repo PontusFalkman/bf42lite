@@ -1,5 +1,7 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { GameRules, SimWorld } from '../components';
+// FIX: Path is now ../components
+import { GameRules } from '../components';
+import { SimWorld } from '@bf42lite/sim'; // Import SimWorld from engine
 
 export const createGameLoopSystem = () => {
   const query = defineQuery([GameRules]);

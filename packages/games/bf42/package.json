@@ -1,0 +1,16 @@
+{
+  "name": "@bf42lite/games-bf42",
+  "version": "0.0.1",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@bf42lite/sim": "workspace:*",
+    "bitecs": "^0.3.40"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

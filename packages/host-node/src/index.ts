@@ -1,201 +1,96 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { pack, unpack } from 'msgpackr';
-import { 
-  createSimulation, 
-  spawnPlayer, 
-  PlayerInput, 
-  Transform, 
-  Velocity, 
-  Health,
-  GameRules, 
-  Team,
-  addComponent,
-  addEntity,
-  Ammo,         // <--- NEW
-  CombatState,  // <--- NEW
-  defineQuery   // <--- NEW
-} from '@bf42lite/sim';
-import { 
-  ClientMessage, 
-  ServerMessage, 
-  Snapshot
-} from '@bf42lite/protocol';
+import { createSimulation, addEntity, addComponent, InputState, Transform } from '@bf42lite/sim';
+// FIX: Import from the new package name we defined in step 1
+import * as BF42 from '@bf42lite/games-bf42'; 
+import { ClientMessage, ServerMessage, Snapshot } from '@bf42lite/protocol';
 
 const PORT = 8080;
 const TICK_RATE = 60;
 const SNAPSHOT_RATE = 20;
 
-// --- COMBAT CONSTANTS ---
-const PLAYER_RADIUS = 0.5; 
-const PLAYER_HEIGHT = 1.8;
-const WEAPON_DAMAGE = 25;
-const RELOAD_TIME = 2.0; // Seconds
+console.log(`[Host] Loading Game: BF42 Lite...`);
 
-console.log(`[Host] Starting Dedicated Server on port ${PORT}...`);
+// 1. LOAD SYSTEMS
+const { world, step } = createSimulation(BF42.getSystems());
+const clients = new Map<WebSocket, number>(); 
 
-// 1. SETUP SIMULATION
-const { world, step } = createSimulation();
-const clients = new Map<WebSocket, number>(); // Socket -> EntityID
-
-// --- INIT GAME RULES ---
+// 2. SETUP GAME STATE
 const rulesId = addEntity(world);
-addComponent(world, GameRules, rulesId);
-GameRules.ticketsAxis[rulesId] = 100;
-GameRules.ticketsAllies[rulesId] = 100;
-GameRules.state[rulesId] = 0;
+addComponent(world, BF42.GameRules, rulesId);
+BF42.GameRules.ticketsAxis[rulesId] = 100;
+BF42.GameRules.ticketsAllies[rulesId] = 100;
 
-// Define Queries
-const reloadQuery = defineQuery([Ammo, CombatState]);
-
-// 2. HELPER: Ray vs Cylinder Intersection
-function checkHit(
-    ox: number, oy: number, oz: number,   
-    dx: number, dy: number, dz: number,   
-    targetId: number
-): boolean {
-    const tx = Transform.x[targetId];
-    const ty = Transform.y[targetId];
-    const tz = Transform.z[targetId];
-
-    const cx = tx - ox;
-    const cz = tz - oz;
-
-    const t = cx * dx + cz * dz;
-    if (t < 0) return false; 
-
-    const px = ox + t * dx;
-    const pz = oz + t * dz;
-
-    const distSq = (px - tx) ** 2 + (pz - tz) ** 2;
-    if (distSq > PLAYER_RADIUS * PLAYER_RADIUS) return false; 
-
-    const hitY = oy + t * dy;
-    if (hitY >= ty && hitY <= ty + PLAYER_HEIGHT) {
-        return true;
-    }
-    return false;
-}
-
-// 3. SETUP NETWORK
 const wss = new WebSocketServer({ port: PORT });
-let nextTeam = 1; 
+
+// Helper constants for Input Bitmask
+const BUTTON_JUMP = 1;
+const BUTTON_FIRE = 2;
+const BUTTON_RELOAD = 4;
 
 wss.on('connection', (ws) => {
-  const entityId = spawnPlayer(world, 0, 0);
-  clients.set(ws, entityId);
-
-  // --- ASSIGN TEAM, HEALTH, AMMO ---
-  addComponent(world, Team, entityId);
-  Team.id[entityId] = nextTeam;
-  nextTeam = nextTeam === 1 ? 2 : 1;
+  const eid = addEntity(world);
   
-  addComponent(world, Health, entityId);
-  Health.max[entityId] = 100;
-  Health.current[entityId] = 100;
-  Health.isDead[entityId] = 0;
+  // Core Engine Components
+  addComponent(world, Transform, eid);
+  addComponent(world, InputState, eid); // FIX: Use InputState
+  
+  // Game Components
+  addComponent(world, BF42.Health, eid);
+  BF42.Health.current[eid] = 100;
+  BF42.Health.max[eid] = 100;
+  BF42.Health.isDead[eid] = 0;
 
-  // Initialize Ammo
-  addComponent(world, Ammo, entityId);
-  Ammo.current[entityId] = 30;
-  Ammo.reserve[entityId] = 120;
-  Ammo.magSize[entityId] = 30;
+  addComponent(world, BF42.Ammo, eid);
+  BF42.Ammo.current[eid] = 30; 
+  BF42.Ammo.magSize[eid] = 30;
+  BF42.Ammo.reserve[eid] = 120;
 
-  // Initialize Combat State
-  addComponent(world, CombatState, entityId);
-  CombatState.lastFireTime[entityId] = 0;
-  CombatState.isReloading[entityId] = 0;
-  CombatState.reloadStartTime[entityId] = 0;
+  addComponent(world, BF42.CombatState, eid);
+  addComponent(world, BF42.Team, eid);
+  addComponent(world, BF42.Soldier, eid); // Tag as Soldier
 
-  console.log(`[Host] Player Connected: ID ${entityId} (Team ${Team.id[entityId]})`);
+  clients.set(ws, eid);
+  console.log(`[Host] Player Joined: ${eid}`);
 
+  // Send Welcome
   const welcomeMsg: ServerMessage = { 
     type: 'welcome', 
-    playerId: entityId, 
+    playerId: eid, 
     tick: world.time 
   };
   ws.send(pack(welcomeMsg));
 
   ws.on('message', (raw) => {
     try {
-      const msg = unpack(raw as Buffer) as ClientMessage;
+        const msg = unpack(raw as Buffer) as ClientMessage;
+        
+        if (msg.type === 'input') {
+        // FIX: Map Client "Axes" object to Engine "InputState"
+        InputState.moveY[eid] = msg.axes.forward; // Y is forward in our engine logic
+        InputState.moveX[eid] = msg.axes.right;
+        InputState.viewX[eid] = msg.axes.yaw;
+        InputState.viewY[eid] = msg.axes.pitch;
+        InputState.lastTick[eid] = msg.tick;
 
-      // --- HANDLE INPUT ---
-      if (msg.type === 'input') {
-        PlayerInput.forward[entityId] = msg.axes.forward;
-        PlayerInput.right[entityId] = msg.axes.right;
-        PlayerInput.jump[entityId] = msg.axes.jump ? 1 : 0;
-        PlayerInput.shoot[entityId] = msg.axes.shoot ? 1 : 0;
-        PlayerInput.yaw[entityId] = msg.axes.yaw;
-        PlayerInput.pitch[entityId] = msg.axes.pitch;
-        PlayerInput.lastTick[entityId] = msg.tick; 
+        // FIX: Map booleans to Bitmask
+        let buttons = 0;
+        if (msg.axes.jump) buttons |= BUTTON_JUMP;
+        if (msg.axes.shoot) buttons |= BUTTON_FIRE;
+        if (msg.axes.reload) buttons |= BUTTON_RELOAD;
+        InputState.buttons[eid] = buttons;
 
-        // Reload Request
-        if (msg.axes.reload && !CombatState.isReloading[entityId]) {
-            const current = Ammo.current[entityId];
-            const reserve = Ammo.reserve[entityId];
-            const magSize = Ammo.magSize[entityId];
-
-            // Only reload if not full and has reserve
-            if (current < magSize && reserve > 0) {
-                console.log(`[Combat] Player ${entityId} started reloading...`);
-                CombatState.isReloading[entityId] = 1;
-                CombatState.reloadStartTime[entityId] = world.time;
+        // Handle Reload (Game Logic trigger)
+        if (msg.axes.reload) {
+            // We manually trigger the reloading flag if needed, 
+            // though ideally the CombatSystem reads the button directly.
+            if (!BF42.CombatState.isReloading[eid]) {
+                BF42.CombatState.isReloading[eid] = 1;
+                BF42.CombatState.reloadStartTime[eid] = world.time;
             }
         }
-      }
-      
-      // --- HANDLE FIRE ---
-      else if (msg.type === 'fire') {
-        if (Health.isDead[entityId]) return;
-
-        // AMMO CHECK
-        if (CombatState.isReloading[entityId]) return;
-        if (Ammo.current[entityId] <= 0) return;
-
-        // Deduct Ammo
-        Ammo.current[entityId]--;
-
-        // Iterate targets
-        for (const [targetWs, targetId] of clients) {
-          if (targetId === entityId) continue; 
-          if (Health.isDead[targetId]) continue; 
-
-          const isHit = checkHit(
-            msg.origin.x, msg.origin.y, msg.origin.z,
-            msg.direction.x, msg.direction.y, msg.direction.z,
-            targetId
-          );
-
-          if (isHit) {
-             const currentHp = Health.current[targetId];
-             const newHp = Math.max(0, currentHp - WEAPON_DAMAGE);
-             Health.current[targetId] = newHp;
-             
-             console.log(`[Combat] HIT: ${entityId} -> ${targetId} [HP: ${newHp}]`);
-
-             const confirmMsg: ServerMessage = {
-               type: 'hitConfirmed',
-               shooterId: entityId,
-               targetId: targetId,
-               damage: WEAPON_DAMAGE
-             };
-             ws.send(pack(confirmMsg));
-
-             if (newHp === 0) {
-                 Health.isDead[targetId] = 1;
-                 
-                 // Deduct Ticket
-                 const victimTeam = Team.id[targetId];
-                 if (victimTeam === 1) GameRules.ticketsAxis[rulesId]--;
-                 else if (victimTeam === 2) GameRules.ticketsAllies[rulesId]--;
-             }
-          }
         }
-      }
-
-    } catch (e) {
-      console.error('[Host] Invalid message', e);
-    }
+    } catch (e) { console.error(e); }
   });
 
   ws.on('close', () => {
@@ -203,77 +98,42 @@ wss.on('connection', (ws) => {
   });
 });
 
-// 4. GAME LOOP (60Hz)
+// 3. GAME LOOP
 setInterval(() => {
-  // --- RELOAD SYSTEM ---
-  const reloadingEntities = reloadQuery(world);
-  for (let i = 0; i < reloadingEntities.length; i++) {
-      const eid = reloadingEntities[i];
-      if (CombatState.isReloading[eid]) {
-          if (world.time - CombatState.reloadStartTime[eid] >= RELOAD_TIME) {
-              // Finish Reload
-              const magSize = Ammo.magSize[eid];
-              const current = Ammo.current[eid];
-              const reserve = Ammo.reserve[eid];
-              
-              const needed = magSize - current;
-              const actual = Math.min(needed, reserve);
-              
-              Ammo.current[eid] += actual;
-              Ammo.reserve[eid] -= actual;
-              CombatState.isReloading[eid] = 0;
-              
-              console.log(`[Combat] Player ${eid} finished reloading.`);
-          }
-      }
-  }
-
   step(1 / TICK_RATE);
 }, 1000 / TICK_RATE);
 
-// 5. SNAPSHOT LOOP (20Hz)
+// 4. SNAPSHOT LOOP
 setInterval(() => {
   const entities = [];
   
   for (const eid of clients.values()) {
     entities.push({
       id: eid,
-      pos: { 
-        x: Transform.x[eid], 
-        y: Transform.y[eid], 
-        z: Transform.z[eid] 
-      },
-      vel: {
-        x: Velocity.x[eid],
-        y: Velocity.y[eid],
-        z: Velocity.z[eid]
-      },
+      pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
+      vel: { x: 0, y: 0, z: 0 }, // optimization: skip vel for now
       rot: Transform.rotation[eid],
-      health: Health.current[eid],
-      isDead: Boolean(Health.isDead[eid]),
-      // SYNC AMMO
-      ammo: Ammo.current[eid],
-      ammoRes: Ammo.reserve[eid],
-      lastProcessedTick: PlayerInput.lastTick[eid]
+      health: BF42.Health.current[eid],
+      isDead: Boolean(BF42.Health.isDead[eid]),
+      ammo: BF42.Ammo.current[eid],
+      ammoRes: BF42.Ammo.reserve[eid],
+      lastProcessedTick: InputState.lastTick[eid]
     });
   }
-
-  const ticketsAxis = GameRules.ticketsAxis[rulesId];
-  const ticketsAllies = GameRules.ticketsAllies[rulesId];
-  const state = GameRules.state[rulesId];
 
   const snapshot: Snapshot = {
     type: 'snapshot',
     tick: Math.floor(world.time * 60),
-    game: { ticketsAxis, ticketsAllies, state },
+    game: { 
+        ticketsAxis: BF42.GameRules.ticketsAxis[rulesId], 
+        ticketsAllies: BF42.GameRules.ticketsAllies[rulesId], 
+        state: BF42.GameRules.state[rulesId] 
+    },
     entities
   };
 
   const data = pack(snapshot);
-
   for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
+    if (client.readyState === WebSocket.OPEN) client.send(data);
   }
 }, 1000 / SNAPSHOT_RATE);

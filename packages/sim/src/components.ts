@@ -1,65 +1,36 @@
+// packages/sim/src/components.ts
 import { defineComponent, Types, IWorld } from 'bitecs';
 
-export const RespawnTimer = defineComponent({
-  timeLeft: Types.f32
-});
-
-export const Health = defineComponent({
-  max: Types.ui8,
-  current: Types.ui8,
-  isDead: Types.ui8
-});
-
-// === NEW: Ammo Component ===
-export const Ammo = defineComponent({
-  current: Types.ui8,   // Rounds in magazine
-  reserve: Types.ui16,  // Total extra rounds
-  magSize: Types.ui8    // Capacity of one magazine
-});
-
-export const CombatState = defineComponent({
-  lastFireTime: Types.f32,
-  // === NEW: Reload State ===
-  isReloading: Types.ui8,    // 0 = False, 1 = True
-  reloadStartTime: Types.f32
-});
-
-// --- Game State ---
-export const GameRules = defineComponent({
-  ticketsAxis: Types.i16,
-  ticketsAllies: Types.i16,
-  state: Types.ui8 // 0 = Playing, 1 = Game Over
-});
-
-export const Team = defineComponent({
-  id: Types.ui8 // 1 = Axis, 2 = Allies
-});
-
-export interface SimWorld extends IWorld {
-  time: number;
-  dt: number;
-  [key: string]: any;
-}
+// --- CORE ENGINE COMPONENTS ---
 
 export const Vector3 = { x: Types.f32, y: Types.f32, z: Types.f32 };
 
 export const Transform = defineComponent({
   ...Vector3,
-  rotation: Types.f32
+  rotation: Types.f32 // Y-axis rotation (Yaw)
 });
 
 export const Velocity = defineComponent(Vector3);
 
-export const PlayerInput = defineComponent({
-  forward: Types.f32,
-  right: Types.f32,
-  jump: Types.ui8,
-  shoot: Types.ui8,
-  yaw: Types.f32,
-  pitch: Types.f32,
-  lastTick: Types.ui32,
-  reload: Types.ui8 // Added for input mapping convenience (optional but good practice)
+// Generic Input: The Engine doesn't care what "Button 1" does.
+// It just knows the button is pressed.
+export const InputState = defineComponent({
+  moveX: Types.f32,    // WASD / Left Stick X
+  moveY: Types.f32,    // WASD / Left Stick Y
+  viewX: Types.f32,    // Mouse X / Right Stick X
+  viewY: Types.f32,    // Mouse Y / Right Stick Y
+  buttons: Types.ui32, // Bitmask for actions (Jump, Fire, Reload, Enter Vehicle)
+  lastTick: Types.ui32
 });
 
-export const Player = defineComponent();
-export const Me = defineComponent();
+// Tags
+export const Me = defineComponent(); // Local player authority
+
+// The Simulation World Contract
+export interface SimWorld extends IWorld {
+  time: number;
+  dt: number;
+  // The engine doesn't know about 'tickets', but it allows
+  // modules to attach arbitrary data if needed.
+  [key: string]: any; 
+}

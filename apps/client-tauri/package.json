@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@bf42lite/sim": "workspace:*",
+    "@bf42lite/games-bf42": "workspace:*", 
     "@bf42lite/net": "workspace:*",
     "@bf42lite/protocol": "workspace:*",
     "bitecs": "^0.3.40",

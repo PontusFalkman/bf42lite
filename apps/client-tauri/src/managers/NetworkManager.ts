@@ -1,6 +1,8 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { EntityState, ClientInput, ClientFire } from '@bf42lite/protocol';
-import { SimWorld, spawnPlayer, removeEntity, Transform, Health } from '@bf42lite/sim';
+// FIX: Import addEntity instead of spawnPlayer
+import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
+import { Health, Soldier, Ammo } from '@bf42lite/games-bf42'; // Import Game Components
 import { Renderer } from '../Renderer';
 
 interface InterpolationBuffer {
@@ -18,10 +20,10 @@ export class NetworkManager {
     private serverToLocal = new Map<number, number>();
     private remoteBuffers = new Map<number, InterpolationBuffer>();
     
-    // Callbacks
     public onWelcome?: (serverId: number) => void;
     public onSnapshot?: (msg: any) => void;
     public onHitConfirmed?: (damage: number) => void;
+
     constructor() {
         this.net = new WebSocketAdapter();
         
@@ -34,14 +36,9 @@ export class NetworkManager {
             else if (msg.type === 'snapshot') {
                 if (this.onSnapshot) this.onSnapshot(msg);
             }
-            // Note: 'hitConfirmed' can be handled here or passed to a callback later
             else if (msg.type === 'hitConfirmed') {
-                console.log(`[Net] Hit Confirmed! Damage: ${msg.damage}`);
-// Trigger the callback if it exists
-if (this.onHitConfirmed) {
-    this.onHitConfirmed(msg.damage);            
-}
-}
+                if (this.onHitConfirmed) this.onHitConfirmed(msg.damage);            
+            }
         });
     }
 
@@ -54,13 +51,7 @@ if (this.onHitConfirmed) {
     }
 
     public sendFire(origin: {x: number, y: number, z: number}, direction: {x: number, y: number, z: number}, tick: number) {
-        const msg: ClientFire = {
-            type: 'fire',
-            tick,
-            origin,
-            direction,
-            weaponId: 1
-        };
+        const msg: ClientFire = { type: 'fire', tick, origin, direction, weaponId: 1 };
         this.net.send(msg);
     }
 
@@ -79,30 +70,38 @@ if (this.onHitConfirmed) {
         msg.entities.forEach((serverEnt: EntityState) => {
             activeServerIds.add(serverEnt.id);
 
-            // Skip "Me" (handled by Reconciler in main loop)
             if (serverEnt.id === this.myServerId) return;
 
             let localId = this.serverToLocal.get(serverEnt.id);
 
-            // SPAWN NEW
+            // MANUALLY SPAWN REMOTE GHOST
             if (localId === undefined) {
-                console.log(`[Net] Spawning Remote Player ${serverEnt.id}`);
-                localId = spawnPlayer(world, serverEnt.pos.x, serverEnt.pos.z);
+                localId = addEntity(world);
+                addComponent(world, Transform, localId);
+                addComponent(world, Health, localId); // Need health for visual tag?
+                addComponent(world, Soldier, localId); // Tag as soldier
+                
+                Transform.x[localId] = serverEnt.pos.x;
+                Transform.z[localId] = serverEnt.pos.z;
+
                 this.serverToLocal.set(serverEnt.id, localId);
                 this.remoteBuffers.set(localId, { snapshots: [] });
             }
 
             // UPDATE BUFFER
-            const buffer = this.remoteBuffers.get(localId)!;
-            buffer.snapshots.push({
-                tick: msg.tick,
-                pos: serverEnt.pos,
-                rot: serverEnt.rot,
-                timestamp: now
-            });
-            if (buffer.snapshots.length > 20) buffer.snapshots.shift();
+            const buffer = this.remoteBuffers.get(localId); 
+            // FIX: Typescript undefined check
+            if (buffer) {
+                buffer.snapshots.push({
+                    tick: msg.tick,
+                    pos: serverEnt.pos,
+                    rot: serverEnt.rot,
+                    timestamp: now
+                });
+                if (buffer.snapshots.length > 20) buffer.snapshots.shift();
+            }
 
-            // SYNC STATS
+            // SYNC VISUALS
             Health.current[localId] = serverEnt.health;
             Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
         });
@@ -110,7 +109,6 @@ if (this.onHitConfirmed) {
         // REMOVE DISCONNECTED
         for (const [sId, lId] of this.serverToLocal.entries()) {
             if (!activeServerIds.has(sId) && sId !== this.myServerId) {
-                console.log(`[Net] Removing Player ${sId}`);
                 removeEntity(world, lId);
                 this.serverToLocal.delete(sId);
                 this.remoteBuffers.delete(lId);
@@ -126,7 +124,6 @@ if (this.onHitConfirmed) {
             let t0 = buffer.snapshots[0];
             let t1 = buffer.snapshots[1];
 
-            // Find correct window
             for (let i = 0; i < buffer.snapshots.length - 1; i++) {
                 if (buffer.snapshots[i].timestamp <= renderTime && buffer.snapshots[i+1].timestamp >= renderTime) {
                     t0 = buffer.snapshots[i];

@@ -1,12 +1,17 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { Transform, Velocity, PlayerInput, SimWorld } from '../components';
+// FIX: Import InputState instead of PlayerInput
+import { Transform, Velocity, InputState, SimWorld } from '../components';
 
 const MOVE_SPEED = 10.0;
-const JUMP_FORCE = 8.0;   // Initial upward burst
-const GRAVITY = -20.0;    // Downward acceleration per second
+const JUMP_FORCE = 8.0;
+const GRAVITY = -20.0;
+
+// FIX: Define Jump Bit (matches what we will set in input manager later)
+const BUTTON_JUMP = 1; 
 
 export const createMovementSystem = () => {
-  const query = defineQuery([Transform, Velocity, PlayerInput]);
+  // FIX: Query InputState
+  const query = defineQuery([Transform, Velocity, InputState]);
 
   return defineSystem((world: SimWorld) => {
     const dt = world.dt;
@@ -15,18 +20,19 @@ export const createMovementSystem = () => {
     for (let i = 0; i < entities.length; ++i) {
       const id = entities[i];
 
-      // 1. APPLY ROTATION (Look Direction)
-      Transform.rotation[id] = PlayerInput.yaw[id];
+      // 1. APPLY ROTATION
+      // New mapping: viewX is Yaw
+      Transform.rotation[id] = InputState.viewX[id];
 
-      // 2. CALCULATE MOVEMENT (Relative to Look)
-      const forward = PlayerInput.forward[id];
-      const right = PlayerInput.right[id];
+      // 2. CALCULATE MOVEMENT
+      // New mapping: moveY is Forward, moveX is Right
+      const forward = InputState.moveY[id];
+      const right = InputState.moveX[id];
       
       const angle = Transform.rotation[id];
       const sin = Math.sin(angle);
       const cos = Math.cos(angle);
 
-      // Standard FPS WASD Math
       const dx = (right * cos) - (forward * sin);
       const dz = (right * sin) + (forward * cos);
 
@@ -34,12 +40,12 @@ export const createMovementSystem = () => {
       Velocity.z[id] = dz * MOVE_SPEED;
 
       // 3. GRAVITY & JUMPING
-      
-      // Apply Gravity
       Velocity.y[id] += GRAVITY * dt;
 
-      // Check Jump (Must be on the floor to jump)
-      if (Transform.y[id] <= 0.001 && PlayerInput.jump[id]) {
+      // FIX: Check Jump Button Bitmask
+      const isJumpPressed = (InputState.buttons[id] & BUTTON_JUMP) !== 0;
+
+      if (Transform.y[id] <= 0.001 && isJumpPressed) {
         Velocity.y[id] = JUMP_FORCE;
       }
 
@@ -49,7 +55,6 @@ export const createMovementSystem = () => {
       Transform.y[id] += Velocity.y[id] * dt;
 
       // 5. FLOOR COLLISION
-      // If we fall below zero, snap back to zero and stop falling
       if (Transform.y[id] < 0) {
         Transform.y[id] = 0;
         Velocity.y[id] = 0;
