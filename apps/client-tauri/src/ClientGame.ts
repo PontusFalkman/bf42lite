@@ -25,6 +25,11 @@ export class ClientGame {
     private movementSystem = createMovementSystem();
     private renderer = new Renderer(); 
 
+//fps
+private readonly TARGET_FPS = 60;
+    private readonly FRAME_INTERVAL = 1000 / this.TARGET_FPS;
+    private lastRenderTime = 0;
+
     // === Managers ===
     private net: NetworkManager;
     private input: InputManager;
@@ -162,6 +167,13 @@ this.input.setInteraction(true);
     private loop = (now: number) => {
         if (!this.running) return;
         requestAnimationFrame(this.loop);
+
+        const elapsed = now - this.lastRenderTime;
+        if (elapsed < this.FRAME_INTERVAL) {
+            return; // Skip this frame if we are too fast
+        }
+        // Adjust for drift so we don't lose time
+        this.lastRenderTime = now - (elapsed % this.FRAME_INTERVAL);
 
         const dt = (now - this.lastFrameTime) / 1000;
         this.lastFrameTime = now;
