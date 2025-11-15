@@ -10,13 +10,15 @@ import {
   GameRules, 
   Team,
   addComponent,
-  addEntity
+  addEntity,
+  Ammo,         // <--- NEW
+  CombatState,  // <--- NEW
+  defineQuery   // <--- NEW
 } from '@bf42lite/sim';
 import { 
   ClientMessage, 
   ServerMessage, 
-  Snapshot,
-  ClientFire // Ensure this is exported in your protocol schema
+  Snapshot
 } from '@bf42lite/protocol';
 
 const PORT = 8080;
@@ -27,6 +29,7 @@ const SNAPSHOT_RATE = 20;
 const PLAYER_RADIUS = 0.5; 
 const PLAYER_HEIGHT = 1.8;
 const WEAPON_DAMAGE = 25;
+const RELOAD_TIME = 2.0; // Seconds
 
 console.log(`[Host] Starting Dedicated Server on port ${PORT}...`);
 
@@ -41,53 +44,47 @@ GameRules.ticketsAxis[rulesId] = 100;
 GameRules.ticketsAllies[rulesId] = 100;
 GameRules.state[rulesId] = 0;
 
+// Define Queries
+const reloadQuery = defineQuery([Ammo, CombatState]);
+
 // 2. HELPER: Ray vs Cylinder Intersection
 function checkHit(
-    ox: number, oy: number, oz: number,   // Ray Origin
-    dx: number, dy: number, dz: number,   // Ray Direction (Normalized)
+    ox: number, oy: number, oz: number,   
+    dx: number, dy: number, dz: number,   
     targetId: number
 ): boolean {
     const tx = Transform.x[targetId];
     const ty = Transform.y[targetId];
     const tz = Transform.z[targetId];
 
-    // A. Check XZ (Top-down Circle) Intersection
     const cx = tx - ox;
     const cz = tz - oz;
 
-    // Project C onto D to find closest point on the infinite line
     const t = cx * dx + cz * dz;
+    if (t < 0) return false; 
 
-    if (t < 0) return false; // Target is behind the shooter
-
-    // Find the closest point on the ray line
     const px = ox + t * dx;
     const pz = oz + t * dz;
 
-    // Check distance squared against radius squared
     const distSq = (px - tx) ** 2 + (pz - tz) ** 2;
-    if (distSq > PLAYER_RADIUS * PLAYER_RADIUS) return false; // Missed the "width"
+    if (distSq > PLAYER_RADIUS * PLAYER_RADIUS) return false; 
 
-    // B. Check Y (Height) Intersection at that distance
     const hitY = oy + t * dy;
-
-    // Check if the ray passes within the cylinder's height
     if (hitY >= ty && hitY <= ty + PLAYER_HEIGHT) {
         return true;
     }
-
     return false;
 }
 
 // 3. SETUP NETWORK
 const wss = new WebSocketServer({ port: PORT });
-let nextTeam = 1; // Toggle 1 (Axis) / 2 (Allies)
+let nextTeam = 1; 
 
 wss.on('connection', (ws) => {
   const entityId = spawnPlayer(world, 0, 0);
   clients.set(ws, entityId);
 
-  // --- ASSIGN TEAM & HEALTH ---
+  // --- ASSIGN TEAM, HEALTH, AMMO ---
   addComponent(world, Team, entityId);
   Team.id[entityId] = nextTeam;
   nextTeam = nextTeam === 1 ? 2 : 1;
@@ -96,6 +93,18 @@ wss.on('connection', (ws) => {
   Health.max[entityId] = 100;
   Health.current[entityId] = 100;
   Health.isDead[entityId] = 0;
+
+  // Initialize Ammo
+  addComponent(world, Ammo, entityId);
+  Ammo.current[entityId] = 30;
+  Ammo.reserve[entityId] = 120;
+  Ammo.magSize[entityId] = 30;
+
+  // Initialize Combat State
+  addComponent(world, CombatState, entityId);
+  CombatState.lastFireTime[entityId] = 0;
+  CombatState.isReloading[entityId] = 0;
+  CombatState.reloadStartTime[entityId] = 0;
 
   console.log(`[Host] Player Connected: ID ${entityId} (Team ${Team.id[entityId]})`);
 
@@ -118,24 +127,38 @@ wss.on('connection', (ws) => {
         PlayerInput.shoot[entityId] = msg.axes.shoot ? 1 : 0;
         PlayerInput.yaw[entityId] = msg.axes.yaw;
         PlayerInput.pitch[entityId] = msg.axes.pitch;
-        
         PlayerInput.lastTick[entityId] = msg.tick; 
+
+        // Reload Request
+        if (msg.axes.reload && !CombatState.isReloading[entityId]) {
+            const current = Ammo.current[entityId];
+            const reserve = Ammo.reserve[entityId];
+            const magSize = Ammo.magSize[entityId];
+
+            // Only reload if not full and has reserve
+            if (current < magSize && reserve > 0) {
+                console.log(`[Combat] Player ${entityId} started reloading...`);
+                CombatState.isReloading[entityId] = 1;
+                CombatState.reloadStartTime[entityId] = world.time;
+            }
+        }
       }
       
       // --- HANDLE FIRE ---
       else if (msg.type === 'fire') {
-        // Basic Validation: Is player dead?
         if (Health.isDead[entityId]) return;
 
-        console.log(`[Combat] Player ${entityId} FIRED at tick ${msg.tick}`);
+        // AMMO CHECK
+        if (CombatState.isReloading[entityId]) return;
+        if (Ammo.current[entityId] <= 0) return;
 
-        // Iterate over all other players to check for hits
+        // Deduct Ammo
+        Ammo.current[entityId]--;
+
+        // Iterate targets
         for (const [targetWs, targetId] of clients) {
-          if (targetId === entityId) continue; // Don't hit self
-          if (Health.isDead[targetId]) continue; // Don't hit dead players
-
-          // Friendly Fire Check (Optional: disable for now)
-          // if (Team.id[targetId] === Team.id[entityId]) continue; 
+          if (targetId === entityId) continue; 
+          if (Health.isDead[targetId]) continue; 
 
           const isHit = checkHit(
             msg.origin.x, msg.origin.y, msg.origin.z,
@@ -144,14 +167,12 @@ wss.on('connection', (ws) => {
           );
 
           if (isHit) {
-             // Apply Damage
              const currentHp = Health.current[targetId];
              const newHp = Math.max(0, currentHp - WEAPON_DAMAGE);
              Health.current[targetId] = newHp;
              
-             console.log(`[Combat] HIT CONFIRMED! ${entityId} -> ${targetId} [HP: ${currentHp} -> ${newHp}]`);
+             console.log(`[Combat] HIT: ${entityId} -> ${targetId} [HP: ${newHp}]`);
 
-             // Send Hit Marker to Shooter
              const confirmMsg: ServerMessage = {
                type: 'hitConfirmed',
                shooterId: entityId,
@@ -160,26 +181,15 @@ wss.on('connection', (ws) => {
              };
              ws.send(pack(confirmMsg));
 
-// Check Death
-if (newHp === 0) {
-  Health.isDead[targetId] = 1;
-  console.log(`[Combat] Player ${targetId} ELIMINATED by ${entityId}`);
-
-  // === NEW: DEDUCT TICKET ===
-  // Get the victim's team
-  const victimTeam = Team.id[targetId];
-  
-  // Deduct from that team
-  if (victimTeam === 1) {
-     GameRules.ticketsAxis[rulesId]--;
-     console.log(`[Game] Axis Ticket Lost. Remaining: ${GameRules.ticketsAxis[rulesId]}`);
-  }
-  else if (victimTeam === 2) {
-     GameRules.ticketsAllies[rulesId]--;
-     console.log(`[Game] Allies Ticket Lost. Remaining: ${GameRules.ticketsAllies[rulesId]}`);
-  }
-}
-}
+             if (newHp === 0) {
+                 Health.isDead[targetId] = 1;
+                 
+                 // Deduct Ticket
+                 const victimTeam = Team.id[targetId];
+                 if (victimTeam === 1) GameRules.ticketsAxis[rulesId]--;
+                 else if (victimTeam === 2) GameRules.ticketsAllies[rulesId]--;
+             }
+          }
         }
       }
 
@@ -189,13 +199,35 @@ if (newHp === 0) {
   });
 
   ws.on('close', () => {
-    console.log(`[Host] Player ${entityId} disconnected`);
     clients.delete(ws);
   });
 });
 
 // 4. GAME LOOP (60Hz)
 setInterval(() => {
+  // --- RELOAD SYSTEM ---
+  const reloadingEntities = reloadQuery(world);
+  for (let i = 0; i < reloadingEntities.length; i++) {
+      const eid = reloadingEntities[i];
+      if (CombatState.isReloading[eid]) {
+          if (world.time - CombatState.reloadStartTime[eid] >= RELOAD_TIME) {
+              // Finish Reload
+              const magSize = Ammo.magSize[eid];
+              const current = Ammo.current[eid];
+              const reserve = Ammo.reserve[eid];
+              
+              const needed = magSize - current;
+              const actual = Math.min(needed, reserve);
+              
+              Ammo.current[eid] += actual;
+              Ammo.reserve[eid] -= actual;
+              CombatState.isReloading[eid] = 0;
+              
+              console.log(`[Combat] Player ${eid} finished reloading.`);
+          }
+      }
+  }
+
   step(1 / TICK_RATE);
 }, 1000 / TICK_RATE);
 
@@ -219,11 +251,13 @@ setInterval(() => {
       rot: Transform.rotation[eid],
       health: Health.current[eid],
       isDead: Boolean(Health.isDead[eid]),
+      // SYNC AMMO
+      ammo: Ammo.current[eid],
+      ammoRes: Ammo.reserve[eid],
       lastProcessedTick: PlayerInput.lastTick[eid]
     });
   }
 
-  // Read Game Rules
   const ticketsAxis = GameRules.ticketsAxis[rulesId];
   const ticketsAllies = GameRules.ticketsAllies[rulesId];
   const state = GameRules.state[rulesId];

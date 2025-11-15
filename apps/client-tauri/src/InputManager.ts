@@ -7,46 +7,58 @@ export class InputManager {
   private keys = new Set<string>();
   private buttons = new Set<number>();
   
-  // === 1. Camera State Initialization ===
   private yaw = 0;
   private pitch = 0; 
-
-  // === 2. Realistic Constraints ===
   private readonly MAX_PITCH = toRad(85);
 
+  // === 1. ADD STATE FLAGG ===
+  private isInteractionEnabled = false; 
+
   constructor() {
-    // Keyboard
     window.addEventListener('keydown', (e) => this.keys.add(e.code));
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
-    
-    // Mouse Buttons
     window.addEventListener('mousedown', (e) => this.buttons.add(e.button));
     window.addEventListener('mouseup', (e) => this.buttons.delete(e.button));
 
-    // Mouse Movement (Pointer Lock)
     document.addEventListener('mousemove', (e) => {
-      if (document.pointerLockElement) {
+      // Only rotate if locked AND enabled
+      if (document.pointerLockElement && this.isInteractionEnabled) {
         const sensitivity = 0.002;
-        
-        // Update Angles
         this.yaw -= e.movementX * sensitivity;
         this.pitch -= e.movementY * sensitivity;
-
-        // === 3. Apply Clamp ===
         this.pitch = Math.max(-this.MAX_PITCH, Math.min(this.MAX_PITCH, this.pitch));
       }
     });
 
-    // Click to Capture
-    document.addEventListener('click', () => {
-      // FIXED: Removed unused 'canvas' variable
+    document.addEventListener('click', (e) => {
+      // === 2. CHECK STATE BEFORE LOCKING ===
+      if (!this.isInteractionEnabled) return; 
+
+      // Prevent locking if we clicked a button/UI (extra safety)
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('.spawn-point')) return;
+
       if (!document.pointerLockElement) {
         document.body.requestPointerLock(); 
       }
     });
   }
 
+  // === 3. EXPOSE CONTROL METHOD ===
+  public setInteraction(enabled: boolean) {
+      this.isInteractionEnabled = enabled;
+  }
+
   getCommand(tick: number): ClientInput {
+    // If in menu, return empty input
+    if (!this.isInteractionEnabled) {
+        return {
+            type: 'input',
+            tick,
+            axes: { forward:0, right:0, jump:false, shoot:false, reload:false, yaw: this.yaw, pitch: this.pitch }
+        };
+    }
+
     let forward = 0;
     let right = 0;
     
@@ -63,6 +75,7 @@ export class InputManager {
         right,
         jump: this.keys.has('Space'),
         shoot: this.buttons.has(0),
+        reload: this.keys.has('KeyR'),
         yaw: this.yaw,
         pitch: this.pitch
       }

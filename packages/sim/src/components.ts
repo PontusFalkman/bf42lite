@@ -10,8 +10,18 @@ export const Health = defineComponent({
   isDead: Types.ui8
 });
 
+// === NEW: Ammo Component ===
+export const Ammo = defineComponent({
+  current: Types.ui8,   // Rounds in magazine
+  reserve: Types.ui16,  // Total extra rounds
+  magSize: Types.ui8    // Capacity of one magazine
+});
+
 export const CombatState = defineComponent({
-  lastFireTime: Types.f32
+  lastFireTime: Types.f32,
+  // === NEW: Reload State ===
+  isReloading: Types.ui8,    // 0 = False, 1 = True
+  reloadStartTime: Types.f32
 });
 
 // --- Game State ---
@@ -46,10 +56,9 @@ export const PlayerInput = defineComponent({
   jump: Types.ui8,
   shoot: Types.ui8,
   yaw: Types.f32,
-  // FIXED: Added comma here
-  pitch: Types.f32, 
-  // NEW: Store the tick index associated with this input
-  lastTick: Types.ui32 
+  pitch: Types.f32,
+  lastTick: Types.ui32,
+  reload: Types.ui8 // Added for input mapping convenience (optional but good practice)
 });
 
 export const Player = defineComponent();

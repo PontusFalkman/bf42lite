@@ -10,12 +10,13 @@ export const ClientInputSchema = z.object({
     right: z.number(),
     jump: z.boolean(),
     shoot: z.boolean(),
+    reload: z.boolean(), // <--- ADDED
     yaw: z.number(),
     pitch: z.number()
   })
 });
 
-// NEW: Fire Proposal
+// Fire Proposal
 export const ClientFireSchema = z.object({
   type: z.literal('fire'),
   tick: z.number(),
@@ -31,7 +32,7 @@ export const JoinRequestSchema = z.object({
 
 export const ClientMessageSchema = z.union([
   ClientInputSchema,
-  ClientFireSchema, // Add to union
+  ClientFireSchema,
   JoinRequestSchema
 ]);
 
@@ -44,10 +45,12 @@ export const EntityStateSchema = z.object({
   rot: z.number(),
   health: z.number(),
   isDead: z.boolean(),
+  ammo: z.number().optional(),    // <--- ADDED
+  ammoRes: z.number().optional(), // <--- ADDED
   lastProcessedTick: z.number().optional() 
 });
 
-// NEW: Hit Confirmation (for hitmarkers)
+// Hit Confirmation
 export const HitConfirmedSchema = z.object({
   type: z.literal('hitConfirmed'),
   shooterId: z.number(),
@@ -75,7 +78,7 @@ export const WelcomeSchema = z.object({
 export const ServerMessageSchema = z.union([
   SnapshotSchema,
   WelcomeSchema,
-  HitConfirmedSchema // Add to union
+  HitConfirmedSchema
 ]);
 
 export type ClientInput = z.infer<typeof ClientInputSchema>;
