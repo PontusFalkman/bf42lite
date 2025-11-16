@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@bf42lite/sim": "workspace:*",
+    "@bf42lite/protocol": "workspace:*", 
     "bitecs": "^0.3.40"
   },
   "devDependencies": {

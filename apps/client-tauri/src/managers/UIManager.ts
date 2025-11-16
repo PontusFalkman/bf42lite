@@ -12,15 +12,17 @@ export class UIManager {
         hitmarker: HTMLElement | null;
         gameOverScreen: HTMLElement | null;
         endTitle: HTMLElement | null;
-        // === NEW ===
         ammoCurr: HTMLElement | null;
         ammoRes: HTMLElement | null;
     };
     private selectedSpawnId = -1;
-    private onSpawnRequest: () => void;
     private hitTimeout: number | null = null;
+    
+    // FIX: Update signature to accept classId
+    private onSpawnRequest: (classId: number) => void;
+    private selectedClassId = 0; // Default to Assault
 
-    constructor(onSpawnRequest: () => void) {
+    constructor(onSpawnRequest: (classId: number) => void) {
         this.onSpawnRequest = onSpawnRequest;
         
         this.ui = {
@@ -36,7 +38,6 @@ export class UIManager {
             hitmarker: document.getElementById('hitmarker'),
             gameOverScreen: document.getElementById('game-over-screen'),
             endTitle: document.getElementById('end-title'),
-            // === NEW ===
             ammoCurr: document.getElementById('ammo-curr'),
             ammoRes: document.getElementById('ammo-res')
         };
@@ -44,37 +45,46 @@ export class UIManager {
         this.initListeners();
     }
 
-    // ... (keep initListeners, setDeployMode, updateStats, updateHealth, updateTickets as is) ...
-
     private initListeners() {
-        // 1. Map / Spawn Point Click Listener (Likely missing)
+        // 1. Class Selection Listeners (NEW)
+        const classBtns = document.querySelectorAll('.class-btn');
+        classBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update Visuals
+                classBtns.forEach(b => b.classList.remove('selected'));
+                const target = e.target as HTMLElement;
+                target.classList.add('selected');
+                
+                // Update Logic
+                const id = target.getAttribute('data-id');
+                if (id) this.selectedClassId = parseInt(id);
+            });
+        });
+
+        // 2. Map / Spawn Point Click Listener
         const mapContainer = document.querySelector('.map-container');
         if (mapContainer) {
             mapContainer.addEventListener('click', (e: Event) => {
                 const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement;
                 if (!target) return;
                 
-                // Visual Feedback: Update Green Dot
                 document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
                 target.classList.add('selected');
                 
-                // Logic: Save ID
                 this.selectedSpawnId = parseInt(target.dataset.id || "-1");
             });
         }
 
-        // 2. Spawn Button Click Listener
+        // 3. Spawn Button Click Listener
         if (this.ui.spawnBtn) {
             this.ui.spawnBtn.addEventListener('click', () => {
-                // Validation: Must select a point
-                if (this.selectedSpawnId === -1) {
-                    alert("⚠️ You must select a spawn point first!");
-                    return;
-                }
+                // Note: We can relax the spawn point requirement if we are just doing random spawns for now
+                // if (this.selectedSpawnId === -1) { ... } 
 
-                // Success: Start Game
                 this.setDeployMode(false);
-                this.onSpawnRequest();
+                
+                // Pass the selected class ID to the game loop
+                this.onSpawnRequest(this.selectedClassId);
             });
         }
     }
@@ -128,35 +138,29 @@ export class UIManager {
         }
     }
 
-    // === NEW ===
     public updateAmmo(current: number, reserve: number) {
         if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
         if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
     }
-    // Call this every frame in your render loop
+
     public updateRespawn(isDead: boolean, timer: number) {
         if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
 
         if (isDead) {
-            // 1. Show the screen
             this.ui.deployScreen.style.display = 'flex'; 
             
-            // 2. Update Button State
             if (timer > 0) {
-                // Still waiting...
                 this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
                 this.ui.spawnBtn.setAttribute('disabled', 'true');
-                this.ui.spawnBtn.style.pointerEvents = 'none'; // Prevent clicking
+                this.ui.spawnBtn.style.pointerEvents = 'none';
                 this.ui.spawnBtn.style.opacity = '0.5';
             } else {
-                // Ready!
                 this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
                 this.ui.spawnBtn.removeAttribute('disabled');
                 this.ui.spawnBtn.style.pointerEvents = 'auto';
                 this.ui.spawnBtn.style.opacity = '1.0';
             }
         } else {
-            // 3. Hide the screen if alive
             this.ui.deployScreen.style.display = 'none';
         }
     }

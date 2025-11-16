@@ -15,7 +15,7 @@ import {
     Ammo, 
     Soldier,
     Team,
-    CapturePoint // <--- Import this
+    CapturePoint
 } from '@bf42lite/games-bf42';
 
 import { InputManager } from './InputManager';
@@ -51,7 +51,7 @@ export class ClientGame {
 
     // QUERIES
     private soldierQuery = defineQuery([Transform, Soldier]);
-    private flagQuery = defineQuery([Transform, CapturePoint]); // <--- New Query
+    private flagQuery = defineQuery([Transform, CapturePoint]);
 
     constructor() {
         this.net = new NetworkManager();
@@ -61,8 +61,10 @@ export class ClientGame {
         
         this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-        this.ui = new UIManager(() => {
-            console.log("Spawn requested");
+        // --- UPDATED UI CALLBACK ---
+        this.ui = new UIManager((classId: number) => {
+            console.log(`Spawn requested with Class ID: ${classId}`);
+            this.net.sendSpawnRequest(classId);
         });
         this.input.setInteraction(true);
 
@@ -195,8 +197,6 @@ export class ClientGame {
             this.ui.updateHealth(Health.current[this.localEntityId]);
         }
 
-        // --- RENDER LOOP ---
-        
         // 1. Render Soldiers
         const soldiers = this.soldierQuery(this.sim.world);
         for (const eid of soldiers) {

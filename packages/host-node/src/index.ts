@@ -42,9 +42,8 @@ wss.on('connection', (ws) => {
   ws.on('message', (raw) => {
     try {
         const msg = unpack(raw as Buffer) as ClientMessage;
-        if (msg.type === 'input') {
-            Game.processInput(world, eid, msg);
-        }
+        // CHANGE THIS LINE:
+        Game.processMessage(world, eid, msg);
     } catch (e) { console.error(e); }
   });
 

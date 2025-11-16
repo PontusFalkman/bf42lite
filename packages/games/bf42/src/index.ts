@@ -1,12 +1,20 @@
-import { SimWorld, addComponent, addEntity, createMovementSystem, SystemFactory, InputState, Transform, defineQuery } from '@bf42lite/sim'; // <--- ADD defineQuery
+import { SimWorld, addComponent, addEntity, createMovementSystem, SystemFactory, InputState, Transform, defineQuery } from '@bf42lite/sim';
+// IMPORT ClientMessage
+import { ClientMessage } from '@bf42lite/protocol'; 
 import { createCombatSystem } from './systems/combat';
 import { createRespawnSystem } from './systems/respawn';
 import { createGameLoopSystem } from './systems/gameloop';
 import { createHistorySystem } from './systems/history';
-import { createCaptureSystem } from './systems/capture'; 
+import { createCaptureSystem } from './systems/capture';
 import * as Components from './components';
 
 export * from './components';
+
+const LOADOUTS = {
+  0: { name: 'Assault', hp: 100, ammo: 30, mag: 30, res: 120 },
+  1: { name: 'Medic',   hp: 100, ammo: 30, mag: 30, res: 60 }, // Less reserve
+  2: { name: 'Scout',   hp: 60,  ammo: 5,  mag: 5,  res: 20 }, // Glass Cannon
+};
 
 export const getSystems = (): SystemFactory[] => [
   createMovementSystem,
@@ -22,6 +30,7 @@ const soldierQuery = defineQuery([Components.Soldier, Transform]);
 const flagQuery = defineQuery([Components.CapturePoint, Transform]);
 
 let globalPlayerCount = 0;
+
 
 export const initGameWorld = (world: SimWorld) => {
     const flag = addEntity(world);
@@ -73,7 +82,39 @@ export const onPlayerJoin = (world: SimWorld, eid: number) => {
   Components.Team.id[eid] = teamId;
   globalPlayerCount++;
 
-  console.log(`[BF42] Player ${eid} joined Team ${teamId === 1 ? 'Axis' : 'Allies'}`);
+  console.log(`[BF42] Player ${eid} joined Team ${teamId} (Waiting in Lobby)`);
+};
+
+// --- NEW: SPAWN LOGIC ---
+export const spawnPlayer = (world: SimWorld, eid: number, classId: number) => {
+  // Only allow spawn if currently dead
+  if (!Components.Health.isDead[eid]) return;
+
+  const loadout = LOADOUTS[classId as keyof typeof LOADOUTS] || LOADOUTS[0];
+
+  Components.Health.current[eid] = loadout.hp;
+  Components.Health.max[eid] = loadout.hp;
+  Components.Health.isDead[eid] = 0;
+
+  Components.Ammo.current[eid] = loadout.mag;
+  Components.Ammo.magSize[eid] = loadout.mag;
+  Components.Ammo.reserve[eid] = loadout.res;
+
+  // Random Spawn
+  Transform.x[eid] = (Math.random() - 0.5) * 20;
+  Transform.z[eid] = (Math.random() - 0.5) * 20;
+  Transform.y[eid] = 5; // Drop in
+
+  console.log(`[BF42] Player ${eid} DEPLOYED as ${loadout.name}`);
+};
+// --- NEW: MESSAGE ROUTER ---
+export const processMessage = (world: SimWorld, eid: number, msg: ClientMessage) => {
+  if (msg.type === 'input') {
+      processInput(world, eid, msg);
+  }
+  else if (msg.type === 'spawn_request') {
+      spawnPlayer(world, eid, msg.classId);
+  }
 };
 
 export const processInput = (world: SimWorld, eid: number, input: any) => {

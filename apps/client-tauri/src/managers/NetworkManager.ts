@@ -41,7 +41,9 @@ export class NetworkManager {
             }
         });
     }
-
+    public sendSpawnRequest(classId: number) {
+        this.net.send({ type: 'spawn_request', classId });
+    }
     public connect(url: string) {
         this.net.connect(url);
     }

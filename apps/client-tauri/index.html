@@ -149,6 +149,11 @@
       .hit-active { opacity: 1 !important; }
       /* Utility to hide things */
       .hidden { display: none !important; }
+      /* Add simple styles */
+    .class-selector { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+    .class-btn { padding: 10px 20px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; }
+    .class-btn:hover { background: #444; }
+    .class-btn.selected { background: #d62828; border-color: #ff0000; box-shadow: 0 0 10px #d62828; }
     </style>
   </head>
   <body>
@@ -193,6 +198,20 @@
   <div id="game-over-screen">
     <div class="end-title" id="end-title">GAME OVER</div>
     <div class="end-subtitle">RETURNING TO BATTLE...</div>
+</div>
+<div id="deploy-screen" class="hidden">
+  <h1>DEPLOYMENT</h1>
+  <h2 id="end-title">PREPARE FOR BATTLE</h2>
+
+  <div class="class-selector">
+      <button class="class-btn selected" data-id="0">ASSAULT</button>
+      <button class="class-btn" data-id="1">MEDIC</button>
+      <button class="class-btn" data-id="2">SCOUT</button>
+  </div>
+  <div class="spawn-list">
+     </div>
+
+  <button id="btn-spawn">DEPLOY</button>
 </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
