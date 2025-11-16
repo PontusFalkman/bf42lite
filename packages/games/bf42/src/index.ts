@@ -2,12 +2,15 @@ import { SimWorld, addComponent, createMovementSystem, SystemFactory, InputState
 import { createCombatSystem } from './systems/combat';
 import { createRespawnSystem } from './systems/respawn';
 import { createGameLoopSystem } from './systems/gameloop';
+import { createHistorySystem } from './systems/history';
 import * as Components from './components';
+import { Velocity } from '@bf42lite/sim'; // Import Velocity
 
 export * from './components';
 
 export const getSystems = (): SystemFactory[] => [
   createMovementSystem,
+  createHistorySystem,
   createCombatSystem,
   createRespawnSystem,
   createGameLoopSystem
