@@ -29,11 +29,19 @@ export const Team = defineComponent({
   id: Types.ui8 // 0=Neutral, 1=Axis, 2=Allies
 });
 
-// 4. Game Mode State (Renamed to match systems)
+// 4. Game Mode State
 export const GameRules = defineComponent({
   ticketsAxis: Types.i16,
   ticketsAllies: Types.i16,
   state: Types.ui8 // 0=Playing, 1=EndScreen
+});
+
+// 5. Conquest Mode (NEW)
+export const CapturePoint = defineComponent({
+  id: Types.ui8,          // ID of the flag
+  team: Types.ui8,        // 0=Neutral, 1=Axis, 2=Allies
+  progress: Types.i16,    // -100 to 100 (Axis < 0 < Allies)
+  radius: Types.f32       // Capture range
 });
 
 export const Soldier = defineComponent(); 
@@ -42,5 +50,3 @@ export const Stats = defineComponent({
   kills: Types.ui16,
   deaths: Types.ui16
 });
-// FUTURE: Vehicles
-// export const Vehicle = defineComponent({ type: Types.ui8, seatCount: Types.ui8 });

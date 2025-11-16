@@ -10,12 +10,12 @@ import {
     createMovementSystem
 } from '@bf42lite/sim';
 
-// IMPORT GAME LOGIC
 import { 
     Health, 
     Ammo, 
     Soldier,
-    Team 
+    Team,
+    CapturePoint // <--- Import this
 } from '@bf42lite/games-bf42';
 
 import { InputManager } from './InputManager';
@@ -49,7 +49,9 @@ export class ClientGame {
     private readonly SEND_INTERVAL = 1 / this.SEND_RATE;
     private readonly INTERPOLATION_DELAY_MS = 100;
 
-    private playerQuery = defineQuery([Transform, Soldier]);
+    // QUERIES
+    private soldierQuery = defineQuery([Transform, Soldier]);
+    private flagQuery = defineQuery([Transform, CapturePoint]); // <--- New Query
 
     constructor() {
         this.net = new NetworkManager();
@@ -57,7 +59,6 @@ export class ClientGame {
         this.reconciler = new Reconciler();
         this.input.setInteraction(false);
         
-        // Initialize Weapon System
         this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
         this.ui = new UIManager(() => {
@@ -82,6 +83,7 @@ export class ClientGame {
         addComponent(this.sim.world, Health, this.localEntityId);
         addComponent(this.sim.world, Ammo, this.localEntityId);
         addComponent(this.sim.world, Soldier, this.localEntityId);
+        addComponent(this.sim.world, Team, this.localEntityId);
     }
 
     private initNetworkCallbacks() {
@@ -111,25 +113,9 @@ export class ClientGame {
             if (myServerEntity) {
                 Health.current[this.localEntityId] = myServerEntity.health;
                 Health.isDead[this.localEntityId] = myServerEntity.isDead ? 1 : 0;
-               // --- 1. UPDATE RESPAWN UI (Step 3) ---
-                // This makes the "Deploy" screen appear/disappear
-                this.ui.updateRespawn(
-                    myServerEntity.isDead, 
-                    myServerEntity.respawnTimer || 0
-                );
-                // -------------------------------------
+                this.ui.updateRespawn(myServerEntity.isDead, myServerEntity.respawnTimer || 0);
 
-                // --- 2. UPDATE SCORES (Step 4) ---
-                // (Optional) Print to console or update UI if you added score fields to UIManager
-                if (myServerEntity.kills !== undefined) {
-                     console.log(`K/D: ${myServerEntity.kills} / ${myServerEntity.deaths}`);
-                     // Future: this.ui.updateScore(myServerEntity.kills, myServerEntity.deaths);
-                }
-                // ---------------------------------
-                // Sync Team if available
                 if (myServerEntity.team) {
-                    // FIX: Removed if-check, just add component directly
-                    addComponent(this.sim.world, Team, this.localEntityId);
                     Team.id[this.localEntityId] = myServerEntity.team;
                 }
 
@@ -173,7 +159,6 @@ export class ClientGame {
         const cmd = this.input.getCommand(this.currentTick);
 
         if (this.localEntityId >= 0) {
-            // 1. Map Input to Engine Components
             InputState.moveY[this.localEntityId] = cmd.axes.forward;
             InputState.moveX[this.localEntityId] = cmd.axes.right;
             InputState.viewX[this.localEntityId] = cmd.axes.yaw;
@@ -190,17 +175,16 @@ export class ClientGame {
 
         this.sim.step(1 / 60);
 
-        // 2. Network Send
         this.sendAccumulator += dt;
         while (this.sendAccumulator >= this.SEND_INTERVAL) {
             this.net.send(cmd); 
             this.sendAccumulator -= this.SEND_INTERVAL;
         }
 
-        // 3. Update Systems
         this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
         this.currentTick++;
         this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
+        
         this.updateRenderAndUI();
     };
 
@@ -211,22 +195,33 @@ export class ClientGame {
             this.ui.updateHealth(Health.current[this.localEntityId]);
         }
 
-        const entities = this.playerQuery(this.sim.world);
-        for (let i = 0; i < entities.length; i++) {
-            const eid = entities[i];
+        // --- RENDER LOOP ---
+        
+        // 1. Render Soldiers
+        const soldiers = this.soldierQuery(this.sim.world);
+        for (const eid of soldiers) {
             const isMe = eid === this.localEntityId;
-            
-            const pitch = isMe ? InputState.viewY[eid] : 0; 
-            
-            this.renderer.updateEntity(
-                eid, 
-                Transform.x[eid], 
-                Transform.y[eid], 
-                Transform.z[eid], 
-                Transform.rotation[eid], 
-                pitch, 
-                isMe
-            );
+            const state = {
+                type: 'soldier',
+                pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
+                rot: Transform.rotation[eid],
+                pitch: isMe ? InputState.viewY[eid] : 0,
+                team: Team.id[eid]
+            };
+            this.renderer.updateEntity(eid, state, isMe);
+        }
+
+        // 2. Render Flags
+        const flags = this.flagQuery(this.sim.world);
+        for (const eid of flags) {
+            const state = {
+                type: 'flag',
+                pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
+                rot: 0,
+                team: CapturePoint.team[eid], // Use Flag Owner Team
+                progress: CapturePoint.progress[eid]
+            };
+            this.renderer.updateEntity(eid, state, false);
         }
 
         this.renderer.render();

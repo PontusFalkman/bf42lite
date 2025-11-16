@@ -1,8 +1,8 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
-import { EntityState, ClientInput, ClientFire } from '@bf42lite/protocol';
-// FIX: Import addEntity instead of spawnPlayer
+import { ClientInput, ClientFire, EntityState } from '@bf42lite/protocol';
 import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
-import { Health, Soldier, Ammo } from '@bf42lite/games-bf42'; // Import Game Components
+// ADD: CapturePoint and Team
+import { Health, Soldier, Ammo, CapturePoint, Team } from '@bf42lite/games-bf42'; 
 import { Renderer } from '../Renderer';
 
 interface InterpolationBuffer {
@@ -67,19 +67,29 @@ export class NetworkManager {
         const activeServerIds = new Set<number>();
         const now = performance.now();
 
-        msg.entities.forEach((serverEnt: EntityState) => {
+        msg.entities.forEach((serverEnt: any) => {
             activeServerIds.add(serverEnt.id);
 
             if (serverEnt.id === this.myServerId) return;
 
             let localId = this.serverToLocal.get(serverEnt.id);
 
-            // MANUALLY SPAWN REMOTE GHOST
+            // --- 1. SPAWN LOGIC ---
             if (localId === undefined) {
                 localId = addEntity(world);
                 addComponent(world, Transform, localId);
-                addComponent(world, Health, localId); // Need health for visual tag?
-                addComponent(world, Soldier, localId); // Tag as soldier
+                
+                // Check Type
+                if (serverEnt.type === 'flag') {
+                    addComponent(world, CapturePoint, localId);
+                    addComponent(world, Team, localId);
+                    console.log(`[Net] Spawning FLAG ${localId}`);
+                } else {
+                    // Default to Soldier
+                    addComponent(world, Soldier, localId);
+                    addComponent(world, Health, localId); 
+                    addComponent(world, Team, localId);
+                }
                 
                 Transform.x[localId] = serverEnt.pos.x;
                 Transform.z[localId] = serverEnt.pos.z;
@@ -88,9 +98,8 @@ export class NetworkManager {
                 this.remoteBuffers.set(localId, { snapshots: [] });
             }
 
-            // UPDATE BUFFER
+            // --- 2. UPDATE BUFFER ---
             const buffer = this.remoteBuffers.get(localId); 
-            // FIX: Typescript undefined check
             if (buffer) {
                 buffer.snapshots.push({
                     tick: msg.tick,
@@ -101,9 +110,15 @@ export class NetworkManager {
                 if (buffer.snapshots.length > 20) buffer.snapshots.shift();
             }
 
-            // SYNC VISUALS
-            Health.current[localId] = serverEnt.health;
-            Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
+            // --- 3. SYNC DATA ---
+            if (serverEnt.type === 'flag') {
+                CapturePoint.progress[localId] = serverEnt.captureProgress;
+                CapturePoint.team[localId] = serverEnt.team; // Sync Owner
+            } else {
+                Health.current[localId] = serverEnt.health;
+                Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
+                Team.id[localId] = serverEnt.team;
+            }
         });
 
         // REMOVE DISCONNECTED

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { InputState } from '@bf42lite/sim'; // <--- FIX: Added Import
 
 export class Renderer {
   private scene: THREE.Scene;
@@ -43,32 +44,62 @@ export class Renderer {
     });
   }
 
-  public updateEntity(id: number, x: number, y: number, z: number, rot: number, pitch: number, isMe: boolean) {
+  // UPDATED SIGNATURE: Takes full state object
+  public updateEntity(id: number, state: any, isMe: boolean) {
     let mesh = this.entities.get(id);
 
-    // Create Mesh if needed
+    // 1. Create Mesh (Handle types)
     if (!mesh) {
-        const geometry = new THREE.CapsuleGeometry(0.4, 1.8, 4, 8);
-        const material = new THREE.MeshStandardMaterial({ 
-            color: isMe ? 0x00ff00 : 0xff0000 // Green (Me) vs Red (Enemy)
-        });
+        let geometry;
+        let material;
+
+        if (state.type === 'flag') {
+             // Tall Box for Flag
+             geometry = new THREE.BoxGeometry(1, 8, 1);
+             material = new THREE.MeshStandardMaterial({ color: 0x888888 }); 
+        } else {
+             // Soldier Capsule
+             geometry = new THREE.CapsuleGeometry(0.4, 1.8, 4, 8);
+             material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        }
+
         mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
         this.scene.add(mesh);
         this.entities.set(id, mesh);
     }
 
-    // Update Position (Offset by half-height 0.9 to stand ON ground)
-    mesh.position.set(x, y + 0.9, z); 
-    mesh.rotation.set(0, rot, 0);
+    // 2. Update Visuals
+    mesh.position.set(state.pos.x, state.pos.y, state.pos.z);
 
-    // Update Camera (First Person)
+    // --- FLAG LOGIC ---
+    if (state.type === 'flag') {
+        mesh.position.y = 4; // Sit on ground (height/2)
+        
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (state.team === 1) mat.color.setHex(0xff0000);      // Axis Red
+        else if (state.team === 2) mat.color.setHex(0x0000ff); // Allies Blue
+        else mat.color.setHex(0xcccccc);                       // Neutral Grey
+        
+        return; // Done with flag
+    }
+
+    // --- SOLDIER LOGIC ---
+    mesh.position.y += 0.9; // Capsule offset
+    mesh.rotation.set(0, state.rot, 0);
+    
+    const mat = mesh.material as THREE.MeshStandardMaterial;
     if (isMe) {
-        this.camera.position.set(x, y + 1.6, z); // Eye level
-        this.camera.rotation.set(pitch, rot, 0, 'YXZ');
-        mesh.visible = false; // Hide own body
+        this.camera.position.set(state.pos.x, state.pos.y + 1.6, state.pos.z);
+        // Fix: InputState is now imported
+        this.camera.rotation.set(state.pitch || InputState.viewY[id] || 0, state.rot, 0, 'YXZ');
+        mesh.visible = false; 
     } else {
         mesh.visible = true;
+        // Use Team Color if available, else Red
+        if (state.team === 1) mat.color.setHex(0xff0000);
+        else if (state.team === 2) mat.color.setHex(0x0000ff);
+        else mat.color.setHex(0xff0000);
     }
   }
 
@@ -96,8 +127,6 @@ export class Renderer {
       const line = new THREE.Line(geometry, material);
       
       this.scene.add(line);
-      
-      // Remove the tracer after 100ms
       setTimeout(() => {
           this.scene.remove(line);
           geometry.dispose();
