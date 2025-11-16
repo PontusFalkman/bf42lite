@@ -1,11 +1,11 @@
 import { 
     createSimulation, 
     Transform, 
-    Velocity,        // Added Velocity for manual spawn
-    InputState,      // RENAMED: PlayerInput -> InputState
+    Velocity, 
+    InputState, 
     Me, 
     addComponent, 
-    addEntity,       // Added for manual spawn
+    addEntity,
     defineQuery, 
     createMovementSystem
 } from '@bf42lite/sim';
@@ -14,7 +14,8 @@ import {
 import { 
     Health, 
     Ammo, 
-    Soldier 
+    Soldier,
+    Team 
 } from '@bf42lite/games-bf42';
 
 import { InputManager } from './InputManager';
@@ -25,7 +26,7 @@ import { NetworkManager } from './managers/NetworkManager';
 import { Reconciler } from './systems/Reconciler';
 
 export class ClientGame {
-    private sim = createSimulation(); // Generic Engine
+    private sim = createSimulation(); 
     private movementSystem = createMovementSystem();
     private renderer = new Renderer(); 
 
@@ -48,7 +49,6 @@ export class ClientGame {
     private readonly SEND_INTERVAL = 1 / this.SEND_RATE;
     private readonly INTERPOLATION_DELAY_MS = 100;
 
-    // Query using Game Component (Soldier) instead of generic Player
     private playerQuery = defineQuery([Transform, Soldier]);
 
     constructor() {
@@ -57,10 +57,11 @@ export class ClientGame {
         this.reconciler = new Reconciler();
         this.input.setInteraction(false);
         
+        // Initialize Weapon System
         this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
         this.ui = new UIManager(() => {
-            console.log("Spawn requested - Entering Battle");
+            console.log("Spawn requested");
         });
         this.input.setInteraction(true);
 
@@ -70,17 +71,14 @@ export class ClientGame {
         this.createLocalPlayer();
     }
 
-    // MANUALLY ASSEMBLE LOCAL PLAYER (The Engine doesn't know what a Soldier is)
     private createLocalPlayer() {
         this.localEntityId = addEntity(this.sim.world);
         
-        // 1. Engine Components
         addComponent(this.sim.world, Transform, this.localEntityId);
         addComponent(this.sim.world, Velocity, this.localEntityId);
         addComponent(this.sim.world, InputState, this.localEntityId);
         addComponent(this.sim.world, Me, this.localEntityId);
-
-        // 2. Game Components
+        
         addComponent(this.sim.world, Health, this.localEntityId);
         addComponent(this.sim.world, Ammo, this.localEntityId);
         addComponent(this.sim.world, Soldier, this.localEntityId);
@@ -96,7 +94,6 @@ export class ClientGame {
         };
 
         this.net.onSnapshot = (msg) => {
-            // UI Updates
             this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
             if (msg.game.state === 1) {
                 let winner = "DRAW";
@@ -107,15 +104,20 @@ export class ClientGame {
                 this.ui.setGameOver(false, "");
             }
 
-            // Entities
             this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
 
-            // Reconciliation
             const myServerEntity = msg.entities.find((e: any) => this.net.getLocalId(e.id) === this.localEntityId);
             
             if (myServerEntity) {
                 Health.current[this.localEntityId] = myServerEntity.health;
                 Health.isDead[this.localEntityId] = myServerEntity.isDead ? 1 : 0;
+                
+                // Sync Team if available
+                if (myServerEntity.team) {
+                    // FIX: Removed if-check, just add component directly
+                    addComponent(this.sim.world, Team, this.localEntityId);
+                    Team.id[this.localEntityId] = myServerEntity.team;
+                }
 
                 if (myServerEntity.ammo !== undefined) {
                     this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0);
@@ -157,17 +159,16 @@ export class ClientGame {
         const cmd = this.input.getCommand(this.currentTick);
 
         if (this.localEntityId >= 0) {
-            // MAP INPUT -> ENGINE COMPONENTS
+            // 1. Map Input to Engine Components
             InputState.moveY[this.localEntityId] = cmd.axes.forward;
             InputState.moveX[this.localEntityId] = cmd.axes.right;
             InputState.viewX[this.localEntityId] = cmd.axes.yaw;
             InputState.viewY[this.localEntityId] = cmd.axes.pitch;
 
-            // BITMASK MAPPING
             let buttons = 0;
-            if (cmd.axes.jump) buttons |= 1;   // Matches BUTTON_JUMP
-            if (cmd.axes.shoot) buttons |= 2;  // Matches BUTTON_FIRE
-            if (cmd.axes.reload) buttons |= 4; // Matches BUTTON_RELOAD
+            if (cmd.axes.jump) buttons |= 1;   
+            if (cmd.axes.shoot) buttons |= 2;  
+            if (cmd.axes.reload) buttons |= 4; 
             InputState.buttons[this.localEntityId] = buttons;
 
             this.reconciler.addHistory(this.currentTick, cmd, this.localEntityId);
@@ -175,12 +176,14 @@ export class ClientGame {
 
         this.sim.step(1 / 60);
 
+        // 2. Network Send
         this.sendAccumulator += dt;
         while (this.sendAccumulator >= this.SEND_INTERVAL) {
             this.net.send(cmd); 
             this.sendAccumulator -= this.SEND_INTERVAL;
         }
 
+        // 3. Update Systems
         this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
         this.currentTick++;
         this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);

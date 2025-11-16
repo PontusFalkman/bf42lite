@@ -1,12 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
     "strict": true,
     "outDir": "dist",
+    "rootDir": "src",
     "skipLibCheck": true,
-    "composite": true
+    "composite": true,
+    "esModuleInterop": true
   },
   "include": ["src"],
   "references": [

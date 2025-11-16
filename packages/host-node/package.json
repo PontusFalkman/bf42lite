@@ -2,8 +2,9 @@
   "name": "@bf42lite/host-node",
   "version": "1.0.0",
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "build": "tsc -b",
+    "start": "node dist/index.js",
+    "dev": "tsc -b && node dist/index.js"
   },
   "dependencies": {
     "@bf42lite/sim": "workspace:*",

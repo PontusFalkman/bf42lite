@@ -3,11 +3,11 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "module": "CommonJS", 
+    "moduleResolution": "Node",
     "declaration": true,
-    "composite": true
+    "composite": true,
+    "esModuleInterop": true
   },
   "include": ["src"],
-  "references": [
-    { "path": "../../sim" }
-  ]
 }

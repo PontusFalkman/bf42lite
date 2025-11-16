@@ -2,7 +2,8 @@
   "name": "@bf42lite/sim",
   "version": "1.3.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc -w"
