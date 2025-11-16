@@ -25,6 +25,10 @@ export const ClientFireSchema = z.object({
   weaponId: z.number().default(1)
 });
 
+export const SpawnRequestSchema = z.object({
+  type: z.literal('spawn_request'),
+  classId: z.number()
+});
 export const JoinRequestSchema = z.object({
   type: z.literal('join'),
   name: z.string()
@@ -33,7 +37,8 @@ export const JoinRequestSchema = z.object({
 export const ClientMessageSchema = z.union([
   ClientInputSchema,
   ClientFireSchema,
-  JoinRequestSchema
+  JoinRequestSchema,
+  SpawnRequestSchema
 ]);
 
 // --- 2. SERVER -> CLIENT ---
@@ -90,3 +95,4 @@ export type Snapshot = z.infer<typeof SnapshotSchema>;
 export type EntityState = z.infer<typeof EntityStateSchema>;
 export type ServerMessage = z.infer<typeof ServerMessageSchema>;
 export type ClientMessage = z.infer<typeof ClientMessageSchema>;
+export type SpawnRequest = z.infer<typeof SpawnRequestSchema>;

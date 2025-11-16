@@ -4,9 +4,16 @@ use std::f32::consts::PI;
 use crate::player::Player;
 use crate::protocol::{ClientMessage, ClientInputs};
 
-const MOVE_SPEED: f32 = 10.0;      
-const SPRINT_MULTIPLIER: f32 = 1.5;
-const MOUSE_SENSITIVITY: f32 = 0.002; 
+pub const MOVE_SPEED: f32 = 10.0;
+pub const AIR_SPEED_FACTOR: f32 = 0.6;
+pub const GRAVITY: f32 = -25.0;
+pub const JUMP_FORCE: f32 = 9.0;
+pub const MOVEMENT_VERSION: &str = "movement-v1.0.0";
+
+fn print_versions() {
+    println!("Server movement version: {}", MOVEMENT_VERSION);
+}
+
 
 pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, ClientMessage>, dt: f32, frame_count: u64) {
     for (id, player) in players.iter_mut() {

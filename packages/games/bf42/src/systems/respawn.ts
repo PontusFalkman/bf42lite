@@ -1,9 +1,8 @@
 import { defineSystem, defineQuery, addComponent, removeComponent, hasComponent } from 'bitecs';
 import { Transform, Velocity, SimWorld, InputState } from '@bf42lite/sim';
-import { Health, RespawnTimer, Ammo } from '../components';
+import { Health, RespawnTimer } from '../components'; // Ammo not needed here anymore
 
 const RESPAWN_TIME = 3.0;
-const BUTTON_JUMP = 1; // Spacebar
 
 export const createRespawnSystem = () => {
   const query = defineQuery([Health, Transform, InputState]);
@@ -36,37 +35,29 @@ export const createRespawnSystem = () => {
     for (let i = 0; i < respawning.length; ++i) {
       const id = respawning[i];
       
+      // CASE A: Player was spawned by the Game Loop (spawnPlayer)
+      // We need to restore physics and remove the timer.
+      if (!Health.isDead[id]) {
+        // 1. RE-ENABLE PHYSICS (Add Velocity)
+        if (!hasComponent(world, Velocity, id)) {
+            addComponent(world, Velocity, id);
+            Velocity.x[id] = 0;
+            Velocity.y[id] = 0;
+            Velocity.z[id] = 0;
+        }
+        
+        // 2. Cleanup Timer
+        removeComponent(world, RespawnTimer, id);
+        console.log(`[RespawnSystem] Physics restored for Player ${id}`);
+        continue; 
+      }
+
+      // CASE B: Still dead, count down
       if (RespawnTimer.timeLeft[id] > 0) {
         RespawnTimer.timeLeft[id] -= dt;
       }
-
-      // 3. WAIT FOR INPUT (Deploy Button)
-      const isReady = RespawnTimer.timeLeft[id] <= 0;
-      const wantsDeploy = (InputState.buttons[id] & BUTTON_JUMP) !== 0;
-
-      if (isReady && wantsDeploy) {
-        // --- RESPAWN ---
-        Health.current[id] = Health.max[id];
-        Health.isDead[id] = 0;
-        
-        // 1. Reset Position
-        Transform.x[id] = (Math.random() - 0.5) * 20;
-        Transform.z[id] = (Math.random() - 0.5) * 20;
-        Transform.y[id] = 5; // Drop from air
-
-        // 2. RE-ENABLE PHYSICS (Add Velocity)
-        addComponent(world, Velocity, id);
-        Velocity.x[id] = 0;
-        Velocity.y[id] = 0;
-        Velocity.z[id] = 0;
-
-        // 3. Refill Ammo
-        Ammo.current[id] = Ammo.magSize[id];
-        Ammo.reserve[id] = 120;
-
-        removeComponent(world, RespawnTimer, id);
-        console.log(`[Sim] Player ${id} DEPLOYED!`);
-      }
+      
+      // NOTE: Actual spawning is now handled by 'processMessage' in index.ts
     }
     
     return world;

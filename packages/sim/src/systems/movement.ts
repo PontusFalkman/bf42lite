@@ -1,16 +1,25 @@
 import { defineSystem, defineQuery } from 'bitecs';
-// FIX: Import InputState instead of PlayerInput
 import { Transform, Velocity, InputState, SimWorld } from '../components';
 
+// --- TUNING ---
 const MOVE_SPEED = 10.0;
-const JUMP_FORCE = 8.0;
-const GRAVITY = -20.0;
+const AIR_SPEED_FACTOR = 0.6; // New: 60% control when airborne (adds weight)
+const GRAVITY = -25.0;        // New: Snappier gravity (was -20)
+const JUMP_FORCE = 9.0;       // New: Higher jump to match gravity
+const GROUND_TOLERANCE = 0.05;// New: Forgiving check (was 0.001)
 
-// FIX: Define Jump Bit (matches what we will set in input manager later)
 const BUTTON_JUMP = 1; 
+export const MOVEMENT_CONSTANTS = {
+  MOVE_SPEED: 10.0,
+  AIR_SPEED_FACTOR: 0.6,
+  GRAVITY: -25.0,
+  JUMP_FORCE: 9.0,
+  // ...
+};
+export const MOVEMENT_VERSION = "movement-v1.0.0";
+console.log("Client movement version:", MOVEMENT_VERSION);
 
 export const createMovementSystem = () => {
-  // FIX: Query InputState
   const query = defineQuery([Transform, Velocity, InputState]);
 
   return defineSystem((world: SimWorld) => {
@@ -20,12 +29,18 @@ export const createMovementSystem = () => {
     for (let i = 0; i < entities.length; ++i) {
       const id = entities[i];
 
-      // 1. APPLY ROTATION
-      // New mapping: viewX is Yaw
+      // 1. GROUND CHECK
+      // We use a larger tolerance so we don't miss jumps due to micro-floating
+      // TODO: Later, replace this with a raycast for platforms/terrain
+      const isGrounded = Transform.y[id] <= GROUND_TOLERANCE;
+
+      // 2. APPLY ROTATION
       Transform.rotation[id] = InputState.viewX[id];
 
-      // 2. CALCULATE MOVEMENT
-      // New mapping: moveY is Forward, moveX is Right
+      // 3. CALCULATE MOVEMENT
+      // Reduce speed if in the air for better "physics feel"
+      const speed = isGrounded ? MOVE_SPEED : (MOVE_SPEED * AIR_SPEED_FACTOR);
+
       const forward = InputState.moveY[id];
       const right = InputState.moveX[id];
       
@@ -36,28 +51,36 @@ export const createMovementSystem = () => {
       const dx = (right * cos) - (forward * sin);
       const dz = (right * sin) + (forward * cos);
 
-      Velocity.x[id] = dx * MOVE_SPEED;
-      Velocity.z[id] = dz * MOVE_SPEED;
+      Velocity.x[id] = dx * speed;
+      Velocity.z[id] = dz * speed;
 
-      // 3. GRAVITY & JUMPING
+      // 4. GRAVITY & JUMPING
       Velocity.y[id] += GRAVITY * dt;
 
-      // FIX: Check Jump Button Bitmask
-      const isJumpPressed = (InputState.buttons[id] & BUTTON_JUMP) !== 0;
+      const wantsJump = (InputState.buttons[id] & BUTTON_JUMP) !== 0;
 
-      if (Transform.y[id] <= 0.001 && isJumpPressed) {
-        Velocity.y[id] = JUMP_FORCE;
+      if (isGrounded && wantsJump) {
+        // Only allow jump if not already shooting up (prevents double-force glitches)
+        if (Velocity.y[id] <= 0.1) {
+            Velocity.y[id] = JUMP_FORCE;
+        }
       }
 
-      // 4. INTEGRATE POSITION
+      // 5. INTEGRATE POSITION
       Transform.x[id] += Velocity.x[id] * dt;
       Transform.z[id] += Velocity.z[id] * dt;
       Transform.y[id] += Velocity.y[id] * dt;
 
-      // 5. FLOOR COLLISION
+      // 6. FLOOR COLLISION
+      // Hard constraint to keep us on the map
       if (Transform.y[id] < 0) {
         Transform.y[id] = 0;
-        Velocity.y[id] = 0;
+        
+        // If we were falling, stop. 
+        // If we just jumped (Vel > 0), let it happen!
+        if (Velocity.y[id] < 0) {
+            Velocity.y[id] = 0;
+        }
       }
     }
     return world;

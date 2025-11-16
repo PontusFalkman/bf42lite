@@ -16,44 +16,44 @@ import {
     Soldier,
     Team,
     CapturePoint
-} from '@bf42lite/games-bf42';
+} from '@bf42lite/games-bf42'; 
 
-import { InputManager } from './InputManager';
 import { Renderer } from './Renderer';
-import { WeaponSystem } from './WeaponSystem';
-import { UIManager } from './managers/UIManager';
 import { NetworkManager } from './managers/NetworkManager';
+import { InputManager } from './InputManager';
+import { UIManager } from './managers/UIManager';
+import { WeaponSystem } from './WeaponSystem';
 import { Reconciler } from './systems/Reconciler';
+import { ServerMessage } from '@bf42lite/protocol'; 
 
 export class ClientGame {
+    // This is correct: createMovementSystem() is a factory that returns the system function.
+    private movementSystem = createMovementSystem(); 
     private sim = createSimulation(); 
-    private movementSystem = createMovementSystem();
-    private renderer = new Renderer(); 
 
+    private renderer: Renderer;
     private net: NetworkManager;
     private input: InputManager;
     private ui: UIManager;
-    private reconciler: Reconciler;
     private weaponSystem: WeaponSystem;
+    private reconciler: Reconciler;
 
-    private localEntityId = -1;
-    private currentTick = 0;
-    
-    private lastFrameTime = performance.now();
-    private running = false;
-    private currentFps = 0;
-    private lastRtt = 0;
+    private localEntityId: number = -1;
+    private running: boolean = false;
+    private lastFrameTime: number = 0;
+    private currentTick: number = 0;
+    private currentFps: number = 0;
+    private lastRtt: number = 0;
 
-    private sendAccumulator = 0;
-    private readonly SEND_RATE = 30;
-    private readonly SEND_INTERVAL = 1 / this.SEND_RATE;
+    private sendAccumulator: number = 0;
+    private readonly SEND_INTERVAL = 1 / 30; 
     private readonly INTERPOLATION_DELAY_MS = 100;
 
-    // QUERIES
-    private soldierQuery = defineQuery([Transform, Soldier]);
-    private flagQuery = defineQuery([Transform, CapturePoint]);
+    private playerQuery = defineQuery([Transform, Soldier]);
+    private flagQuery = defineQuery([CapturePoint, Transform]);
 
     constructor() {
+        this.renderer = new Renderer();
         this.net = new NetworkManager();
         this.input = new InputManager();
         this.reconciler = new Reconciler();
@@ -61,7 +61,6 @@ export class ClientGame {
         
         this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-        // --- UPDATED UI CALLBACK ---
         this.ui = new UIManager((classId: number) => {
             console.log(`Spawn requested with Class ID: ${classId}`);
             this.net.sendSpawnRequest(classId);
@@ -89,15 +88,15 @@ export class ClientGame {
     }
 
     private initNetworkCallbacks() {
-        this.net.onWelcome = (serverId) => {
-            this.net.registerLocalPlayer(serverId, this.localEntityId);
+        this.net.onConnected = () => {
+            console.log('Connected to server');
         };
 
-        this.net.onHitConfirmed = (_damage) => {
-            this.ui.showHitMarker();
+        this.net.onDisconnected = () => {
+            console.log('Disconnected from server');
         };
 
-        this.net.onSnapshot = (msg) => {
+        this.net.onSnapshot = (msg: any) => { 
             this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
             if (msg.game.state === 1) {
                 let winner = "DRAW";
@@ -111,11 +110,31 @@ export class ClientGame {
             this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
 
             const myServerEntity = msg.entities.find((e: any) => this.net.getLocalId(e.id) === this.localEntityId);
-            
+
             if (myServerEntity) {
+                const wasDead = Health.isDead[this.localEntityId] === 1;
+                const isNowDead = !!myServerEntity.isDead;
+
+                // --- FIX 3: Optional snap on respawn ---
+                if (wasDead && !isNowDead && myServerEntity.pos) {
+                    console.log("Respawn detected - clearing history and snapping.");
+                    this.reconciler.clearHistory();
+                
+                    Transform.x[this.localEntityId] = myServerEntity.pos.x;
+                    Transform.y[this.localEntityId] = myServerEntity.pos.y;
+                    Transform.z[this.localEntityId] = myServerEntity.pos.z;
+                
+                    if (myServerEntity.vel) {
+                        Velocity.x[this.localEntityId] = myServerEntity.vel.x;
+                        Velocity.y[this.localEntityId] = myServerEntity.vel.y;
+                        Velocity.z[this.localEntityId] = myServerEntity.vel.z;
+                    }
+                }
+                // --- End Fix ---
+
                 Health.current[this.localEntityId] = myServerEntity.health;
-                Health.isDead[this.localEntityId] = myServerEntity.isDead ? 1 : 0;
-                this.ui.updateRespawn(myServerEntity.isDead, myServerEntity.respawnTimer || 0);
+                Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
+                this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
 
                 if (myServerEntity.team) {
                     Team.id[this.localEntityId] = myServerEntity.team;
@@ -125,7 +144,7 @@ export class ClientGame {
                     this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0);
                 }
 
-                if (myServerEntity.lastProcessedTick) {
+                if (myServerEntity.lastProcessedTick !== undefined) {
                     const rtt = this.reconciler.reconcile(
                         myServerEntity.lastProcessedTick, 
                         myServerEntity, 
@@ -133,7 +152,10 @@ export class ClientGame {
                         this.sim.world, 
                         this.movementSystem
                     );
+                    
+                    // --- FIX 2: Avoid overriding RTT with 0 ---
                     if (rtt > 0) this.lastRtt = rtt;
+                    // --- End Fix ---
                 }
             }
         };
@@ -160,6 +182,7 @@ export class ClientGame {
 
         const cmd = this.input.getCommand(this.currentTick);
 
+        // 1) Write inputs into ECS
         if (this.localEntityId >= 0) {
             InputState.moveY[this.localEntityId] = cmd.axes.forward;
             InputState.moveX[this.localEntityId] = cmd.axes.right;
@@ -167,15 +190,27 @@ export class ClientGame {
             InputState.viewY[this.localEntityId] = cmd.axes.pitch;
 
             let buttons = 0;
-            if (cmd.axes.jump) buttons |= 1;   
-            if (cmd.axes.shoot) buttons |= 2;  
-            if (cmd.axes.reload) buttons |= 4; 
+            if (cmd.axes.jump)   buttons |= 1;
+            if (cmd.axes.shoot)  buttons |= 2;
+            if (cmd.axes.reload) buttons |= 4;
             InputState.buttons[this.localEntityId] = buttons;
-
-            this.reconciler.addHistory(this.currentTick, cmd, this.localEntityId);
         }
 
+        // 2) Run local prediction
         this.sim.step(1 / 60);
+        // We must run the system manually since it wasn't passed to createSimulation
+        this.movementSystem(this.sim.world); 
+
+        // 3) Record the *predicted* result for this tick
+        if (this.localEntityId >= 0) {
+            this.reconciler.pushHistory(
+                this.currentTick,
+                cmd,
+                Transform.x[this.localEntityId],
+                Transform.y[this.localEntityId],
+                Transform.z[this.localEntityId]
+            );
+        }
 
         this.sendAccumulator += dt;
         while (this.sendAccumulator >= this.SEND_INTERVAL) {
@@ -197,12 +232,11 @@ export class ClientGame {
             this.ui.updateHealth(Health.current[this.localEntityId]);
         }
 
-        // 1. Render Soldiers
-        const soldiers = this.soldierQuery(this.sim.world);
-        for (const eid of soldiers) {
+        const players = this.playerQuery(this.sim.world);
+        for (const eid of players) {
             const isMe = eid === this.localEntityId;
             const state = {
-                type: 'soldier',
+                type: 'player',
                 pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
                 rot: Transform.rotation[eid],
                 pitch: isMe ? InputState.viewY[eid] : 0,
@@ -211,14 +245,13 @@ export class ClientGame {
             this.renderer.updateEntity(eid, state, isMe);
         }
 
-        // 2. Render Flags
         const flags = this.flagQuery(this.sim.world);
         for (const eid of flags) {
             const state = {
                 type: 'flag',
                 pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
                 rot: 0,
-                team: CapturePoint.team[eid], // Use Flag Owner Team
+                team: CapturePoint.team[eid], 
                 progress: CapturePoint.progress[eid]
             };
             this.renderer.updateEntity(eid, state, false);

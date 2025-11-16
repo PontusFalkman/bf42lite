@@ -1,8 +1,7 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
-import { ClientInput, ClientFire, EntityState } from '@bf42lite/protocol';
+import { ClientInput, ClientFire } from '@bf42lite/protocol';
 import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
-// ADD: CapturePoint and Team
-import { Health, Soldier, Ammo, CapturePoint, Team } from '@bf42lite/games-bf42'; 
+import { Health, Soldier, CapturePoint, Team } from '@bf42lite/games-bf42'; 
 import { Renderer } from '../Renderer';
 
 interface InterpolationBuffer {
@@ -20,12 +19,26 @@ export class NetworkManager {
     private serverToLocal = new Map<number, number>();
     private remoteBuffers = new Map<number, InterpolationBuffer>();
     
+    public onConnected?: () => void;
+    public onDisconnected?: () => void;
+
     public onWelcome?: (serverId: number) => void;
     public onSnapshot?: (msg: any) => void;
     public onHitConfirmed?: (damage: number) => void;
 
     constructor() {
         this.net = new WebSocketAdapter();
+        
+        // FIX: Use onConnect/onDisconnect to match the NetworkAdapter interface
+        this.net.onConnect(() => {
+            console.log("[Net] WebSocket Connected");
+            if (this.onConnected) this.onConnected();
+        });
+
+        this.net.onDisconnect(() => {
+            console.log("[Net] WebSocket Disconnected");
+            if (this.onDisconnected) this.onDisconnected();
+        });
         
         this.net.onMessage((msg) => {
             if (msg.type === 'welcome') {
@@ -41,9 +54,11 @@ export class NetworkManager {
             }
         });
     }
+
     public sendSpawnRequest(classId: number) {
         this.net.send({ type: 'spawn_request', classId });
     }
+
     public connect(url: string) {
         this.net.connect(url);
     }
@@ -61,7 +76,7 @@ export class NetworkManager {
         this.serverToLocal.set(serverId, localId);
     }
 
-    public getLocalId(serverId: number): number | undefined {
+public getLocalId(serverId: number): number | undefined {
         return this.serverToLocal.get(serverId);
     }
 
@@ -94,7 +109,9 @@ export class NetworkManager {
                 }
                 
                 Transform.x[localId] = serverEnt.pos.x;
+                Transform.y[localId] = serverEnt.pos.y;
                 Transform.z[localId] = serverEnt.pos.z;
+                Transform.rotation[localId] = serverEnt.rot;
 
                 this.serverToLocal.set(serverEnt.id, localId);
                 this.remoteBuffers.set(localId, { snapshots: [] });
