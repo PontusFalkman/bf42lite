@@ -1,5 +1,4 @@
 import { SimWorld, addComponent, addEntity, createMovementSystem, SystemFactory, InputState, Transform, defineQuery } from '@bf42lite/sim';
-// IMPORT ClientMessage
 import { ClientMessage } from '@bf42lite/protocol'; 
 import { createCombatSystem } from './systems/combat';
 import { createRespawnSystem } from './systems/respawn';
@@ -10,10 +9,11 @@ import * as Components from './components';
 
 export * from './components';
 
-const LOADOUTS = {
-  0: { name: 'Assault', hp: 100, ammo: 30, mag: 30, res: 120 },
-  1: { name: 'Medic',   hp: 100, ammo: 30, mag: 30, res: 60 }, // Less reserve
-  2: { name: 'Scout',   hp: 60,  ammo: 5,  mag: 5,  res: 20 }, // Glass Cannon
+// --- 1. UNIFIED WEAPON & LOADOUT STATS ---
+export const WEAPONS = {
+  0: { name: 'THOMPSON', damage: 20, rate: 0.12, range: 80,  mag: 30, res: 120, hp: 100 }, // Assault
+  1: { name: 'MP40',     damage: 18, rate: 0.15, range: 100, mag: 30, res: 60,  hp: 100 }, // Medic
+  2: { name: 'KAR98K',   damage: 95, rate: 1.50, range: 300, mag: 5,  res: 20,  hp: 60  }, // Scout
 };
 
 export const getSystems = (): SystemFactory[] => [
@@ -25,12 +25,11 @@ export const getSystems = (): SystemFactory[] => [
   createGameLoopSystem
 ];
 
-// --- QUERIES FOR SNAPSHOTS ---
+// --- QUERIES ---
 const soldierQuery = defineQuery([Components.Soldier, Transform]);
-const flagQuery = defineQuery([Components.CapturePoint, Transform]);
+const flagQuery = defineQuery([Components.CapturePoint, Transform, Components.Team]); // Added Team to query
 
 let globalPlayerCount = 0;
-
 
 export const initGameWorld = (world: SimWorld) => {
     const flag = addEntity(world);
@@ -57,8 +56,11 @@ export const onPlayerJoin = (world: SimWorld, eid: number) => {
   addComponent(world, Components.Ammo, eid);
   addComponent(world, Components.CombatState, eid);
   addComponent(world, Components.Team, eid);
-  addComponent(world, Components.Soldier, eid); // <--- Important for query
+  addComponent(world, Components.Soldier, eid);
   addComponent(world, Components.Stats, eid);
+  
+  // [FIX] Must add this component before using it!
+  addComponent(world, Components.Loadout, eid);
 
   Components.Stats.kills[eid] = 0;
   Components.Stats.deaths[eid] = 0;
@@ -74,10 +76,6 @@ export const onPlayerJoin = (world: SimWorld, eid: number) => {
   Transform.z[eid] = 0;
   Transform.y[eid] = -50; 
 
-  Components.Ammo.current[eid] = 30; 
-  Components.Ammo.magSize[eid] = 30;
-  Components.Ammo.reserve[eid] = 120;
-
   const teamId = (globalPlayerCount % 2) + 1;
   Components.Team.id[eid] = teamId;
   globalPlayerCount++;
@@ -85,29 +83,60 @@ export const onPlayerJoin = (world: SimWorld, eid: number) => {
   console.log(`[BF42] Player ${eid} joined Team ${teamId} (Waiting in Lobby)`);
 };
 
-// --- NEW: SPAWN LOGIC ---
+// --- STRATEGIC SPAWN LOGIC ---
 export const spawnPlayer = (world: SimWorld, eid: number, classId: number) => {
-  // Only allow spawn if currently dead
   if (!Components.Health.isDead[eid]) return;
 
-  const loadout = LOADOUTS[classId as keyof typeof LOADOUTS] || LOADOUTS[0];
+  // Use WEAPONS as the single source of truth
+  const stats = WEAPONS[classId as keyof typeof WEAPONS] || WEAPONS[0];
+  
+  Components.Loadout.classId[eid] = classId;
 
-  Components.Health.current[eid] = loadout.hp;
-  Components.Health.max[eid] = loadout.hp;
+  Components.Health.current[eid] = stats.hp;
+  Components.Health.max[eid] = stats.hp;
   Components.Health.isDead[eid] = 0;
 
-  Components.Ammo.current[eid] = loadout.mag;
-  Components.Ammo.magSize[eid] = loadout.mag;
-  Components.Ammo.reserve[eid] = loadout.res;
+  Components.Ammo.current[eid] = stats.mag;
+  Components.Ammo.magSize[eid] = stats.mag;
+  Components.Ammo.reserve[eid] = stats.res;
 
-  // Random Spawn
-  Transform.x[eid] = (Math.random() - 0.5) * 20;
-  Transform.z[eid] = (Math.random() - 0.5) * 20;
-  Transform.y[eid] = 5; // Drop in
+  // --- NEW: FIND SPAWN POINT ---
+  const myTeam = Components.Team.id[eid];
+  const flags = flagQuery(world);
+  const myFlags: number[] = [];
 
-  console.log(`[BF42] Player ${eid} DEPLOYED as ${loadout.name}`);
+  // 1. Find flags owned by my team
+  for (const fid of flags) {
+      if (Components.CapturePoint.team[fid] === myTeam) {
+          myFlags.push(fid);
+      }
+  }
+
+  // 2. Determine Spawn Position
+  if (myFlags.length > 0) {
+      // Pick random owned flag
+      const randomFlag = myFlags[Math.floor(Math.random() * myFlags.length)];
+      const fx = Transform.x[randomFlag];
+      const fz = Transform.z[randomFlag];
+      
+      // Offset slightly (2m - 5m away)
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 2 + Math.random() * 3; 
+
+      Transform.x[eid] = fx + Math.cos(angle) * dist;
+      Transform.z[eid] = fz + Math.sin(angle) * dist;
+      Transform.y[eid] = 2; // Ground level
+  } else {
+      // Emergency Spawn (No flags owned) -> Random drop
+      console.log("WARNING: No flags owned! Spawning in wilderness.");
+      Transform.x[eid] = (Math.random() - 0.5) * 50;
+      Transform.z[eid] = (Math.random() - 0.5) * 50;
+      Transform.y[eid] = 5;
+  }
+
+  console.log(`[BF42] Player ${eid} DEPLOYED with ${stats.name}`);
 };
-// --- NEW: MESSAGE ROUTER ---
+
 export const processMessage = (world: SimWorld, eid: number, msg: ClientMessage) => {
   if (msg.type === 'input') {
       processInput(world, eid, msg);
@@ -142,7 +171,6 @@ export const processInput = (world: SimWorld, eid: number, input: any) => {
   }
 };
 
-// Helper to get single state
 export const getPlayerState = (world: SimWorld, eid: number) => {
   const isFlag = Components.CapturePoint.radius[eid] > 0; 
 
@@ -151,8 +179,10 @@ export const getPlayerState = (world: SimWorld, eid: number) => {
       pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
       vel: { x: 0, y: 0, z: 0 }, 
       rot: Transform.rotation[eid],
-      
       type: isFlag ? 'flag' : 'soldier',
+      
+      // Send Class ID so client knows what gun to draw/limit
+      classId: isFlag ? 0 : Components.Loadout.classId[eid],
 
       health: Components.Health.current[eid],
       isDead: Boolean(Components.Health.isDead[eid]),
@@ -168,21 +198,11 @@ export const getPlayerState = (world: SimWorld, eid: number) => {
   };
 };
 
-// --- NEW: GET ALL ENTITIES FOR SNAPSHOT ---
 export const getWorldState = (world: SimWorld) => {
     const entities = [];
-    
-    // 1. Get Soldiers
     const soldiers = soldierQuery(world);
-    for (const eid of soldiers) {
-        entities.push(getPlayerState(world, eid));
-    }
-
-    // 2. Get Flags
+    for (const eid of soldiers) entities.push(getPlayerState(world, eid));
     const flags = flagQuery(world);
-    for (const eid of flags) {
-        entities.push(getPlayerState(world, eid));
-    }
-
+    for (const eid of flags) entities.push(getPlayerState(world, eid));
     return entities;
 };

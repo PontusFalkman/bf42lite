@@ -98,8 +98,15 @@
         text-transform: uppercase; transition: 0.1s;
       }
       button.bf-btn:hover { background: var(--bf-yellow); color: black; }
-/* === 5. CROSSHAIR & HITMARKER === */
-.center-screen {
+
+      /* Class Selector Styles */
+      .class-selector { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
+      .class-btn { padding: 10px 20px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; }
+      .class-btn:hover { background: #444; }
+      .class-btn.selected { background: #d62828; border-color: #ff0000; box-shadow: 0 0 10px #d62828; }
+
+      /* === 5. CROSSHAIR & HITMARKER === */
+      .center-screen {
         position: absolute; 
         top: 50%; left: 50%; 
         transform: translate(-50%, -50%);
@@ -149,11 +156,6 @@
       .hit-active { opacity: 1 !important; }
       /* Utility to hide things */
       .hidden { display: none !important; }
-      /* Add simple styles */
-    .class-selector { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
-    .class-btn { padding: 10px 20px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; }
-    .class-btn:hover { background: #444; }
-    .class-btn.selected { background: #d62828; border-color: #ff0000; box-shadow: 0 0 10px #d62828; }
     </style>
   </head>
   <body>
@@ -176,7 +178,7 @@
       </div>
       <div class="hud-panel">
         <div>
-          <div class="weapon-name">THOMPSON</div>
+          <div class="weapon-name" id="weapon-name">THOMPSON</div>
           <div class="ammo-val"><span id="ammo-curr">30</span> | <span id="ammo-res">120</span></div>
         </div>
       </div>
@@ -184,35 +186,33 @@
 
     <div id="deploy-screen">
       <h1>DEPLOYMENT</h1>
+      <h2 style="font-size: 18px; margin-bottom: 10px;">SELECT CLASS</h2>
+      
+      <div class="class-selector">
+          <button class="class-btn selected" data-id="0">ASSAULT</button>
+          <button class="class-btn" data-id="1">MEDIC</button>
+          <button class="class-btn" data-id="2">SCOUT</button>
+      </div>
+
       <div class="map-container">
         <div class="spawn-point allies" style="top: 20%; left: 20%;" data-id="1"></div>
         <div class="spawn-point axis" style="top: 80%; left: 80%;" data-id="2"></div>
         <div class="spawn-point" style="top: 50%; left: 50%; background: gray;" data-id="0"></div>
       </div>
+      
       <button id="btn-spawn" class="bf-btn">ENTER BATTLE</button>
     </div>
+
     <div class="center-screen">
       <div id="crosshair">+</div>
       <div id="hitmarker">x</div>
-  </div>
-  <div id="game-over-screen">
-    <div class="end-title" id="end-title">GAME OVER</div>
-    <div class="end-subtitle">RETURNING TO BATTLE...</div>
-</div>
-<div id="deploy-screen" class="hidden">
-  <h1>DEPLOYMENT</h1>
-  <h2 id="end-title">PREPARE FOR BATTLE</h2>
+    </div>
 
-  <div class="class-selector">
-      <button class="class-btn selected" data-id="0">ASSAULT</button>
-      <button class="class-btn" data-id="1">MEDIC</button>
-      <button class="class-btn" data-id="2">SCOUT</button>
-  </div>
-  <div class="spawn-list">
-     </div>
+    <div id="game-over-screen">
+      <div class="end-title" id="end-title">GAME OVER</div>
+      <div class="end-subtitle">RETURNING TO BATTLE...</div>
+    </div>
 
-  <button id="btn-spawn">DEPLOY</button>
-</div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

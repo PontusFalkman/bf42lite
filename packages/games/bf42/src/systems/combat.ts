@@ -1,17 +1,16 @@
 import { defineSystem, defineQuery } from 'bitecs';
 import { Transform, InputState, SimWorld } from '@bf42lite/sim'; 
-import { Health, CombatState, GameRules, Team, Ammo, Stats } from '../components';
-import { getPoseAtTick } from './history'; // <--- Import this
+import { Health, CombatState, GameRules, Team, Ammo, Stats, Loadout } from '../components'; // [ADD Loadout]
+import { getPoseAtTick } from './history';
+import { WEAPONS } from '../index'; // [IMPORT WEAPONS]
 
-const FIRE_RATE = 0.15;
-const DAMAGE = 25;
-const MAX_DIST = 100;
 const RELOAD_TIME = 2.0;
 const BUTTON_FIRE = 2;
 const BUTTON_RELOAD = 4;
 
 export const createCombatSystem = () => {
-  const query = defineQuery([Transform, InputState, Health, CombatState, Ammo, Team]);
+  // [ADD Loadout to query]
+  const query = defineQuery([Transform, InputState, Health, CombatState, Ammo, Team, Loadout]);
   const targetQuery = defineQuery([Transform, Health, Team]);
   const rulesQuery = defineQuery([GameRules]);
 
@@ -28,11 +27,14 @@ export const createCombatSystem = () => {
     for (const id of entities) {
       if (Health.isDead[id]) continue;
 
+      // [ADD THIS] Get Weapon Stats
+      const classId = Loadout.classId[id];
+      const weapon = WEAPONS[classId as keyof typeof WEAPONS] || WEAPONS[0];
+
       const now = world.time;
       const isShooting = (InputState.buttons[id] & BUTTON_FIRE) !== 0;
       const isReloading = (InputState.buttons[id] & BUTTON_RELOAD) !== 0;
 
-      // --- RELOAD LOGIC ---
       if (isReloading && !CombatState.isReloading[id]) {
           if (Ammo.current[id] < Ammo.magSize[id] && Ammo.reserve[id] > 0) {
               CombatState.isReloading[id] = 1;
@@ -51,20 +53,18 @@ export const createCombatSystem = () => {
           continue; 
       }
 
-      // --- FIRING LOGIC ---
       if (isShooting && Ammo.current[id] > 0) {
-        if (now - CombatState.lastFireTime[id] >= FIRE_RATE) {
+        // [UPDATED] Use weapon.rate instead of constant
+        if (now - CombatState.lastFireTime[id] >= weapon.rate) {
           CombatState.lastFireTime[id] = now;
           Ammo.current[id]--;
 
-          // 1. Get Shooter Info (Use CURRENT position for shooter)
           const originX = Transform.x[id];
           const originY = Transform.y[id] + 1.6; 
           const originZ = Transform.z[id];
           const yaw = Transform.rotation[id];
           const pitch = InputState.viewY[id]; 
 
-          // The tick the client claimed they were at when they fired
           const clientTick = InputState.lastTick[id];
 
           const cosPitch = Math.cos(pitch);
@@ -74,22 +74,16 @@ export const createCombatSystem = () => {
           const dirZ = -Math.cos(yaw) * cosPitch;
 
           let hitId = -1;
-          let bestDist = MAX_DIST;
+          let bestDist = weapon.range; // [UPDATED] Use weapon.range
           const myTeam = Team.id[id];
 
-          // 2. Check Targets using HISTORY
           for (const tid of targets) {
             if (tid === id || Health.isDead[tid] || Team.id[tid] === myTeam) continue;
 
-            // --- THE TIME TRAVEL MAGIC ---
-            // Try to get where the target was at 'clientTick'
             let targetPos = getPoseAtTick(clientTick, tid);
-
-            // Fallback: If history is missing (too old or brand new), use current
             if (!targetPos) {
                 targetPos = { x: Transform.x[tid], y: Transform.y[tid], z: Transform.z[tid] };
             }
-            // -----------------------------
 
             const tX = targetPos.x;
             const tY = targetPos.y + 0.9; 
@@ -101,7 +95,8 @@ export const createCombatSystem = () => {
             
             const distSq = dx*dx + dy*dy + dz*dz;
             
-            if (distSq < MAX_DIST * MAX_DIST) {
+            // [UPDATED] Use weapon.range
+            if (distSq < weapon.range * weapon.range) {
               const dist = Math.sqrt(distSq);
               const toTargetX = dx / dist;
               const toTargetY = dy / dist;
@@ -117,7 +112,8 @@ export const createCombatSystem = () => {
           }
 
           if (hitId !== -1) {
-            const newHp = Math.max(0, Health.current[hitId] - DAMAGE);
+            // [UPDATED] Use weapon.damage
+            const newHp = Math.max(0, Health.current[hitId] - weapon.damage);
             Health.current[hitId] = newHp;
             
             if (newHp === 0 && !Health.isDead[hitId]) {

@@ -1,7 +1,7 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { ClientInput, ClientFire } from '@bf42lite/protocol';
 import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
-import { Health, Soldier, CapturePoint, Team } from '@bf42lite/games-bf42'; 
+import { Health, Soldier, CapturePoint, Team, Loadout } from '@bf42lite/games-bf42'; // [FIX] Added Loadout
 import { Renderer } from '../Renderer';
 
 interface InterpolationBuffer {
@@ -29,7 +29,6 @@ export class NetworkManager {
     constructor() {
         this.net = new WebSocketAdapter();
         
-        // FIX: Use onConnect/onDisconnect to match the NetworkAdapter interface
         this.net.onConnect(() => {
             console.log("[Net] WebSocket Connected");
             if (this.onConnected) this.onConnected();
@@ -76,7 +75,7 @@ export class NetworkManager {
         this.serverToLocal.set(serverId, localId);
     }
 
-public getLocalId(serverId: number): number | undefined {
+    public getLocalId(serverId: number): number | undefined {
         return this.serverToLocal.get(serverId);
     }
 
@@ -100,12 +99,12 @@ public getLocalId(serverId: number): number | undefined {
                 if (serverEnt.type === 'flag') {
                     addComponent(world, CapturePoint, localId);
                     addComponent(world, Team, localId);
-                    console.log(`[Net] Spawning FLAG ${localId}`);
                 } else {
                     // Default to Soldier
                     addComponent(world, Soldier, localId);
                     addComponent(world, Health, localId); 
                     addComponent(world, Team, localId);
+                    addComponent(world, Loadout, localId); // [FIX] Add Loadout Component
                 }
                 
                 Transform.x[localId] = serverEnt.pos.x;
@@ -132,11 +131,16 @@ public getLocalId(serverId: number): number | undefined {
             // --- 3. SYNC DATA ---
             if (serverEnt.type === 'flag') {
                 CapturePoint.progress[localId] = serverEnt.captureProgress;
-                CapturePoint.team[localId] = serverEnt.team; // Sync Owner
+                CapturePoint.team[localId] = serverEnt.team; 
             } else {
                 Health.current[localId] = serverEnt.health;
                 Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
                 Team.id[localId] = serverEnt.team;
+                
+                // [FIX] Sync the Class ID from Server to Client Component
+                if (serverEnt.classId !== undefined) {
+                    Loadout.classId[localId] = serverEnt.classId;
+                }
             }
         });
 

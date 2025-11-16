@@ -14,6 +14,7 @@ export class UIManager {
         endTitle: HTMLElement | null;
         ammoCurr: HTMLElement | null;
         ammoRes: HTMLElement | null;
+        weaponName: HTMLElement | null;
     };
     private selectedSpawnId = -1;
     private hitTimeout: number | null = null;
@@ -39,7 +40,8 @@ export class UIManager {
             gameOverScreen: document.getElementById('game-over-screen'),
             endTitle: document.getElementById('end-title'),
             ammoCurr: document.getElementById('ammo-curr'),
-            ammoRes: document.getElementById('ammo-res')
+            ammoRes: document.getElementById('ammo-res'),
+            weaponName: document.getElementById('weapon-name')
         };
 
         this.initListeners();
@@ -138,10 +140,11 @@ export class UIManager {
         }
     }
 
-    public updateAmmo(current: number, reserve: number) {
-        if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
-        if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
-    }
+    public updateAmmo(current: number, reserve: number, weaponName?: string) {
+    if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+    if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+    if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
+}
 
     public updateRespawn(isDead: boolean, timer: number) {
         if (!this.ui.deployScreen || !this.ui.spawnBtn) return;

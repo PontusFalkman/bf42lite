@@ -15,7 +15,8 @@ import {
     Ammo, 
     Soldier,
     Team,
-    CapturePoint
+    CapturePoint,
+    Loadout
 } from '@bf42lite/games-bf42'; 
 
 import { Renderer } from './Renderer';
@@ -64,6 +65,7 @@ export class ClientGame {
         this.ui = new UIManager((classId: number) => {
             console.log(`Spawn requested with Class ID: ${classId}`);
             this.net.sendSpawnRequest(classId);
+            this.weaponSystem.setClass(classId);
         });
         this.input.setInteraction(true);
 
@@ -85,6 +87,7 @@ export class ClientGame {
         addComponent(this.sim.world, Ammo, this.localEntityId);
         addComponent(this.sim.world, Soldier, this.localEntityId);
         addComponent(this.sim.world, Team, this.localEntityId);
+        addComponent(this.sim.world, Loadout, this.localEntityId);
     }
 
     private initNetworkCallbacks() {
@@ -108,7 +111,7 @@ export class ClientGame {
             }
 
             this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
-
+            const WEAPON_NAMES = { 0: "THOMPSON", 1: "MP40", 2: "KAR98K" };
             const myServerEntity = msg.entities.find((e: any) => this.net.getLocalId(e.id) === this.localEntityId);
 
             if (myServerEntity) {
@@ -141,6 +144,15 @@ export class ClientGame {
                 }
 
                 if (myServerEntity.ammo !== undefined) {
+                    // [FIX] Pass the weapon name based on your current class
+    // Note: We use the class ID we stored in our local component, 
+    // or we can read it from the server entity if we synced it.
+    // For now, let's assume 'Loadout' is synced or use the local state:
+
+    const myClassId = Loadout.classId[this.localEntityId] || 0;
+    const name = WEAPON_NAMES[myClassId as keyof typeof WEAPON_NAMES];
+
+    this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0, name);
                     this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0);
                 }
 

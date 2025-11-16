@@ -1,4 +1,3 @@
-// packages/sim/src/components.ts
 import { defineComponent, Types, IWorld } from 'bitecs';
 
 // --- CORE ENGINE COMPONENTS ---

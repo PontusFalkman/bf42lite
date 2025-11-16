@@ -36,7 +36,7 @@ export const GameRules = defineComponent({
   state: Types.ui8 // 0=Playing, 1=EndScreen
 });
 
-// 5. Conquest Mode (NEW)
+// 5. Conquest Mode
 export const CapturePoint = defineComponent({
   id: Types.ui8,          // ID of the flag
   team: Types.ui8,        // 0=Neutral, 1=Axis, 2=Allies
@@ -49,4 +49,9 @@ export const Soldier = defineComponent();
 export const Stats = defineComponent({
   kills: Types.ui16,
   deaths: Types.ui16
+});
+
+// --- [FIX] ADD THIS COMPONENT HERE ---
+export const Loadout = defineComponent({
+  classId: Types.ui8 // 0=Assault, 1=Medic, 2=Scout
 });
