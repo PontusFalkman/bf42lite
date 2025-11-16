@@ -38,5 +38,9 @@ export const GameRules = defineComponent({
 
 export const Soldier = defineComponent(); 
 
+export const Stats = defineComponent({
+  kills: Types.ui16,
+  deaths: Types.ui16
+});
 // FUTURE: Vehicles
 // export const Vehicle = defineComponent({ type: Types.ui8, seatCount: Types.ui8 });

@@ -45,8 +45,11 @@ export const EntityStateSchema = z.object({
   rot: z.number(),
   health: z.number(),
   isDead: z.boolean(),
-  ammo: z.number().optional(),    // <--- ADDED
-  ammoRes: z.number().optional(), // <--- ADDED
+  respawnTimer: z.number().optional(),
+  ammo: z.number().optional(),
+  ammoRes: z.number().optional(),
+  kills: z.number().optional(),
+  deaths: z.number().optional(),
   lastProcessedTick: z.number().optional() 
 });
 

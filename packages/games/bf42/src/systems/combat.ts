@@ -1,22 +1,16 @@
 import { defineSystem, defineQuery } from 'bitecs';
-// FIX: Import ENGINE components
 import { Transform, InputState, SimWorld } from '@bf42lite/sim'; 
-// FIX: Import GAME components
-import { Health, CombatState, GameRules, Team, Ammo } from '../components';
-
-const FIRE_RATE = 0.15;
-const DAMAGE = 25;
-const MAX_DIST = 100;
+import { Health, CombatState, GameRules, Team, Ammo, Stats } from '../components';
+const FIRE_RATE = 0.15; // 600 RPM approx
+const DAMAGE = 25;      // 4 shots to kill
+const MAX_DIST = 100;   // Meters
 const RELOAD_TIME = 2.0;
 
-// Input buttons (must match host-node)
 const BUTTON_FIRE = 2;
 const BUTTON_RELOAD = 4;
 
 export const createCombatSystem = () => {
-  // Query for entities that can fight
   const query = defineQuery([Transform, InputState, Health, CombatState, Ammo, Team]);
-  // Query for entities that can be hit
   const targetQuery = defineQuery([Transform, Health, Team]);
   const rulesQuery = defineQuery([GameRules]);
 
@@ -39,7 +33,6 @@ export const createCombatSystem = () => {
 
       // --- 1. RELOAD LOGIC ---
       if (isReloading && !CombatState.isReloading[id]) {
-          // Start reload if not full and has reserve
           if (Ammo.current[id] < Ammo.magSize[id] && Ammo.reserve[id] > 0) {
               CombatState.isReloading[id] = 1;
               CombatState.reloadStartTime[id] = now;
@@ -48,19 +41,14 @@ export const createCombatSystem = () => {
 
       if (CombatState.isReloading[id]) {
           if (now - CombatState.reloadStartTime[id] >= RELOAD_TIME) {
-              // Finish Reload
-              const magSize = Ammo.magSize[id];
-              const current = Ammo.current[id];
-              const reserve = Ammo.reserve[id];
-              
-              const needed = magSize - current;
-              const actual = Math.min(needed, reserve);
+              const needed = Ammo.magSize[id] - Ammo.current[id];
+              const actual = Math.min(needed, Ammo.reserve[id]);
               
               Ammo.current[id] += actual;
               Ammo.reserve[id] -= actual;
               CombatState.isReloading[id] = 0;
           }
-          continue; // Can't shoot while reloading
+          continue; // Cannot fire while reloading
       }
 
       // --- 2. FIRING LOGIC ---
@@ -68,28 +56,59 @@ export const createCombatSystem = () => {
         if (now - CombatState.lastFireTime[id] >= FIRE_RATE) {
           CombatState.lastFireTime[id] = now;
           Ammo.current[id]--;
-          
-          // --- RAYCAST LOGIC ---
+
+          // --- 3D RAYCAST LOGIC ---
           let hitId = -1;
           let bestDist = MAX_DIST;
-          const myYaw = Transform.rotation[id];
+
+          // 1. Get Shooter 3D Position & Orientation
+          const originX = Transform.x[id];
+          const originY = Transform.y[id] + 1.6; // Eye height offset
+          const originZ = Transform.z[id];
+
+          const yaw = Transform.rotation[id];
+          const pitch = InputState.viewY[id]; // Need Pitch for 3D aiming
+
+          // Calculate 3D Forward Vector
+          // (Assuming pitch 0 is forward, -PI/2 is up, +PI/2 is down)
+          const cosPitch = Math.cos(pitch);
+          const sinPitch = Math.sin(pitch);
+          
+          const dirX = -Math.sin(yaw) * cosPitch;
+          const dirY = -sinPitch; 
+          const dirZ = -Math.cos(yaw) * cosPitch;
+
           const myTeam = Team.id[id];
 
           for (const tid of targets) {
             if (tid === id || Health.isDead[tid] || Team.id[tid] === myTeam) continue;
 
-            const dx = Transform.x[tid] - Transform.x[id];
-            const dz = Transform.z[tid] - Transform.z[id];
-            const dist = Math.sqrt(dx*dx + dz*dz);
+            // Target Center Position (Assuming pivot is at feet)
+            const tX = Transform.x[tid];
+            const tY = Transform.y[tid] + 0.9; // Aim at center of mass (1.8m / 2)
+            const tZ = Transform.z[tid];
+
+            const dx = tX - originX;
+            const dy = tY - originY;
+            const dz = tZ - originZ;
             
-            if (dist < MAX_DIST) {
-              const lookX = -Math.sin(myYaw);
-              const lookZ = -Math.cos(myYaw);
-              const dirX = dx / dist;
-              const dirZ = dz / dist;
-              const dot = (lookX * dirX) + (lookZ * dirZ);
+            // 3D Distance
+            const distSq = dx*dx + dy*dy + dz*dz;
+            
+            if (distSq < MAX_DIST * MAX_DIST) {
+              const dist = Math.sqrt(distSq);
               
-              if (dot > 0.95 && dist < bestDist) {
+              // Normalize vector to target
+              const toTargetX = dx / dist;
+              const toTargetY = dy / dist;
+              const toTargetZ = dz / dist;
+
+              // Dot Product: How close is our aim to the target vector?
+              const dot = (dirX * toTargetX) + (dirY * toTargetY) + (dirZ * toTargetZ);
+              
+              // 0.99 is roughly an 8-degree cone, reasonable for mid-range
+              // For better hitboxes, we would do Ray vs Cylinder math here
+              if (dot > 0.99 && dist < bestDist) {
                 bestDist = dist;
                 hitId = tid;
               }
@@ -101,10 +120,15 @@ export const createCombatSystem = () => {
             const newHp = Math.max(0, Health.current[hitId] - DAMAGE);
             Health.current[hitId] = newHp;
             
+            console.log(`[Combat] Hit! ${id} -> ${hitId} (${newHp} HP)`);
+
             if (newHp === 0 && !Health.isDead[hitId]) {
                 Health.isDead[hitId] = 1;
                 
-                // DEDUCT TICKET
+                Stats.kills[id]++;      // Shooter gets a kill
+                Stats.deaths[hitId]++;  // Victim gets a death
+                console.log(`[Score] Player ${id} killed ${hitId}`);
+
                 const team = Team.id[hitId];
                 if (team === 1) GameRules.ticketsAxis[rulesId]--;
                 if (team === 2) GameRules.ticketsAllies[rulesId]--;

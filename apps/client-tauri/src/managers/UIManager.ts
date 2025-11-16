@@ -133,4 +133,31 @@ export class UIManager {
         if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
         if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
     }
+    // Call this every frame in your render loop
+    public updateRespawn(isDead: boolean, timer: number) {
+        if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
+
+        if (isDead) {
+            // 1. Show the screen
+            this.ui.deployScreen.style.display = 'flex'; 
+            
+            // 2. Update Button State
+            if (timer > 0) {
+                // Still waiting...
+                this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
+                this.ui.spawnBtn.setAttribute('disabled', 'true');
+                this.ui.spawnBtn.style.pointerEvents = 'none'; // Prevent clicking
+                this.ui.spawnBtn.style.opacity = '0.5';
+            } else {
+                // Ready!
+                this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
+                this.ui.spawnBtn.removeAttribute('disabled');
+                this.ui.spawnBtn.style.pointerEvents = 'auto';
+                this.ui.spawnBtn.style.opacity = '1.0';
+            }
+        } else {
+            // 3. Hide the screen if alive
+            this.ui.deployScreen.style.display = 'none';
+        }
+    }
 }

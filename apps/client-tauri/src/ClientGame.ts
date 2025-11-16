@@ -111,7 +111,21 @@ export class ClientGame {
             if (myServerEntity) {
                 Health.current[this.localEntityId] = myServerEntity.health;
                 Health.isDead[this.localEntityId] = myServerEntity.isDead ? 1 : 0;
-                
+               // --- 1. UPDATE RESPAWN UI (Step 3) ---
+                // This makes the "Deploy" screen appear/disappear
+                this.ui.updateRespawn(
+                    myServerEntity.isDead, 
+                    myServerEntity.respawnTimer || 0
+                );
+                // -------------------------------------
+
+                // --- 2. UPDATE SCORES (Step 4) ---
+                // (Optional) Print to console or update UI if you added score fields to UIManager
+                if (myServerEntity.kills !== undefined) {
+                     console.log(`K/D: ${myServerEntity.kills} / ${myServerEntity.deaths}`);
+                     // Future: this.ui.updateScore(myServerEntity.kills, myServerEntity.deaths);
+                }
+                // ---------------------------------
                 // Sync Team if available
                 if (myServerEntity.team) {
                     // FIX: Removed if-check, just add component directly
