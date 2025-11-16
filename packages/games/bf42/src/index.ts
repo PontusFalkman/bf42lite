@@ -21,163 +21,127 @@ export const getSystems = (): SystemFactory[] => [
   createHistorySystem,
   createCombatSystem,
   createRespawnSystem,
-  createCaptureSystem,
-  createGameLoopSystem
+  createGameLoopSystem,
+  createCaptureSystem
 ];
 
-// --- QUERIES ---
-const soldierQuery = defineQuery([Components.Soldier, Transform]);
-const flagQuery = defineQuery([Components.CapturePoint, Transform, Components.Team]); // Added Team to query
-
-let globalPlayerCount = 0;
-
-export const initGameWorld = (world: SimWorld) => {
-    const flag = addEntity(world);
-    addComponent(world, Transform, flag);
-    addComponent(world, Components.CapturePoint, flag);
-    addComponent(world, Components.Team, flag); 
-
-    Transform.x[flag] = 0;
-    Transform.y[flag] = 0; 
-    Transform.z[flag] = 0;
-
-    Components.CapturePoint.id[flag] = 0;
-    Components.CapturePoint.radius[flag] = 8; 
-    Components.CapturePoint.progress[flag] = 0;
-    Components.CapturePoint.team[flag] = 0; 
-    
-    console.log("🚩 Flag generated at 0,0,0");
+// --- 2. MAP & ENTITY FACTORIES ---
+const createFlag = (world: SimWorld, id: number, x: number, z: number, r: number) => {
+  const eid = addEntity(world);
+  addComponent(world, Transform, eid);
+  addComponent(world, Components.CapturePoint, eid);
+  Transform.x[eid] = x;
+  Transform.y[eid] = 0; // Flags are at ground level
+  Transform.z[eid] = z;
+  Components.CapturePoint.id[eid] = id;
+  Components.CapturePoint.team[eid] = 0; // Neutral
+  Components.CapturePoint.progress[eid] = 0;
+  Components.CapturePoint.radius[eid] = r;
+  return eid;
 };
 
+export const initGameWorld = (world: SimWorld) => {
+  console.log('[Game] Initializing World (Spawning Flags)...');
+  createFlag(world, 0, 0, 0, 15);   // Flag 0
+  createFlag(world, 1, 50, 0, 15);  // Flag 1
+  createFlag(world, 2, -50, 0, 15); // Flag 2
+};
+
+
+// --- 3. PLAYER LIFECYCLE HANDLERS ---
+const soldierQuery = defineQuery([Components.Soldier, Transform]);
+const flagQuery = defineQuery([Components.CapturePoint, Transform]);
+
 export const onPlayerJoin = (world: SimWorld, eid: number) => {
-  addComponent(world, Transform, eid);
-  addComponent(world, InputState, eid);
+  // Add all game-specific components to the new player entity
+  addComponent(world, Components.Soldier, eid);
   addComponent(world, Components.Health, eid);
   addComponent(world, Components.Ammo, eid);
   addComponent(world, Components.CombatState, eid);
-  addComponent(world, Components.Team, eid);
-  addComponent(world, Components.Soldier, eid);
   addComponent(world, Components.Stats, eid);
-  
-  // [FIX] Must add this component before using it!
+  addComponent(world, Components.Team, eid);
   addComponent(world, Components.Loadout, eid);
-
-  Components.Stats.kills[eid] = 0;
-  Components.Stats.deaths[eid] = 0;
   
-  Components.Health.current[eid] = 0;
-  Components.Health.max[eid] = 100;
+  // Also add engine components (Sim uses these)
+  addComponent(world, Transform, eid);
+  addComponent(world, InputState, eid);
+  
+  // Set initial team (e.g., auto-balance)
+  // TODO: Auto-balance
+  Components.Team.id[eid] = 1; // Default to Axis for now
+  
+  // Don't spawn yet, wait for 'spawn_request'
   Components.Health.isDead[eid] = 1;
-
-  addComponent(world, Components.RespawnTimer, eid);
-  Components.RespawnTimer.timeLeft[eid] = 0; 
-
-  Transform.x[eid] = 0;
-  Transform.z[eid] = 0;
-  Transform.y[eid] = -50; 
-
-  const teamId = (globalPlayerCount % 2) + 1;
-  Components.Team.id[eid] = teamId;
-  globalPlayerCount++;
-
-  console.log(`[BF42] Player ${eid} joined Team ${teamId} (Waiting in Lobby)`);
 };
 
-// --- STRATEGIC SPAWN LOGIC ---
-export const spawnPlayer = (world: SimWorld, eid: number, classId: number) => {
-  if (!Components.Health.isDead[eid]) return;
+export const onPlayerLeave = (world: SimWorld, eid: number) => {
+  // TODO: Handle leaving (e.g., remove entity)
+  console.log(`[Game] Player ${eid} left (TODO: implement removal)`);
+};
 
-  // Use WEAPONS as the single source of truth
+export const onPlayerSpawn = (world: SimWorld, eid: number, classId: number) => {
+  console.log(`[Game] Spawning Player ${eid} as Class ${classId}`);
+  
+  // 1. Find a valid spawn point
+  // TODO: Use team-based spawns
+  Transform.x[eid] = (Math.random() - 0.5) * 40;
+  Transform.z[eid] = (Math.random() - 0.5) * 40;
+  Transform.y[eid] = 5; // Drop from sky
+  Transform.rotation[eid] = 0;
+  
+  // 2. Get stats for the chosen class (or default to 0)
   const stats = WEAPONS[classId as keyof typeof WEAPONS] || WEAPONS[0];
   
-  Components.Loadout.classId[eid] = classId;
-
-  Components.Health.current[eid] = stats.hp;
+  // 3. Reset all components
   Components.Health.max[eid] = stats.hp;
+  Components.Health.current[eid] = stats.hp;
   Components.Health.isDead[eid] = 0;
-
-  Components.Ammo.current[eid] = stats.mag;
+  
   Components.Ammo.magSize[eid] = stats.mag;
+  Components.Ammo.current[eid] = stats.mag;
   Components.Ammo.reserve[eid] = stats.res;
-
-  // --- NEW: FIND SPAWN POINT ---
-  const myTeam = Components.Team.id[eid];
-  const flags = flagQuery(world);
-  const myFlags: number[] = [];
-
-  // 1. Find flags owned by my team
-  for (const fid of flags) {
-      if (Components.CapturePoint.team[fid] === myTeam) {
-          myFlags.push(fid);
-      }
-  }
-
-  // 2. Determine Spawn Position
-  if (myFlags.length > 0) {
-      // Pick random owned flag
-      const randomFlag = myFlags[Math.floor(Math.random() * myFlags.length)];
-      const fx = Transform.x[randomFlag];
-      const fz = Transform.z[randomFlag];
-      
-      // Offset slightly (2m - 5m away)
-      const angle = Math.random() * Math.PI * 2;
-      const dist = 2 + Math.random() * 3; 
-
-      Transform.x[eid] = fx + Math.cos(angle) * dist;
-      Transform.z[eid] = fz + Math.sin(angle) * dist;
-      Transform.y[eid] = 2; // Ground level
-  } else {
-      // Emergency Spawn (No flags owned) -> Random drop
-      console.log("WARNING: No flags owned! Spawning in wilderness.");
-      Transform.x[eid] = (Math.random() - 0.5) * 50;
-      Transform.z[eid] = (Math.random() - 0.5) * 50;
-      Transform.y[eid] = 5;
-  }
-
-  console.log(`[BF42] Player ${eid} DEPLOYED with ${stats.name}`);
+  
+  Components.CombatState.lastFireTime[eid] = 0;
+  Components.CombatState.isReloading[eid] = 0;
+  
+  Components.Loadout.classId[eid] = classId;
 };
 
+// --- 4. MESSAGE PROCESSOR ---
 export const processMessage = (world: SimWorld, eid: number, msg: ClientMessage) => {
+  // Handle game-specific messages
+  if (msg.type === 'spawn_request') {
+      onPlayerSpawn(world, eid, msg.classId);
+      return;
+  }
+  
+  // Handle engine-level messages (Input)
   if (msg.type === 'input') {
-      processInput(world, eid, msg);
-  }
-  else if (msg.type === 'spawn_request') {
-      spawnPlayer(world, eid, msg.classId);
-  }
-};
-
-export const processInput = (world: SimWorld, eid: number, input: any) => {
-  const BUTTON_JUMP = 1;
-  const BUTTON_FIRE = 2;
-  const BUTTON_RELOAD = 4;
-
-  InputState.moveY[eid] = input.axes.forward; 
-  InputState.moveX[eid] = input.axes.right;
-  InputState.viewX[eid] = input.axes.yaw;
-  InputState.viewY[eid] = input.axes.pitch;
-  InputState.lastTick[eid] = input.tick;
-
-  let buttons = 0;
-  if (input.axes.jump) buttons |= BUTTON_JUMP;
-  if (input.axes.shoot) buttons |= BUTTON_FIRE;
-  if (input.axes.reload) buttons |= BUTTON_RELOAD;
-  InputState.buttons[eid] = buttons;
-
-  if (input.axes.reload) {
-      if (!Components.CombatState.isReloading[eid]) {
-          Components.CombatState.isReloading[eid] = 1;
-          Components.CombatState.reloadStartTime[eid] = world.time;
-      }
+      // Record last tick we've seen from this player
+      InputState.lastTick[eid] = msg.tick; 
+      
+      // [FIX] Write to new InputState.axes structure
+      InputState.axes.forward[eid] = msg.axes.forward;
+      InputState.axes.right[eid] = msg.axes.right;
+      
+      InputState.viewX[eid] = msg.axes.yaw;
+      InputState.viewY[eid] = msg.axes.pitch;
+      
+      // [FIX] Convert booleans to 0/1 for axes
+      InputState.axes.jump[eid] = msg.axes.jump ? 1 : 0;
+      InputState.axes.shoot[eid] = msg.axes.shoot ? 1 : 0;
+      InputState.axes.reload[eid] = msg.axes.reload ? 1 : 0;
   }
 };
 
+// --- 5. STATE SERIALIZER ---
 export const getPlayerState = (world: SimWorld, eid: number) => {
   const isFlag = Components.CapturePoint.radius[eid] > 0; 
 
   return {
       id: eid,
       pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
-      vel: { x: 0, y: 0, z: 0 }, 
+      vel: { x: 0, y: 0, z: 0 }, // TODO: Add velocity
       rot: Transform.rotation[eid],
       type: isFlag ? 'flag' : 'soldier',
       
@@ -194,15 +158,24 @@ export const getPlayerState = (world: SimWorld, eid: number) => {
       
       team: isFlag ? Components.CapturePoint.team[eid] : Components.Team.id[eid], 
       captureProgress: isFlag ? Components.CapturePoint.progress[eid] : 0,
-      lastProcessedTick: InputState.lastTick[eid]
+      
+      // We don't send this for flags
+      lastProcessedTick: isFlag ? 0 : InputState.lastTick[eid],
   };
 };
 
 export const getWorldState = (world: SimWorld) => {
-    const entities = [];
-    const soldiers = soldierQuery(world);
-    for (const eid of soldiers) entities.push(getPlayerState(world, eid));
-    const flags = flagQuery(world);
-    for (const eid of flags) entities.push(getPlayerState(world, eid));
-    return entities;
+  const soldiers = soldierQuery(world);
+  const flags = flagQuery(world);
+  
+  const state = [];
+  
+  for (const eid of soldiers) {
+      state.push(getPlayerState(world, eid));
+  }
+  for (const eid of flags) {
+      state.push(getPlayerState(world, eid));
+  }
+  
+  return state;
 };

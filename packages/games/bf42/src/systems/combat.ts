@@ -5,13 +5,10 @@ import { getPoseAtTick } from './history';
 import { WEAPONS } from '../index'; // [IMPORT WEAPONS]
 
 const RELOAD_TIME = 2.0;
-const BUTTON_FIRE = 2;
-const BUTTON_RELOAD = 4;
 
 export const createCombatSystem = () => {
-  // [ADD Loadout to query]
   const query = defineQuery([Transform, InputState, Health, CombatState, Ammo, Team, Loadout]);
-  const targetQuery = defineQuery([Transform, Health, Team]);
+  const targetQuery = defineQuery([Transform, Health, Team, InputState]); // [ADD InputState]
   const rulesQuery = defineQuery([GameRules]);
 
   return defineSystem((world: SimWorld) => {
@@ -19,7 +16,7 @@ export const createCombatSystem = () => {
     if (rulesEnts.length === 0) return world;
     const rulesId = rulesEnts[0];
 
-    if (GameRules.state[rulesId] === 1) return world; 
+    if (GameRules.state[rulesId] === 1) return world; // Game is over
 
     const entities = query(world);
     const targets = targetQuery(world);
@@ -27,67 +24,71 @@ export const createCombatSystem = () => {
     for (const id of entities) {
       if (Health.isDead[id]) continue;
 
-      // [ADD THIS] Get Weapon Stats
       const classId = Loadout.classId[id];
       const weapon = WEAPONS[classId as keyof typeof WEAPONS] || WEAPONS[0];
 
       const now = world.time;
-      const isShooting = (InputState.buttons[id] & BUTTON_FIRE) !== 0;
-      const isReloading = (InputState.buttons[id] & BUTTON_RELOAD) !== 0;
 
-      if (isReloading && !CombatState.isReloading[id]) {
-          if (Ammo.current[id] < Ammo.magSize[id] && Ammo.reserve[id] > 0) {
-              CombatState.isReloading[id] = 1;
-              CombatState.reloadStartTime[id] = now;
-          }
-      }
-
+      // --- 1. Handle Reloading ---
       if (CombatState.isReloading[id]) {
-          if (now - CombatState.reloadStartTime[id] >= RELOAD_TIME) {
-              const needed = Ammo.magSize[id] - Ammo.current[id];
-              const actual = Math.min(needed, Ammo.reserve[id]);
-              Ammo.current[id] += actual;
-              Ammo.reserve[id] -= actual;
-              CombatState.isReloading[id] = 0;
-          }
-          continue; 
+        if (now - CombatState.reloadStartTime[id] > RELOAD_TIME) {
+          // Finish reload
+          const needed = Ammo.magSize[id] - Ammo.current[id];
+          const pulled = Math.min(Ammo.reserve[id], needed);
+          Ammo.current[id] += pulled;
+          Ammo.reserve[id] -= pulled;
+          CombatState.isReloading[id] = 0;
+        }
+        continue; // Can't shoot while reloading
       }
 
+      const isShooting = InputState.axes.shoot[id] === 1;
+      const isReloading = InputState.axes.reload[id] === 1;
+
+      // --- 2. Handle Firing ---
       if (isShooting && Ammo.current[id] > 0) {
-        // [UPDATED] Use weapon.rate instead of constant
-        if (now - CombatState.lastFireTime[id] >= weapon.rate) {
+        if (now - CombatState.lastFireTime[id] > weapon.rate) {
           CombatState.lastFireTime[id] = now;
           Ammo.current[id]--;
 
-          const originX = Transform.x[id];
-          const originY = Transform.y[id] + 1.6; 
-          const originZ = Transform.z[id];
-          const yaw = Transform.rotation[id];
-          const pitch = InputState.viewY[id]; 
+          // --- 3. Perform Raycast ---
+          // [FIX] Call with 2 args: (id, tick)
+          const pose = getPoseAtTick(id, InputState.lastTick[id]); 
+          if (!pose) continue; // No history for this tick, skip
 
-          const clientTick = InputState.lastTick[id];
+          // [FIX] Access pose.pos.x, pose.pos.y, etc.
+          const originX = pose.pos.x;
+          const originY = pose.pos.y + 1.6; // Eye height
+          const originZ = pose.pos.z;
+          // [FIX] Access pose.dir.x, pose.dir.y, etc.
+          const dirX = pose.dir.x;
+          const dirY = pose.dir.y;
+          const dirZ = pose.dir.z;
 
-          const cosPitch = Math.cos(pitch);
-          const sinPitch = Math.sin(pitch);
-          const dirX = -Math.sin(yaw) * cosPitch;
-          const dirY = -sinPitch; 
-          const dirZ = -Math.cos(yaw) * cosPitch;
-
+          let bestDist = weapon.range * weapon.range;
           let hitId = -1;
-          let bestDist = weapon.range; // [UPDATED] Use weapon.range
-          const myTeam = Team.id[id];
 
           for (const tid of targets) {
-            if (tid === id || Health.isDead[tid] || Team.id[tid] === myTeam) continue;
+            if (tid === id || Health.isDead[tid]) continue;
+            if (Team.id[tid] === Team.id[id]) continue; // No friendly fire
 
-            let targetPos = getPoseAtTick(clientTick, tid);
+            // [FIX] Change const to let
+            let targetPos = getPoseAtTick(tid, InputState.lastTick[tid]);
+            
+            // [FIX] Check for null *before* reassigning
             if (!targetPos) {
-                targetPos = { x: Transform.x[tid], y: Transform.y[tid], z: Transform.z[tid] };
+              // Target hasn't sent an update, use latest transform
+              targetPos = { 
+                pos: { x: Transform.x[tid], y: Transform.y[tid], z: Transform.z[tid] }, 
+                dir: { x: 0, y: 0, z: 0 } // Dir doesn't matter here
+              };
             }
 
-            const tX = targetPos.x;
-            const tY = targetPos.y + 0.9; 
-            const tZ = targetPos.z;
+            // Simple sphere check
+            // [FIX] Access targetPos.pos.x, etc.
+            const tX = targetPos.pos.x;
+            const tY = targetPos.pos.y + 0.9; // Center mass
+            const tZ = targetPos.pos.z;
 
             const dx = tX - originX;
             const dy = tY - originY;
@@ -95,15 +96,16 @@ export const createCombatSystem = () => {
             
             const distSq = dx*dx + dy*dy + dz*dz;
             
-            // [UPDATED] Use weapon.range
             if (distSq < weapon.range * weapon.range) {
               const dist = Math.sqrt(distSq);
               const toTargetX = dx / dist;
               const toTargetY = dy / dist;
               const toTargetZ = dz / dist;
 
+              // Check if ray is pointing at target
               const dot = (dirX * toTargetX) + (dirY * toTargetY) + (dirZ * toTargetZ);
               
+              // 0.99 = ~8 degrees
               if (dot > 0.99 && dist < bestDist) {
                 bestDist = dist;
                 hitId = tid;
@@ -112,7 +114,6 @@ export const createCombatSystem = () => {
           }
 
           if (hitId !== -1) {
-            // [UPDATED] Use weapon.damage
             const newHp = Math.max(0, Health.current[hitId] - weapon.damage);
             Health.current[hitId] = newHp;
             
@@ -127,8 +128,16 @@ export const createCombatSystem = () => {
             }
           }
         }
+      } 
+      // --- 4. Handle Reload (if not shooting) ---
+      else if (isReloading) {
+          if (Ammo.current[id] < Ammo.magSize[id] && Ammo.reserve[id] > 0) {
+              CombatState.isReloading[id] = 1;
+              CombatState.reloadStartTime[id] = world.time;
+          }
       }
     }
+
     return world;
   });
 };

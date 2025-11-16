@@ -30,6 +30,8 @@ pub struct EntitySnapshot {
     pub stamina: Option<StaminaStruct>,
     pub team: Option<TeamStruct>,
     pub score: Option<ScoreStruct>,
+    pub aura_charge_progress: f32,
+    pub is_healing_aura_active: bool,
 }
 
 #[derive(Serialize, Deserialize)]

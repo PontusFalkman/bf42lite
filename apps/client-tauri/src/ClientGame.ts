@@ -7,7 +7,8 @@ import {
     addComponent, 
     addEntity,
     defineQuery, 
-    createMovementSystem
+    createMovementSystem,
+    SimWorld
 } from '@bf42lite/sim';
 
 import { 
@@ -16,7 +17,8 @@ import {
     Soldier,
     Team,
     CapturePoint,
-    Loadout
+    Loadout,
+    Aura
 } from '@bf42lite/games-bf42'; 
 
 import { Renderer } from './Renderer';
@@ -25,10 +27,9 @@ import { InputManager } from './InputManager';
 import { UIManager } from './managers/UIManager';
 import { WeaponSystem } from './WeaponSystem';
 import { Reconciler } from './systems/Reconciler';
-import { ServerMessage } from '@bf42lite/protocol'; 
+import { ServerMessage, ClientInput } from '@bf42lite/protocol'; // [FIX] Import ClientInput
 
 export class ClientGame {
-    // This is correct: createMovementSystem() is a factory that returns the system function.
     private movementSystem = createMovementSystem(); 
     private sim = createSimulation(); 
 
@@ -47,193 +48,146 @@ export class ClientGame {
     private lastRtt: number = 0;
 
     private sendAccumulator: number = 0;
-    private readonly SEND_INTERVAL = 1 / 30; 
+    private readonly SEND_INTERVAL = 1 / 30; // 30Hz
     private readonly INTERPOLATION_DELAY_MS = 100;
 
-    private playerQuery = defineQuery([Transform, Soldier]);
+    // Queries
+    private meQuery = defineQuery([Me, Transform, Velocity, InputState]);
+    private playerQuery = defineQuery([Soldier, Transform, Team, Health, Aura]);
     private flagQuery = defineQuery([CapturePoint, Transform]);
 
     constructor() {
         this.renderer = new Renderer();
         this.net = new NetworkManager();
-        this.input = new InputManager();
-        this.reconciler = new Reconciler();
-        this.input.setInteraction(false);
+        this.input = new InputManager(this.renderer.getCamera()); // [FIX] Pass camera
         
-        this.weaponSystem = new WeaponSystem(this.renderer, this.net);
-
+        // [FIX] Provide the onSpawnRequest callback to UIManager
         this.ui = new UIManager((classId: number) => {
-            console.log(`Spawn requested with Class ID: ${classId}`);
-            this.net.sendSpawnRequest(classId);
-            this.weaponSystem.setClass(classId);
+            console.log(`[Game] Spawning with class ${classId}`);
+            this.net.send({ type: 'spawn_request', classId: classId });
         });
-        this.input.setInteraction(true);
-
-        this.initNetworkCallbacks();
-        this.net.connect('ws://localhost:8080');
-
-        this.createLocalPlayer();
-    }
-
-    private createLocalPlayer() {
-        this.localEntityId = addEntity(this.sim.world);
         
-        addComponent(this.sim.world, Transform, this.localEntityId);
-        addComponent(this.sim.world, Velocity, this.localEntityId);
-        addComponent(this.sim.world, InputState, this.localEntityId);
-        addComponent(this.sim.world, Me, this.localEntityId);
-        
-        addComponent(this.sim.world, Health, this.localEntityId);
-        addComponent(this.sim.world, Ammo, this.localEntityId);
-        addComponent(this.sim.world, Soldier, this.localEntityId);
-        addComponent(this.sim.world, Team, this.localEntityId);
-        addComponent(this.sim.world, Loadout, this.localEntityId);
-    }
+        this.weaponSystem = new WeaponSystem(this.renderer);
+        this.reconciler = new Reconciler();
 
-    private initNetworkCallbacks() {
+        this.net.onWelcome = (serverId) => {
+            this.localEntityId = this.net.getServerToLocalMap().get(serverId)!;
+            addComponent(this.sim.world, Me, this.localEntityId);
+            addComponent(this.sim.world, InputState, this.localEntityId);
+            addComponent(this.sim.world, Transform, this.localEntityId);
+            addComponent(this.sim.world, Velocity, this.localEntityId);
+            addComponent(this.sim.world, Health, this.localEntityId);
+            addComponent(this.sim.world, Ammo, this.localEntityId);
+            addComponent(this.sim.world, Soldier, this.localEntityId);
+            addComponent(this.sim.world, Team, this.localEntityId);
+            addComponent(this.sim.world, Loadout, this.localEntityId);
+            addComponent(this.sim.world, Aura, this.localEntityId);
+            console.log(`[Game] We are player ${serverId} (local: ${this.localEntityId})`);
+            
+            // Auto-spawn for now
+            this.net.send({ type: 'spawn_request', classId: 0 });
+        };
+
+        this.net.onSnapshot = (msg: ServerMessage) => {
+            if (msg.type !== 'snapshot') return;
+            this.net.processSnapshot(msg, this.sim.world, this.renderer);
+            this.reconciler.reconcile(this.sim.world, msg, this.localEntityId);
+            // this.lastRtt = Date.now() - msg.rttTimestamp; // RTT logic needs to be added
+        };
+
+        this.net.onHitConfirmed = (damage) => {
+            console.log(`[Game] Hit confirmed for ${damage} damage`);
+            this.ui.showHitmarker();
+        };
+
         this.net.onConnected = () => {
-            console.log('Connected to server');
-        };
-
-        this.net.onDisconnected = () => {
-            console.log('Disconnected from server');
-        };
-
-        this.net.onSnapshot = (msg: any) => { 
-            this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
-            if (msg.game.state === 1) {
-                let winner = "DRAW";
-                if (msg.game.ticketsAxis <= 0) winner = "ALLIES VICTORY";
-                else if (msg.game.ticketsAllies <= 0) winner = "AXIS VICTORY";
-                this.ui.setGameOver(true, winner);
-            } else {
-                this.ui.setGameOver(false, "");
-            }
-
-            this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
-            const WEAPON_NAMES = { 0: "THOMPSON", 1: "MP40", 2: "KAR98K" };
-            const myServerEntity = msg.entities.find((e: any) => this.net.getLocalId(e.id) === this.localEntityId);
-
-            if (myServerEntity) {
-                const wasDead = Health.isDead[this.localEntityId] === 1;
-                const isNowDead = !!myServerEntity.isDead;
-
-                // --- FIX 3: Optional snap on respawn ---
-                if (wasDead && !isNowDead && myServerEntity.pos) {
-                    console.log("Respawn detected - clearing history and snapping.");
-                    this.reconciler.clearHistory();
-                
-                    Transform.x[this.localEntityId] = myServerEntity.pos.x;
-                    Transform.y[this.localEntityId] = myServerEntity.pos.y;
-                    Transform.z[this.localEntityId] = myServerEntity.pos.z;
-                
-                    if (myServerEntity.vel) {
-                        Velocity.x[this.localEntityId] = myServerEntity.vel.x;
-                        Velocity.y[this.localEntityId] = myServerEntity.vel.y;
-                        Velocity.z[this.localEntityId] = myServerEntity.vel.z;
-                    }
-                }
-                // --- End Fix ---
-
-                Health.current[this.localEntityId] = myServerEntity.health;
-                Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
-                this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
-
-                if (myServerEntity.team) {
-                    Team.id[this.localEntityId] = myServerEntity.team;
-                }
-
-                if (myServerEntity.ammo !== undefined) {
-                    // [FIX] Pass the weapon name based on your current class
-    // Note: We use the class ID we stored in our local component, 
-    // or we can read it from the server entity if we synced it.
-    // For now, let's assume 'Loadout' is synced or use the local state:
-
-    const myClassId = Loadout.classId[this.localEntityId] || 0;
-    const name = WEAPON_NAMES[myClassId as keyof typeof WEAPON_NAMES];
-
-    this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0, name);
-                    this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0);
-                }
-
-                if (myServerEntity.lastProcessedTick !== undefined) {
-                    const rtt = this.reconciler.reconcile(
-                        myServerEntity.lastProcessedTick, 
-                        myServerEntity, 
-                        this.localEntityId, 
-                        this.sim.world, 
-                        this.movementSystem
-                    );
-                    
-                    // --- FIX 2: Avoid overriding RTT with 0 ---
-                    if (rtt > 0) this.lastRtt = rtt;
-                    // --- End Fix ---
-                }
-            }
+            this.net.send({ type: 'join', name: 'Player' });
         };
     }
 
     public start() {
-        if (this.running) return;
         this.running = true;
         this.lastFrameTime = performance.now();
-        requestAnimationFrame(this.loop);
+        
+        // Connect to Rust server
+        this.net.connect('ws://127.0.0.1:9001');
+        
+        // Start the game loop
+        requestAnimationFrame(this.tick);
     }
 
-    public stop() {
-        this.running = false;
-    }
-
-    private loop = (now: number) => {
+    private tick = (now: number) => {
         if (!this.running) return;
-        requestAnimationFrame(this.loop);
+        requestAnimationFrame(this.tick);
 
-        const dt = (now - this.lastFrameTime) / 1000;
+        const dt = (now - this.lastFrameTime) / 1000.0;
         this.lastFrameTime = now;
-        if (dt > 0) this.currentFps = Math.round(1 / dt);
+        this.currentFps = 1.0 / dt;
 
-        const cmd = this.input.getCommand(this.currentTick);
-
-        // 1) Write inputs into ECS
+        // --- 1. Input ---
+        this.input.update(this.renderer.getCamera());
         if (this.localEntityId >= 0) {
-            InputState.moveY[this.localEntityId] = cmd.axes.forward;
-            InputState.moveX[this.localEntityId] = cmd.axes.right;
-            InputState.viewX[this.localEntityId] = cmd.axes.yaw;
-            InputState.viewY[this.localEntityId] = cmd.axes.pitch;
-
-            let buttons = 0;
-            if (cmd.axes.jump)   buttons |= 1;
-            if (cmd.axes.shoot)  buttons |= 2;
-            if (cmd.axes.reload) buttons |= 4;
-            InputState.buttons[this.localEntityId] = buttons;
+            this.input.applyTo(this.localEntityId, this.sim.world);
         }
 
-        // 2) Run local prediction
-        this.sim.step(1 / 60);
-        // We must run the system manually since it wasn't passed to createSimulation
-        this.movementSystem(this.sim.world); 
+        // --- 2. Simulation (Client-side prediction) ---
+        this.sim.world.dt = dt;
+        this.sim.world.time = now;
+        this.movementSystem(this.sim.world);
 
-        // 3) Record the *predicted* result for this tick
-        if (this.localEntityId >= 0) {
-            this.reconciler.pushHistory(
-                this.currentTick,
-                cmd,
-                Transform.x[this.localEntityId],
-                Transform.y[this.localEntityId],
-                Transform.z[this.localEntityId]
-            );
-        }
-
+        // --- 3. Network Send ---
         this.sendAccumulator += dt;
-        while (this.sendAccumulator >= this.SEND_INTERVAL) {
-            this.net.send(cmd); 
+        if (this.sendAccumulator >= this.SEND_INTERVAL && this.localEntityId >= 0) {
+            
+            // [FIX] Read axes individually from the bitecs store
+            const msg: ClientInput = {
+                type: 'input',
+                tick: this.currentTick,
+                axes: {
+                    forward: InputState.axes.forward[this.localEntityId],
+                    right: InputState.axes.right[this.localEntityId],
+                    jump: InputState.axes.jump[this.localEntityId] === 1,
+                    shoot: InputState.axes.shoot[this.localEntityId] === 1,
+                    reload: InputState.axes.reload[this.localEntityId] === 1,
+                    yaw: InputState.viewX[this.localEntityId],
+                    pitch: InputState.viewY[this.localEntityId],
+                },
+                rttTimestamp: Date.now()
+            };
+            
+            // [FIX] 'msg' is now correctly typed, satisfying sendInput
+            this.net.sendInput(msg);
+            
+            // [FIX] 'msg' is also correctly typed for addInput
+            this.reconciler.addInput(msg, this.sim.world, this.localEntityId);
+            
+            // Firing
+            if (msg.axes.shoot) {
+                const fireMsg = this.weaponSystem.createFireMessage(this.localEntityId, this.currentTick, this.sim.world);
+                if (fireMsg) {
+                    this.net.sendFire(fireMsg);
+                }
+            }
+
             this.sendAccumulator -= this.SEND_INTERVAL;
         }
-
-        this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
+        
+        this.weaponSystem.update(dt, this.localEntityId, this.currentTick); 
         this.currentTick++;
         this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
         
+        // [NEW] Zoom Logic
+        const isAiming = this.input.isAiming;
+        let isScout = false; 
+        if (this.localEntityId >= 0) {
+            isScout = true; // TODO: Replace with class check
+        }
+        if (isScout && isAiming) {
+            this.renderer.setZoom(true);
+        } else {
+            this.renderer.setZoom(false);
+        }
+
         this.updateRenderAndUI();
     };
 
@@ -252,7 +206,9 @@ export class ClientGame {
                 pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
                 rot: Transform.rotation[eid],
                 pitch: isMe ? InputState.viewY[eid] : 0,
-                team: Team.id[eid]
+                team: Team.id[eid],
+                auraProgress: Aura.progress[eid],
+                auraActive: Aura.active[eid] === 1,
             };
             this.renderer.updateEntity(eid, state, isMe);
         }
@@ -266,7 +222,7 @@ export class ClientGame {
                 team: CapturePoint.team[eid], 
                 progress: CapturePoint.progress[eid]
             };
-            this.renderer.updateEntity(eid, state, false);
+            this.renderer.updateEntity(eid, state, false); // 'isMe' is false for flags
         }
 
         this.renderer.render();

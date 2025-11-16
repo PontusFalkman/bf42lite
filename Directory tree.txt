@@ -1,116 +1,124 @@
-bf42lite/
+bf42lite-main/
 ├── .gitattributes
 ├── .gitignore
 ├── Directory tree.txt
+├── GDD.md
 ├── README.md
-├── bf_42_lite_simplified_docs.md
 ├── package.json
-├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
 ├── tsconfig.base.json
 ├── apps/
 │   └── client-tauri/
-│       ├── dist/
-│       │   ├── assets/
-│       │   │   └── index-BBexWP4S.js
-│       │   └── index.html
 │       ├── index.html
 │       ├── package.json
+│       ├── tsconfig.json
+│       ├── tsconfig.tsbuildinfo
+│       ├── vite.config.ts
 │       ├── public/
 │       │   └── models/
 │       │       └── soldier.glb
 │       ├── src/
-│       │   ├── NetworkClient.ts
+│       │   ├── ClientGame.ts
+│       │   ├── InputManager.ts
 │       │   ├── Renderer.ts
-│       │   ├── UIManager.ts
-│       │   ├── input.ts
-│       │   └── main.ts
-│       ├── src-tauri/
-│       │   ├── .gitignore
-│       │   ├── Cargo.lock
-│       │   ├── Cargo.toml
-│       │   ├── build.rs
-│       │   ├── capabilities/
-│       │   │   └── default.json
-│       │   ├── icons/
-│       │   │   ├── 128x128.png
-│       │   │   ├── 128x128@2x.png
-│       │   │   ├── 32x32.png
-│       │   │   ├── Square107x107Logo.png
-│       │   │   ├── Square142x142Logo.png
-│       │   │   ├── Square150x150Logo.png
-│       │   │   ├── Square284x284Logo.png
-│       │   │   ├── Square30x30Logo.png
-│       │   │   ├── Square310x310Logo.png
-│       │   │   ├── Square44x44Logo.png
-│       │   │   ├── Square71x71Logo.png
-│       │   │   ├── Square89x89Logo.png
-│       │   │   ├── StoreLogo.png
-│       │   │   ├── icon.icns
-│       │   │   ├── icon.ico
-│       │   │   └── icon.png
-│       │   ├── src/
-│       │   │   ├── gameloop.rs
-│       │   │   ├── lib.rs
-│       │   │   ├── main.rs
-│       │   │   ├── network.rs
-│       │   │   ├── player.rs
-│       │   │   ├── protocol.rs
-│       │   │   ├── sim.rs
-│       │   │   └── systems/
-│       │   │       ├── combat.rs
-│       │   │       ├── mod.rs
-│       │   │       └── movement.rs
-│       │   └── tauri.conf.json
-│       ├── tsconfig.json
-│       └── vite.config.ts
+│       │   ├── WeaponSystem.ts
+│       │   ├── main.ts
+│       │   ├── managers/
+│       │   │   ├── NetworkManager.ts
+│       │   │   └── UIManager.ts
+│       │   ├── old fully functional ts backup.zip/
+│       │   │   ├── input.ts
+│       │   │   └── main.ts
+│       │   └── systems/
+│       │       └── Reconciler.ts
+│       └── src-tauri/
+│           ├── .gitignore
+│           ├── Cargo.lock
+│           ├── Cargo.toml
+│           ├── build.rs
+│           ├── tauri.conf.json
+│           ├── capabilities/
+│           │   └── default.json
+│           ├── icons/
+│           │   ├── 128x128.png
+│           │   ├── 128x128@2x.png
+│           │   ├── 32x32.png
+│           │   ├── Square107x107Logo.png
+│           │   ├── Square142x142Logo.png
+│           │   ├── Square150x150Logo.png
+│           │   ├── Square284x284Logo.png
+│           │   ├── Square30x30Logo.png
+│           │   ├── Square310x310Logo.png
+│           │   ├── Square44x44Logo.png
+│           │   ├── Square71x71Logo.png
+│           │   ├── Square89x89Logo.png
+│           │   ├── StoreLogo.png
+│           │   ├── icon.icns
+│           │   ├── icon.ico
+│           │   └── icon.png
+│           └── src/
+│               ├── gameloop.rs
+│               ├── lib.rs
+│               ├── main.rs
+│               ├── network.rs
+│               ├── player.rs
+│               ├── protocol.rs
+│               ├── sim.rs
+│               └── systems/
+│                   ├── combat.rs
+│                   ├── mod.rs
+│                   └── movement.rs
 ├── docs/
 │   ├── 00_index.md
 │   ├── 10_vision_core.md
 │   ├── 20_design_gameplay.md
 │   ├── 30_design_sim_arch.md
-│   ├── 31_design_sim_movement.md
-│   ├── 32_design_sim_weapons.md
 │   ├── 40_design_net_protocol.md
-│   ├── 41_design_net_transport.md
 │   ├── 50_design_client_rendering.md
 │   ├── 60_backlog_phase1_core_mvp.md
-│   ├── 61_backlog_phase2_lan_loopback.md
-│   ├── 62_backlog_phase3_visual_polish.md
-│   ├── 63_backlog_phase4_core_gameplay.md
-│   ├── 64_backlog_phase5_expansion.md
-│   └── 70_repo_structure.md
-├── node_modules/
-│   ├── .modules.yaml
-│   └── .pnpm-workspace-state-v1.json
+│   ├── 70_repo_structure.md
+│   └── 80_backlog_phase2_expansion.md
 └── packages/
+    ├── games/
+    │   └── bf42/
+    │       ├── package.json
+    │       ├── tsconfig.json
+    │       ├── tsconfig.tsbuildinfo
+    │       └── src/
+    │           ├── components.ts
+    │           ├── index.ts
+    │           └── systems/
+    │               ├── capture.ts
+    │               ├── combat.ts
+    │               ├── gameloop.ts
+    │               ├── history.ts
+    │               └── respawn.ts
     ├── host-node/
     │   ├── package.json
-    │   ├── src/
-    │   │   └── index.ts
-    │   └── tsconfig.json
+    │   ├── tsconfig.json
+    │   ├── tsconfig.tsbuildinfo
+    │   └── src/
+    │       └── index.ts
     ├── net/
     │   ├── package.json
-    │   ├── src/
-    │   │   ├── LoopbackAdapter.ts
-    │   │   ├── WebSocketAdapter.ts
-    │   │   └── index.ts
-    │   └── tsconfig.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── LoopbackAdapter.ts
+    │       ├── WebSocketAdapter.ts
+    │       ├── index.ts
+    │       └── types.ts
     ├── protocol/
     │   ├── package.json
-    │   ├── src/
-    │   │   ├── index.ts
-    │   │   └── schema.ts
-    │   └── tsconfig.json
+    │   ├── tsconfig.json
+    │   └── src/
+    │       ├── index.ts
+    │       └── schema.ts
     └── sim/
         ├── package.json
-        ├── src/
-        │   ├── components.ts
-        │   ├── index.ts
-        │   ├── loop.ts
-        │   └── systems/
-        │       ├── gamemode.ts
-        │       ├── index.ts
-        │       ├── movement.ts
-        │       └── stats.ts
-        └── tsconfig.json
+        ├── tsconfig.json
+        ├── tsconfig.tsbuildinfo
+        └── src/
+            ├── components.ts
+            ├── index.ts
+            └── systems/
+                └── movement.ts

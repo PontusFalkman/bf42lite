@@ -1,48 +1,100 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { Transform, SimWorld } from '@bf42lite/sim';
-import { Health, Team } from '../components';
+import { Transform, InputState, SimWorld } from '@bf42lite/sim';
 
-// 1. The "Tape Recorder"
-// Map<Tick, Map<EntityId, {x, y, z}>>
-const historyBuffer = new Map<number, Map<number, {x: number, y: number, z: number}>>();
-const MAX_HISTORY = 60; // Keep 1 second of history
+// Interface for what we're storing
+interface IVec3 {
+  x: number;
+  y: number;
+  z: number;
+}
+interface IHistoryState {
+  pos: IVec3;
+  dir: IVec3;
+}
 
-// 2. The "Rewind" Function (Combat will use this)
-export const getPoseAtTick = (tick: number, eid: number) => {
-  const frame = historyBuffer.get(tick);
-  if (!frame) return null; // History too old or didn't exist
-  return frame.get(eid);
-};
+// Stores history for *each player*, keyed by EID
+// Each player's history is a map keyed by TICK
+const history = new Map<number, Map<number, IHistoryState>>();
+
+// Helper to get direction vector
+function getDirection(yaw: number, pitch: number): IVec3 {
+  const x = -Math.sin(yaw) * Math.cos(pitch);
+  const y = Math.sin(pitch);
+  const z = -Math.cos(yaw) * Math.cos(pitch);
+  return { x, y, z };
+}
 
 export const createHistorySystem = () => {
-  // Track all living players
-  const query = defineQuery([Transform, Health, Team]);
+  const query = defineQuery([Transform, InputState]);
 
   return defineSystem((world: SimWorld) => {
-    // Calculate current integer tick (rounding handles float precision errors)
-    const tick = Math.round(world.time * 60);
-
-    const frame = new Map<number, {x: number, y: number, z: number}>();
     const entities = query(world);
 
-    // Snapshot everyone
     for (const id of entities) {
-      frame.set(id, {
-        x: Transform.x[id],
-        y: Transform.y[id],
-        z: Transform.z[id]
-      });
+      if (!history.has(id)) {
+        history.set(id, new Map());
+      }
+      const playerHistory = history.get(id)!;
+
+      // 1. Get current state
+      const state: IHistoryState = {
+        pos: {
+          x: Transform.x[id],
+          y: Transform.y[id],
+          z: Transform.z[id],
+        },
+        dir: getDirection(InputState.viewX[id], InputState.viewY[id])
+      };
+      
+      // 2. Store state by the tick it *represents*
+      const tick = InputState.lastTick[id];
+      if (tick > 0) {
+          playerHistory.set(tick, state);
+      }
+
+      // 3. Prune old history (e.g., keep last 5 seconds)
+      if (playerHistory.size > 300) {
+        const oldTick = world.time * 60 - 300;
+        for (const [t] of playerHistory.entries()) {
+          if (t < oldTick) {
+            playerHistory.delete(t);
+          }
+        }
+      }
     }
-
-    // Save to buffer
-    historyBuffer.set(tick, frame);
-
-    // Delete old history (Memory Management)
-    const oldTick = tick - MAX_HISTORY;
-    if (historyBuffer.has(oldTick)) {
-        historyBuffer.delete(oldTick);
-    }
-
     return world;
   });
+};
+
+/**
+ * Gets the interpolated pose for an entity at a specific tick.
+ * This is crucial for server-side hit detection.
+ */
+export const getPoseAtTick = (
+  eid: number,
+  tick: number
+): IHistoryState | undefined => {
+  const playerHistory = history.get(eid);
+  if (!playerHistory || playerHistory.size === 0) {
+    return undefined; // No history for this player
+  }
+
+  // TODO: Interpolate between packets.
+  // For now, just find the closest tick we have.
+  // This is imperfect but better than nothing.
+  
+  // Find the closest tick <= requested tick
+  let bestTick = 0;
+  for (const [t] of playerHistory.entries()) {
+    if (t <= tick && t > bestTick) {
+      bestTick = t;
+    }
+  }
+  
+  if (bestTick === 0) {
+      // No tick old enough, just grab the oldest we have
+      bestTick = Math.min(...playerHistory.keys());
+  }
+
+  return playerHistory.get(bestTick);
 };

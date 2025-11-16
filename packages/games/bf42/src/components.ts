@@ -23,7 +23,10 @@ export const CombatState = defineComponent({
   isReloading: Types.ui8, 
   reloadStartTime: Types.f32
 });
-
+export const Stats = defineComponent({
+  kills: Types.ui16,
+  deaths: Types.ui16
+});
 // 3. Teams & Rules
 export const Team = defineComponent({
   id: Types.ui8 // 0=Neutral, 1=Axis, 2=Allies
@@ -40,18 +43,20 @@ export const GameRules = defineComponent({
 export const CapturePoint = defineComponent({
   id: Types.ui8,          // ID of the flag
   team: Types.ui8,        // 0=Neutral, 1=Axis, 2=Allies
-  progress: Types.i16,    // -100 to 100 (Axis < 0 < Allies)
-  radius: Types.f32       // Capture range
+  progress: Types.f32,     // 0-100 (Axis) or 0-100 (Allies)
+  radius: Types.f32       // <-- ADDED
 });
 
-export const Soldier = defineComponent(); 
-
-export const Stats = defineComponent({
-  kills: Types.ui16,
-  deaths: Types.ui16
-});
-
-// --- [FIX] ADD THIS COMPONENT HERE ---
+// 6. Loadout
 export const Loadout = defineComponent({
-  classId: Types.ui8 // 0=Assault, 1=Medic, 2=Scout
+  classId: Types.ui8 // 0=Grunt, 1=Heavy, 2=Scout
+});
+
+// 7. Player Tag [FIXED: Added missing Soldier component]
+export const Soldier = defineComponent({});
+
+// 8. Player Aura [NEW: Added Aura component]
+export const Aura = defineComponent({
+  progress: Types.f32, // 0.0 to 1.0
+  active: Types.ui8    // 0 or 1 (boolean)
 });
