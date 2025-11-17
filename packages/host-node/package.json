@@ -10,6 +10,7 @@
     "@bf42lite/sim": "workspace:*",
     "@bf42lite/protocol": "workspace:*",
     "@bf42lite/games-bf42": "workspace:*", 
+    "@bf42lite/net": "workspace:*",
     "ws": "^8.14.2",
     "msgpackr": "^1.9.9"
   },

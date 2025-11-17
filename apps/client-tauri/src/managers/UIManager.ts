@@ -19,8 +19,13 @@ export class UIManager {
     private selectedSpawnId = -1;
     private hitTimeout: number | null = null;
     
-    // [FIX] Constructor no longer takes an argument
-    constructor() {
+    // FIX: Update signature to accept classId
+    private onSpawnRequest: (classId: number) => void;
+    private selectedClassId = 0; // Default to Assault
+
+    constructor(onSpawnRequest: (classId: number) => void) {
+        this.onSpawnRequest = onSpawnRequest;
+        
         this.ui = {
             deployScreen: document.getElementById('deploy-screen'),
             hudLayer: document.getElementById('hud-layer'),
@@ -29,38 +34,83 @@ export class UIManager {
             spawnBtn: document.getElementById('btn-spawn'),
             ticketsAxis: document.getElementById('tickets-axis'),
             ticketsAllies: document.getElementById('tickets-allies'),
-            fps: document.getElementById('fps-val'), // Assumed ID
-            rtt: document.getElementById('rtt-val'), // Assumed ID
+            fps: document.getElementById('fps'),
+            rtt: document.getElementById('rtt'),
             hitmarker: document.getElementById('hitmarker'),
-            gameOverScreen: document.getElementById('game-over'), // Assumed ID
-            endTitle: document.getElementById('end-title'), // Assumed ID
-            ammoCurr: document.getElementById('ammo-curr'), // Assumed ID
-            ammoRes: document.getElementById('ammo-res'), // Assumed ID
-            weaponName: document.getElementById('weapon-name'), // Assumed ID
+            gameOverScreen: document.getElementById('game-over-screen'),
+            endTitle: document.getElementById('end-title'),
+            ammoCurr: document.getElementById('ammo-curr'),
+            ammoRes: document.getElementById('ammo-res'),
+            weaponName: document.getElementById('weapon-name')
         };
 
-        // [FIX] Spawn request logic is now internal
+        this.initListeners();
+    }
+
+    private initListeners() {
+        // 1. Class Selection Listeners (NEW)
+        const classBtns = document.querySelectorAll('.class-btn');
+        classBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update Visuals
+                classBtns.forEach(b => b.classList.remove('selected'));
+                const target = e.target as HTMLElement;
+                target.classList.add('selected');
+                
+                // Update Logic
+                const id = target.getAttribute('data-id');
+                if (id) this.selectedClassId = parseInt(id);
+            });
+        });
+
+        // 2. Map / Spawn Point Click Listener
+        const mapContainer = document.querySelector('.map-container');
+        if (mapContainer) {
+            mapContainer.addEventListener('click', (e: Event) => {
+                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement;
+                if (!target) return;
+                
+                document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
+                target.classList.add('selected');
+                
+                this.selectedSpawnId = parseInt(target.dataset.id || "-1");
+            });
+        }
+
+        // 3. Spawn Button Click Listener
         if (this.ui.spawnBtn) {
             this.ui.spawnBtn.addEventListener('click', () => {
-                // We'd need to pass the spawn request to ClientGame,
-                // but for now, this just hides the screen.
-                if (this.ui.deployScreen) {
-                    this.ui.deployScreen.style.display = 'none';
-                }
+                // Note: We can relax the spawn point requirement if we are just doing random spawns for now
+                // if (this.selectedSpawnId === -1) { ... } 
+
+                this.setDeployMode(false);
+                
+                // Pass the selected class ID to the game loop
+                this.onSpawnRequest(this.selectedClassId);
             });
         }
     }
 
-    // ... (All other update methods: updateStats, updateHealth, etc.)
+    public setDeployMode(isDeploying: boolean) {
+        if (isDeploying) {
+            this.ui.deployScreen?.classList.remove('hidden');
+            this.ui.hudLayer?.classList.add('hidden');
+            document.exitPointerLock();
+        } else {
+            this.ui.deployScreen?.classList.add('hidden');
+            this.ui.hudLayer?.classList.remove('hidden');
+            document.body.requestPointerLock();
+        }
+    }
+
     public updateStats(fps: number, rtt: number) {
-        if (this.ui.fps) this.ui.fps.innerText = Math.round(fps).toString();
-        if (this.ui.rtt) this.ui.rtt.innerText = Math.round(rtt).toString();
+        if (this.ui.fps) this.ui.fps.innerText = fps.toString();
+        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toString();
     }
 
     public updateHealth(current: number) {
-        const perc = (current / 100) * 100;
-        if (this.ui.healthVal) this.ui.healthVal.innerText = Math.round(current).toString();
-        if (this.ui.healthFill) this.ui.healthFill.style.width = `${perc}%`;
+        if (this.ui.healthVal) this.ui.healthVal.innerText = current.toString();
+        if (this.ui.healthFill) this.ui.healthFill.style.width = `${current}%`;
     }
 
     public updateTickets(axis: number, allies: number) {
@@ -68,9 +118,19 @@ export class UIManager {
         if (this.ui.ticketsAllies) this.ui.ticketsAllies.innerText = allies.toString();
     }
 
+    public showHitMarker() {
+        if (!this.ui.hitmarker) return;
+        this.ui.hitmarker.classList.remove('hit-active');
+        void this.ui.hitmarker.offsetWidth; 
+        this.ui.hitmarker.classList.add('hit-active');
+        if (this.hitTimeout) clearTimeout(this.hitTimeout);
+        this.hitTimeout = window.setTimeout(() => {
+            this.ui.hitmarker?.classList.remove('hit-active');
+        }, 200);
+    }
+
     public setGameOver(isGameOver: boolean, winningTeam: string) {
         if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
-
         if (isGameOver) {
             this.ui.gameOverScreen.classList.add('visible');
             this.ui.endTitle.innerText = winningTeam;
@@ -81,10 +141,10 @@ export class UIManager {
     }
 
     public updateAmmo(current: number, reserve: number, weaponName?: string) {
-        if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
-        if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
-        if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
-    }
+    if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+    if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+    if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
+}
 
     public updateRespawn(isDead: boolean, timer: number) {
         if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
@@ -95,25 +155,16 @@ export class UIManager {
             if (timer > 0) {
                 this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
                 this.ui.spawnBtn.setAttribute('disabled', 'true');
+                this.ui.spawnBtn.style.pointerEvents = 'none';
+                this.ui.spawnBtn.style.opacity = '0.5';
             } else {
                 this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
                 this.ui.spawnBtn.removeAttribute('disabled');
+                this.ui.spawnBtn.style.pointerEvents = 'auto';
+                this.ui.spawnBtn.style.opacity = '1.0';
             }
         } else {
             this.ui.deployScreen.style.display = 'none';
         }
-    }
-
-    // [NEW] Added missing showHitmarker method
-    public showHitmarker() {
-        if (!this.ui.hitmarker) return;
-        
-        this.ui.hitmarker.style.opacity = '1';
-        
-        if (this.hitTimeout) clearTimeout(this.hitTimeout);
-        
-        this.hitTimeout = window.setTimeout(() => {
-            if (this.ui.hitmarker) this.ui.hitmarker.style.opacity = '0';
-        }, 100);
     }
 }

@@ -1,0 +1,1182 @@
+﻿===============================
+ DUMP FOR: apps/client-tauri/src
+===============================
+
+---------- DIRECTORY TREE ----------
+
+Folder PATH listing for volume New Volume
+Volume serial number is BC16-B8E7
+D:\BF42LITE\APPS\CLIENT-TAURI\SRC
+ª   ClientGame.ts
+ª   InputManager.ts
+ª   main.ts
+ª   old fully functional ts backup.zip
+ª   Renderer.ts
+ª   WeaponSystem.ts
+ª   
++---managers
+ª       NetworkManager.ts
+ª       UIManager.ts
+ª       
++---systems
+        Reconciler.ts
+        
+
+---------- FILE CONTENTS ----------
+
+## FILE: apps\client-tauri\src\ClientGame.ts
+---------------------------
+import { 
+    createSimulation, 
+    Transform, 
+    Velocity, 
+    InputState, 
+    Me, 
+    addComponent, 
+    addEntity,
+    defineQuery, 
+    createMovementSystem
+} from '@bf42lite/sim';
+
+import { 
+    Health, 
+    Ammo, 
+    Soldier,
+    Team,
+    CapturePoint,
+    Loadout
+} from '@bf42lite/games-bf42'; 
+
+import { Renderer } from './Renderer';
+import { NetworkManager } from './managers/NetworkManager';
+import { InputManager } from './InputManager';
+import { UIManager } from './managers/UIManager';
+import { WeaponSystem } from './WeaponSystem';
+import { Reconciler } from './systems/Reconciler';
+import { ServerMessage } from '@bf42lite/protocol'; 
+
+export class ClientGame {
+    // This is correct: createMovementSystem() is a factory that returns the system function.
+    private movementSystem = createMovementSystem(); 
+    private sim = createSimulation(); 
+
+    private renderer: Renderer;
+    private net: NetworkManager;
+    private input: InputManager;
+    private ui: UIManager;
+    private weaponSystem: WeaponSystem;
+    private reconciler: Reconciler;
+
+    private localEntityId: number = -1;
+    private running: boolean = false;
+    private lastFrameTime: number = 0;
+    private currentTick: number = 0;
+    private currentFps: number = 0;
+    private lastRtt: number = 0;
+
+    private sendAccumulator: number = 0;
+    private readonly SEND_INTERVAL = 1 / 30; 
+    private readonly INTERPOLATION_DELAY_MS = 100;
+
+    private playerQuery = defineQuery([Transform, Soldier]);
+    private flagQuery = defineQuery([CapturePoint, Transform]);
+
+    constructor() {
+        this.renderer = new Renderer();
+        this.net = new NetworkManager();
+        this.input = new InputManager();
+        this.reconciler = new Reconciler();
+        this.input.setInteraction(false);
+        
+        this.weaponSystem = new WeaponSystem(this.renderer, this.net);
+
+        this.ui = new UIManager((classId: number) => {
+            console.log(`Spawn requested with Class ID: ${classId}`);
+            this.net.sendSpawnRequest(classId);
+            this.weaponSystem.setClass(classId);
+        });
+        this.input.setInteraction(true);
+
+        this.initNetworkCallbacks();
+        this.net.connect('ws://localhost:8080');
+
+        this.createLocalPlayer();
+    }
+
+    private createLocalPlayer() {
+        this.localEntityId = addEntity(this.sim.world);
+        
+        addComponent(this.sim.world, Transform, this.localEntityId);
+        addComponent(this.sim.world, Velocity, this.localEntityId);
+        addComponent(this.sim.world, InputState, this.localEntityId);
+        addComponent(this.sim.world, Me, this.localEntityId);
+        
+        addComponent(this.sim.world, Health, this.localEntityId);
+        addComponent(this.sim.world, Ammo, this.localEntityId);
+        addComponent(this.sim.world, Soldier, this.localEntityId);
+        addComponent(this.sim.world, Team, this.localEntityId);
+        addComponent(this.sim.world, Loadout, this.localEntityId);
+    }
+
+    private initNetworkCallbacks() {
+        this.net.onConnected = () => {
+            console.log('Connected to server');
+        };
+
+        this.net.onDisconnected = () => {
+            console.log('Disconnected from server');
+        };
+
+        this.net.onSnapshot = (msg: any) => { 
+            this.ui.updateTickets(msg.game.ticketsAxis, msg.game.ticketsAllies);
+            if (msg.game.state === 1) {
+                let winner = "DRAW";
+                if (msg.game.ticketsAxis <= 0) winner = "ALLIES VICTORY";
+                else if (msg.game.ticketsAllies <= 0) winner = "AXIS VICTORY";
+                this.ui.setGameOver(true, winner);
+            } else {
+                this.ui.setGameOver(false, "");
+            }
+
+            this.net.processRemoteEntities(msg, this.sim.world, this.renderer);
+            const WEAPON_NAMES = { 0: "THOMPSON", 1: "MP40", 2: "KAR98K" };
+            const myServerEntity = msg.entities.find((e: any) => this.net.getLocalId(e.id) === this.localEntityId);
+
+            if (myServerEntity) {
+                const wasDead = Health.isDead[this.localEntityId] === 1;
+                const isNowDead = !!myServerEntity.isDead;
+
+                // --- FIX 3: Optional snap on respawn ---
+                if (wasDead && !isNowDead && myServerEntity.pos) {
+                    console.log("Respawn detected - clearing history and snapping.");
+                    this.reconciler.clearHistory();
+                
+                    Transform.x[this.localEntityId] = myServerEntity.pos.x;
+                    Transform.y[this.localEntityId] = myServerEntity.pos.y;
+                    Transform.z[this.localEntityId] = myServerEntity.pos.z;
+                
+                    if (myServerEntity.vel) {
+                        Velocity.x[this.localEntityId] = myServerEntity.vel.x;
+                        Velocity.y[this.localEntityId] = myServerEntity.vel.y;
+                        Velocity.z[this.localEntityId] = myServerEntity.vel.z;
+                    }
+                }
+                // --- End Fix ---
+
+                Health.current[this.localEntityId] = myServerEntity.health;
+                Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
+                this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+
+                if (myServerEntity.team) {
+                    Team.id[this.localEntityId] = myServerEntity.team;
+                }
+
+                if (myServerEntity.ammo !== undefined) {
+                    // [FIX] Pass the weapon name based on your current class
+    // Note: We use the class ID we stored in our local component, 
+    // or we can read it from the server entity if we synced it.
+    // For now, let's assume 'Loadout' is synced or use the local state:
+
+    const myClassId = Loadout.classId[this.localEntityId] || 0;
+    const name = WEAPON_NAMES[myClassId as keyof typeof WEAPON_NAMES];
+
+    this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0, name);
+                    this.ui.updateAmmo(myServerEntity.ammo, myServerEntity.ammoRes || 0);
+                }
+
+                if (myServerEntity.lastProcessedTick !== undefined) {
+                    const rtt = this.reconciler.reconcile(
+                        myServerEntity.lastProcessedTick, 
+                        myServerEntity, 
+                        this.localEntityId, 
+                        this.sim.world, 
+                        this.movementSystem
+                    );
+                    
+                    // --- FIX 2: Avoid overriding RTT with 0 ---
+                    if (rtt > 0) this.lastRtt = rtt;
+                    // --- End Fix ---
+                }
+            }
+        };
+    }
+
+    public start() {
+        if (this.running) return;
+        this.running = true;
+        this.lastFrameTime = performance.now();
+        requestAnimationFrame(this.loop);
+    }
+
+    public stop() {
+        this.running = false;
+    }
+
+    private loop = (now: number) => {
+        if (!this.running) return;
+        requestAnimationFrame(this.loop);
+
+        const dt = (now - this.lastFrameTime) / 1000;
+        this.lastFrameTime = now;
+        if (dt > 0) this.currentFps = Math.round(1 / dt);
+
+        const cmd = this.input.getCommand(this.currentTick);
+
+        // 1) Write inputs into ECS
+        if (this.localEntityId >= 0) {
+            InputState.moveY[this.localEntityId] = cmd.axes.forward;
+            InputState.moveX[this.localEntityId] = cmd.axes.right;
+            InputState.viewX[this.localEntityId] = cmd.axes.yaw;
+            InputState.viewY[this.localEntityId] = cmd.axes.pitch;
+
+            let buttons = 0;
+            if (cmd.axes.jump)   buttons |= 1;
+            if (cmd.axes.shoot)  buttons |= 2;
+            if (cmd.axes.reload) buttons |= 4;
+            InputState.buttons[this.localEntityId] = buttons;
+        }
+
+        // 2) Run local prediction
+        this.sim.step(1 / 60);
+        // We must run the system manually since it wasn't passed to createSimulation
+        this.movementSystem(this.sim.world); 
+
+        // 3) Record the *predicted* result for this tick
+        if (this.localEntityId >= 0) {
+            this.reconciler.pushHistory(
+                this.currentTick,
+                cmd,
+                Transform.x[this.localEntityId],
+                Transform.y[this.localEntityId],
+                Transform.z[this.localEntityId]
+            );
+        }
+
+        this.sendAccumulator += dt;
+        while (this.sendAccumulator >= this.SEND_INTERVAL) {
+            this.net.send(cmd); 
+            this.sendAccumulator -= this.SEND_INTERVAL;
+        }
+
+        this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
+        this.currentTick++;
+        this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
+        
+        this.updateRenderAndUI();
+    };
+
+    private updateRenderAndUI() {
+        this.ui.updateStats(this.currentFps, this.lastRtt);
+        
+        if (this.localEntityId >= 0) {
+            this.ui.updateHealth(Health.current[this.localEntityId]);
+        }
+
+        const players = this.playerQuery(this.sim.world);
+        for (const eid of players) {
+            const isMe = eid === this.localEntityId;
+            const state = {
+                type: 'player',
+                pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
+                rot: Transform.rotation[eid],
+                pitch: isMe ? InputState.viewY[eid] : 0,
+                team: Team.id[eid]
+            };
+            this.renderer.updateEntity(eid, state, isMe);
+        }
+
+        const flags = this.flagQuery(this.sim.world);
+        for (const eid of flags) {
+            const state = {
+                type: 'flag',
+                pos: { x: Transform.x[eid], y: Transform.y[eid], z: Transform.z[eid] },
+                rot: 0,
+                team: CapturePoint.team[eid], 
+                progress: CapturePoint.progress[eid]
+            };
+            this.renderer.updateEntity(eid, state, false);
+        }
+
+        this.renderer.render();
+    }
+}
+
+## FILE: apps\client-tauri\src\InputManager.ts
+---------------------------
+import { ClientInput } from '@bf42lite/protocol';
+
+// Helper: Convert degrees to radians
+const toRad = (deg: number) => deg * (Math.PI / 180);
+
+export class InputManager {
+  private keys = new Set<string>();
+  private buttons = new Set<number>();
+  
+  private yaw = 0;
+  private pitch = 0; 
+  private readonly MAX_PITCH = toRad(85);
+
+  // === 1. ADD STATE FLAGG ===
+  private isInteractionEnabled = false; 
+
+  constructor() {
+    window.addEventListener('keydown', (e) => this.keys.add(e.code));
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('mousedown', (e) => this.buttons.add(e.button));
+    window.addEventListener('mouseup', (e) => this.buttons.delete(e.button));
+
+    document.addEventListener('mousemove', (e) => {
+      // Only rotate if locked AND enabled
+      if (document.pointerLockElement && this.isInteractionEnabled) {
+        const sensitivity = 0.002;
+        this.yaw -= e.movementX * sensitivity;
+        this.pitch -= e.movementY * sensitivity;
+        this.pitch = Math.max(-this.MAX_PITCH, Math.min(this.MAX_PITCH, this.pitch));
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      // === 2. CHECK STATE BEFORE LOCKING ===
+      if (!this.isInteractionEnabled) return; 
+
+      // Prevent locking if we clicked a button/UI (extra safety)
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('.spawn-point')) return;
+
+      if (!document.pointerLockElement) {
+        document.body.requestPointerLock(); 
+      }
+    });
+  }
+
+  // === 3. EXPOSE CONTROL METHOD ===
+  public setInteraction(enabled: boolean) {
+      this.isInteractionEnabled = enabled;
+  }
+
+  getCommand(tick: number): ClientInput {
+    // If in menu, return empty input
+    if (!this.isInteractionEnabled) {
+        return {
+            type: 'input',
+            tick,
+            axes: { forward:0, right:0, jump:false, shoot:false, reload:false, yaw: this.yaw, pitch: this.pitch }
+        };
+    }
+
+    let forward = 0;
+    let right = 0;
+    
+    if (this.keys.has('KeyW')) forward += 1;
+    if (this.keys.has('KeyS')) forward -= 1;
+    if (this.keys.has('KeyD')) right += 1;
+    if (this.keys.has('KeyA')) right -= 1;
+
+    return {
+      type: 'input',
+      tick,
+      axes: {
+        forward,
+        right,
+        jump: this.keys.has('Space'),
+        shoot: this.buttons.has(0),
+        reload: this.keys.has('KeyR'),
+        yaw: this.yaw,
+        pitch: this.pitch
+      }
+    };
+  }
+}
+
+## FILE: apps\client-tauri\src\main.ts
+---------------------------
+import { ClientGame } from './ClientGame';
+
+// Prevent context menu
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+console.log("Starting bf42lite Client...");
+const game = new ClientGame();
+game.start();
+
+## FILE: apps\client-tauri\src\old fully functional ts backup.zip
+---------------------------
+PK   ™°h[               main.tsux         UT ãiåôi iå=ksÇ‘ß]åÿ0Då,0–EŽ4åP$$!ÇW È¶ârYK`H¬ì"»‘ Íªû÷ï—\÷¼_»XR:§\¡»ÛÝÓÓÝ3ÓÓÓ3³µEâÅ¢ØÏš–Ý2^æÉV‘·æq’FeñùgŸ–ÌY^’?’¸ £×ƒ^\åÙœ´ÊiNikÿóÏ¶¶HŸÃ”SJ^Œ^ždñ„æ
+õã%¹7Ñ·èm<_Ìh±õs1ßš1ˆbKCG?X‚¢“¤IÙOË²C–‹I\Rñà†%¼è÷tU\ä´(èDm1‹ÖE<~¯Ù™×|a‚|þ!¬€Óâºƒ¬ùð·,Iåï-ñz|Ï)ƒE™©‡áxJç1 È2ÿºÈ³2g³­‚}²ØûŽ^³ñ{ZNâEiî¯)-·bþ1˜Îþ¼'•P$óå,.“,%³ì:“«,'BÁE2¡d‘ÓI2F »ª7Y>› Çø;|dÕåqZ •9{ú–Î²qR®ØÃkÏÊ)‡¢1¸˜Å+šc•)µy’Æ|~Ýí’ˆôO/Î#2žöÏ¾uáÛ÷»{òãYï;rt¿Ïzg£!~E¸Ãù<2ž\Ó²#ß½Èn;ÞÙ1Ð’Hâ¥ |Ú;&/Î¿—OéÄ ORŠMoÐ»8ìÈèüüDè"NòQ–Í\J`Yõ§ªê¯½³Ããžx•ÓZƒÁ¥xcþ%sš‹ñ©SO9=eG`([ÌB”ßúÐ˜>dï©Õêð…6@ÖMtYÇ/’­q–SE¢w4$S:[@;æà—IIÇû†œ¼xóêeÿ{e¬9gèQO)ØçÐ4Êx2Q_;âE/-eý&ô*Iéß—4çÏ=£±q>Ÿd;"¯z#ò¦Oz'½SfeðúóÏÆYZ”d§ 1I6^ÎXÒïÍ(þ|±êOÚ­khÙ­Ml1¯G§'G^ _IºœÍö%±érÒ›ÕÑ Mê8ùPAÞ-ë	!DJW‹¢ž tÇÙ2Ån¦½¼,ëéÀCè]–éëþ[C@ºS€Ñä^,Ë2K«)bŸ½ŽâÏ Ó"‚öõÕF˜n²ÐÙˆâdFùúÍ±2Ö±®±ó¡¼+®'+€šÐ•]ú.oI¢?—ÍI–Cÿ\_$B<¤×¬+¬§ÉaR‹ÃãcðpúCÒÆ…À8°©Û$Ö5¾I÷cÊ…ÑÇ*6WãÈš¶Åàº% >®`>`,I~m;kdÍAQwõ$¢g
+úe-öf8—1]'	Ú-l£Ž‹c°ñ³íAöaÇt1ËVëúœ	ƒZÛë0ñq¼½Ìâ|¢Zµz³¦a+¸&Ì—àÏí°Âê©2¸.£Ý”ìnC²»ÍÉÎãr<í¥k$À º4tç0Aˆ¯×WäŠ´Ñ¯ØÞÀ¯¿²'>œ‹1&‹'9néG6èˆG5bHB²›Ïºƒ/Dß)žT¿§ŠÖÝ’xeuÍiÉ¿þê5¿srôºwô_‚„ÝÜe«¡è
+
+—U0­Q¼³lÉx·ë¼ÓZüü³Mî Â<1»!)½!½<ÏòvÜ5ÊU4G:›IDŽ¦tü\Õ	½¦å|µ6Aƒ÷†»óŽoF£ó3ÒûF'rÒŽzg½ðú„â¢,…ù: íMrð\¸¡3š—ÌièU<.aV…~æŒ–tæ<4.(É—)y²HspL?ì¡oòX"«l™ƒáç¨Ú¹Jòæ¬0YN	/ê	šÈ“¨…ô×Ìö„é„âV¿ÌÑÜ¥QEâÙ’îËÏÙŒFàß·ßeiJaÂ—^“2#ø°î£(z·É@Áäò'©ÜWiuªæBøíƒ%ögyDÊÕ‚ÂUÇ~¤A wÌ9ƒÉdšÑü’æ¬”RÎ!÷`Bq«>‘•þyg¼oôÃ"£äž‘û &¡¨	ÞÒ~¼Ì¡=”tß:Àh›ª+!>8«Å/ï“Ù¬Ð$&4.§…ÌLOË‡M§yP€É‡¢¬
+8Zr?üh˜,Î¤þ‰›=°¾™‚'7I9ÕSrÙÿ±Ï+6ÂPO‹Ú?(Ø7÷•>q¢Íû^W§ö×À	“sm¤*üŸäœM«ƒÅŒ;Lû'1Áõ‰Šn-HUÎ²ŸvµLYìƒ4OâYrG™fFª¡½¹ç)Ê/ŠÿÀuÛ•à@§«Í}”KÍzz2LÙ‹ñ™¶(%™ìJ&º@bŠËbÚx;´Ž|6š|G°(AD·? Âýue~]¹_ïÌ¯w.6U;¾q!DûÕ0ì…u¯~-Ûb_†÷ä›oÈ¶]±
+BÜwÍ‚ê*4²ê3xÀ+ÏÁ‚Xw"àà·‚ÙÙ&ºŽ
+ÅXZ”Lj¹”]‘Æ}’‹Ø« —²Ç2¡ù»šRï¹ußsÃÍi¹ÌSèu_fªîU››P»Õ½Ì³9kw0¾³&g6?aýfóàã´	yME7$ÙRA¢¥pÁŸssÀ‡`ÝÇdSKÔŒ=™-ÝèT:XJ=†Šš6E‘Õ¦à,úÚØŒÐ6ÅQQ\/ýÇ?GÌ}4¹õTXøÖ&¡gëE ô±è:ÐûX
+FX÷Ñu°b¹6{.ÌÚ›´[ßf¥q—úË¾»ª„]y°w•°w>]ÑÉ)Ç7¼îðCì«j¡n?¯>¨û¤[M¹r!ÝJ*È;U~¨ƒWðSëã¾…¡ºz>(ê8ç‰$Eú¤$p¾±CÃ¥3ì	»Ïÿ6”~öJDûZ‘‘J~F7WÁx'J’2"#@…nõÍŸÀŒˆ–7Yþ^¡‰y.xàCÂd+‡‰ +ŒÍ"Ý+
+¶œŠWôŒÂ`ŸE¤ÖõOúÿè¹@˜ Ž‚û.ˆ!:ýùÞ™ZÒ5ÇždKx°À?Î0CU‹²^×¬RHòT3Ë>c	 iÅí®Á­,‘3¡›˜d7i}¡a`â®jéu(-ÕÇÕÊDA5d²¾†OgÉ,Ä¬îNk¹Õ`ÍôX	O´2˜*ãsêX¸³—ît½¬>¾¶jdS‹©Ã©3±þ':gÓÃÔ2+hT8’
+ºÐ_¦3é ðOÒ•4c4§‡ý3àv4xËƒ2q±JÇDÏÙT¬bžMÀY4"{ð1OÒk!)”ƒòV3M’bœ­Æä`¯€‡ü|ˆK3Þ·D—>+Sý{îš?ùUk’ZÝ—€b<C•ôuÀ¡±¬89›PILÄéúz€^Þ ˆaM ¥¢›DKvšLèÀŒûµõäÓnÔÉŒ›µ+o¢ÅÃc á]Ã”+T ìt¬NÅBãsùÞƒS­Þù E¡
+ºwÄRL³[,“eÎ’+”XÈ3ÅI]åxåù¤I9ë…{5£·Rkl–©ˆ,‚Ä—3f?e."ƒæ÷’Þ–GH#ÅuÖÖqïâäümÿìŒêQiŠÜª0'cˆDÊ`ßªƒo8dbTfCÖDÛ›Ö|ÌSëZmZÅÚ¼IRè£‚–
+Û™rÁL·«¬‚ó k÷5ô¡›ÖÔ¿Ž›m\kÌk½ ZƒÞáñÛ–ÔäU<+h(¨NMïžPÀ4«ö(Å	b¢ÑtpÐÜ¶Â"ˆ(Ò–XìÞÍfjC½a†ÊXò• f™Y¢,4½’G¿·pJ'Èöi¼HðëkÞ";¢e>Wv†Dp¤€–œÍ>@ÿ,ÌâCÓ/¯_”e ÆEžÍl¼œ1þô5â=o£- 9ÓÂŒR˜Ù/.ÉŒÖW0°OB]ñ¾ŽmÈ¨~‹µ|ChÛUCÁiq½gä¨A¿° > ¢%âÛDê-B	·™V"üw[“ÚTeð2§ÿ\Ò¢¼ÈX°ûÔ,¾5ö;Q)Ì9Â”ÂèçTZ.ZúÐ‡Nh®ˆƒ½:ˆ/í_dŽŽKIì †àˆµE¤)Í¿K&N1_½¦Éõ´tq§1 €5EàfÙ§a~cšR‹³!¾õf_£KÚuŽ‹SàQ6Ëòööíî6üóÕ¦EvcF[à4/¸xó±¯bê/ÏÄÔÐ«#Ù
+TR oG;â¶Zü%Ú #åYÉúõ(Ë'Lò­·ßÿ£e±¸`V7€«½å”²Ý!ü×lâ§ço†½Ÿ†½³!L¿íÞb›Ž¶·w2Å9úÎ&ùo)®¹=m›$‹y–•Sè™^ò9$¸³ï;¿º**ˆŸ;Ñ—ò4Ú6é®âV›FõÓh3µ…sœà„$ÏNð#(þŠýa¹¢H†-²"a²VÛ;@þÿÌ„ÇE9dÖiŽçü·Z˜Ë,Ðð£f8¡Ùýs5Ô”
+~Ã`Â(Rþ˜`ŸU‚\1ˆgÛ†õÇ“I{&›—1*Ì/1vâ	êÐø BúrÿA!=Ût¨š$Œ~d˜àZ,¹‰s:Í–ÕeBu_A;\Xå±7m—¶µ™¾šeY~
+®†®-*§´˜‚“—Nâ|"Ú*}lßþ™ý‰v7§e<KiQìŠ¼žÊ—_u¬á‚³pÏfçà+ö÷q0!¼¢ ³Õ6ÍÂ‹ìV¾o?CÝZ­‰¡z\·-Š[Ê½Ò-‹íJ;äß uQèýf!5ÉÔÊ`}¾Öö¿oMaPEqàGçÛ	M¯Yãbön;ËröÉ©)—qXbšdÇ`ªc³±);{Ãtï­J¶;‘m“ Œ
+»Ò5* /\ôp£¿7“¶‚÷%>Ì–ÿ"ù°’×Ê§J<»Z<ü{sñ0x_<½¸(.%_@¼.ë¥ƒÛÂ±%áKjÛA®–ûÜ\4îKæ;ú/’lK¦û Ñ0ìjÑ°ÏÍEƒàÆˆ‡s_G‘Ìy ˆ‡Î¤ø†½Þ1†²#³—^úg£ŸäÇ/á£ÚŸ±+õˆÀy> G'}–ÕkÄ¬ø$¤—L*£L¶ãx~ù3øCE`ÎÆ5È¿?=~nNT¾Êá1fzgÇ½.7ŒÔ	+qåa…¨Q
+$Œ>»aD•ÃB"ÿÅð@9L®ˆÇÔãGïíí««ím¶}æEÎÌì'Qû/zà®¯ex¾Z˜<eçq²ä¸¯òÕs™Œ*ƒlPakñÁ´"L'›kªk.òŠWu™k2¡áb
+sLÃŠ ·ØÙÇWÂ„æ˜èU0 ‹éî·/¿ßƒùÓqÿejv
+ú‡'A®?FèqlÛY–Çé5È½Ö›¥ó¤(³X4Oã÷¸^I®gÙˆ³´`9?Ø¦*løi@›\0ØYõ¾¿89öÏÏÈÑùè7óÚápØÓ»Ç¸¤ìOƒÃãþ›!ˆê/¢ÿ;]Ê\b±¤*Íå'é§áßCßGøãÉîns² i °“ÂèØ¬¾w»˜Áðo0­pŠÚ3”¶Ï—<0Ô¥“íô1‘ð"É41<·.Ê
+ô*íéE\$ãcE~Kg òîÍ4)…-±µÿEÌ3ªp¼–“-â±0ƒÿ´ç : Q$%³¶JÜìèÜÏŽÎýt³‚$žïJxòëø"ˆÆ³ƒ<2þ¥ láxt ZÏ/†$áÚ€“ÜÇÍAa™¹_Ò(4Ç,Š8Ó(ÍnÚ›^ª–ÓŒ°Íè¦$úŽYy%öçrÉè-¸Á1rí iŒÞ½´Xæ”¥³Šü-z›Ð¯bb×5Ô>%ÉÄÒ1e<U²Ív¥îaf%Ë–ñ4fÓ~Æ³ÁVGË¼ Ú_°ô+ŸË$*up¯ä¤­,¾¢‡fÉÅX¾­áÊ¯‚•h…¢3“)¤‡eš‰["ÛVYèõc±Ú¤¶N¢;Èö-}ñE(•¡b5ÙÉUºñÒ´$ X=ðËËÜPêƒ–±Ã[yQ¢5¶_qÔ_hñ7KÊ®i›ÙƒÅJ_l¸"e|-ŒSRi$)–¾lq¬”ŠC“tFüÍÌ+§“:Ìê5Jâh\79îaì¹¢ç¯þ%/óÆÃ‚¦ 8Š1S:”r¨#‡Å@£œ•ÆUõòƒÕf¨02½P:À¶G;¿Å¬vã|–ÆUåK®ï’ÄŽì“øÏzSlÊÅÃÛ†¹9?$)ö!R+­Ÿ@Rü€G0Êpxdïêe÷ þø±5,}üF\oèñ®êsÀB}|·ï²!Â}¯SO¤¢“p˜­lUA¸õ¾Ñ¹`L!AV$VéVvOxXdÌ¦TmšçfÖŽXÎ¾‰ó´Ýr}.p6Á³›´:&_æNbzbêç7QÏ)n_h-Ó÷à§-Ð›4ŸPÝãŒœ0=‡m8üßÿþLÙûÀ|.Ì—Í–˜Í ŽÛ¯;Ub–]_cÒHÌÂLÉg¹íUZ~%höÂˆƒµ×±Ãv‚èü¯Í='Ì ÅÀ’q²¬äïÁ·"kØXÛBÛÏ†F0äoQ	/áŸž¾TÔW»ô‚—Þ!!PkS"¨| ÀÓ)8Óf‹t8+à4É~R÷ä†¢G.¡ûwºrÄ˜ºDx~ÑU´¶0IpVlA¡“¾_Ï.M[h#ªäqyŠ;˜hÂXã<u°ˆý”<à:S¹¥Ò$UÆH‹‹´Á¾Ô(›8cô—U‘OB¾aé/áàœ\]Y% rÙ^€·²›v­ˆ*é Q‹Î½ÍcSô?Ð¼ íö&Y_T¼|þUÅæÓ›QR°ÿº:BXàBP ußE@ÐhþÐ°–WõŽûþ~3\T8^oÉÊ!â‹® UP¾Êd‡Š}ÐÐò¦	¥[Ò_£F,“Ð½Q35,›vÎz¥jCgŸÛvß±ÍÖÌðÑÌ¹	›ö¿,ð½Œñò’î½sDlô†üÏ••Úºÿ8ÕÁ¦ííííŽ§·$ÉîpXv‚Å™MË¤bkO®M!CfU§gÙR·°uü‚ÿûñ4!3+ÏŒ2À$àðôôÜ\ xùæìã–r¬7‡¬CsYÅ³Š4^ÓŒ‡BšYöBÍCÆ,$eŒ³¸bˆ´bp³4mD¬BÊÖ$ì Ÿ¬tt«­ŒßwAÕýŠT±Øl,vÄZ3››kÞ°“ôˆ¬¢°¥ªû{\·8eFMØç©±RõIÌÓZúúë´—ÁþÍÓêïÃ6ëÖÍPJ#}e.*~+µ—)?ãÏÌÏY¿ì¸ëŠ¿©6³,G¿ÓrÖ3ÑÁ‡‡¯zäõáÙñ‰:šFgegé)ßÐÙnÏ‹kÓ§³–Ôio˜Âsë£eÊò¸8Üò,Sò«<ÉÔ7šÃŽ0Mœ1×çâ>˜=á€‚8
+UÈÐHÌjŸä@æœËô‰Þ!k˜USzÜèšÈÃI	üR³D›sÂh~ÿN¶ýPo±§j«¿3ÁÚoJBïý¯¦`nð¶¡~Tb»Â¯*áWAø»Jø»0ýø¦ºµÙÛÆá¾«°ä†o‰gç”3O:DÞ»õè5Õ‡<Z¡ZÎ&ðªŠL>n'­…oÊ¥:pÁeSæi}i½@`ØùÛyÿL“w7`Wq%ÎÛ÷1ëê¢±4^`Ž±%’¶wv(±^ |²ZIÖ"g›èYÛõªÜË]‡:à0›º\§¨æÚ]©*õv$À*âå†ël}4èGHÞX¬®H`ý±ª.ê˜ºúêxÞ–W's‰ëõ2×Ñª+X»«ª˜>lZ¦nD;"3è°(–sŠgudÆ‘yTCPNÞBŸßÿôñÐY«±ëðÒ_¥y›à³°ÉxŽª)î¸¢7–§®°ÖüìDš[ì ¯ª¡çäÔgÉS]ª¿'¿ª|s_¾‹)öæW¡ªýùÛ]¹°Q;¦›·a»WÜÍ..U85Ý0Ç	ç^PGzòÇ) sÿ˜ábÕ6él²I„¹-ÌÇÕ…2t“ ã8']ÖlÜÖèV;Dà¸ñ¥mråî*u6[¡{µ»ÜûréÙ³íÓ3‡ß›*àaßã,àó<^E¸,Ö6vçFxC{s„ºhoâÉ£Û	Ž…˜hº„MO’
+í‹/øéã›~|›KŽ†çfÉ‘®*Ë5#äl„~7ö`6ß¢2{™ÜÒI{góžÌ‹w®Éü„âÁ ÿA•iÅ\Ë#ÜŠ8'
+>‚xSE[Ê—¦Ð¸d&ó–_›;¤%°“‡VÀ–ci¸w’åê±¾¸°G]‚8]¶q9¼Nr™ÝÒJâ<Ä÷€J<Ý³
+ÃM5óü{MË8NNÿñ§"|Y’»x6qLnç•ó|ç<O.B|ã¼as#ç™œ—l¸pÞñqÀy)ç­a<Ç´(óå¸Ä¬O”$CX‚Ç?Ã3ïø_„ãí|±bçcR˜x¬	ï²1žÓêgÜâ•føhK´½É
+?mL.èby•0¯ñpõ¥"òï;aõÎ–aƒó7£;Tú|0èd<Ëeû>¥6o­ØîUØÈm;C¨iôæ¡¨*³ÓG4ƒ5Üoº­„X	ˆU%Ä€¸s ¼•7ô³¤ìy`@1Ùe¢Í6ètÊ$]Rú*Ãd…6‘†mi5 ÇðS8Sq0ÅRê•· Zuþ[«U¦þµj­WÙJýÔ
+¬˜R[Ý	×¤sç­IÑI„[¨:k]ª´ÌG"Š\É•)Tä€r`³f‡ñúvd/)ýÿ’?{fŸûüp»XŒÌ ËòI|¢g;ÇÜ	5lÄwø,ÑkbÍD^
+ÂEEu¶õÖÛÇGØ¤ö?S†¥}<#´ÌÃ
+<ÛÆ†ázaVôÜ†âzç†ãˆ‡…FZ?+ÂñPd7#à_ÙpÜ£Œ·ÆõÎFýQ¿7´é›Amì`'±ò³¹ìØ¼¸G 7¡"£jKÇˆ×~,)3Dºž–æ´C›Çô*^ÎJ; ×@(vÄ±þ€dùW.´B„,9ÙîÂ‰g-Ž))þþ3"o.Žq?±s.þî± 2×GÐvONÈÅÉá[\÷u†ak­ƒócÌŸ'bßC—ë]L²ºa¡»A]1BY$€Û¯OvÝ*ŠB6è¸Ñ8puÎ7aC–ÂÐU\U¸³6k•ûl‚Kœ7{j‡Œ…A««)ÓðäƒNÔß¯Ô3>L ™ž+ITª;à>È :—1À[Dü€7‡g¿ëÁE”›Ãó‰à¹¸S¨Ù)_ô=¬^³ßøÑwÀ$æ?,Lw5~ãG‡;µw™%äS¨F_mÁF—ÀëOÎëÀë;w€e¹âŒÊs<wm'›]W£€\—V°òxïíÇê$†éQ¡ð²Ü†òŒüz»|¯#„§€Z[gøßºÓZäa¬6bE¼:Êñˆç´LŠ>ü4»ÁÜjQá7ÙE-WUç*VÊÛ?ÿÿ¼Ucûz…®>‰‡òØCÚãÖŸÒ›£Çí €ô~¾[“½ÚÝHjRðñÑ›,X7Þ³Î¨DŽXZ|5Bl Ô÷kzÛ–ÒõMÌk²Þ'ÑÞøzX˜–×ÿ²T®„ï¬ºJnYL·^á¥i„oœo‘Ëåup+ëw”Ì—…¼>˜aŠ³Ø¶,|æ>%LFñà~µµ3qüX¾ ØÉÉ·W)JžP\Ã²EÊÒ+Õ¬v,ûÒŸh²ÔEÎ(Z¢+c»0±lDýé‘#ÀÓ8]Æ³ÙJŠ f9¡SøŸs1r³ël VÜkÓ 3xÁMfý›n`U_yÓ Ù¾ûæˆs`7;7À«ÚÃß µf‡ùzvk¶h[¶‹Ž ·_×>í^Cþ¬l Î>‡µ-ÔXDxt;uÊüÝ5Ôªƒ*>B?íhFã”,U«¸•j´w¬Õ¢±fðh-ÚEþî”XqæÅÇëgJáÅòªÓÈŽNz‡go.êÜÉÕ_ßtÕ…J­ã1â†C$¯¯i¾ÁnF’ð©¸l'„ŸÃ4¡“ÍÈ#4dN7’Ás’`®ž€‚gx0'ÛL®ö8˜Î¹T–W}Û±½ì•ólìPäÖØ±#Æß!‡ÔhŽ:åÂªð#ÛAí^ø˜•]æxŸë4Mä]M^•Øq`ž~…Î?àpå,ï¼½È³1-Ø&Û3~¥;?öZ°Ï¯2NÜº‰žõ2ÿf))K#Cc«HÌ`åîöt¤Â÷èï¤XŽ‘É«ålƒ|¨lK0”+6”à"ê 3Vq¥Bˆ´À#bŸÙ„q½à’ “ý°œ‚‰Od–eY@ð„	W¾šqu´‚KÙÏ>TDú¼[é¹ù2ÅeºoTÕª®zÀÅ-ŒÛŠë†L#½OoëeÇ·žöÈÉùù…Ü0„wÄõÓÅš£+ÍƒÜÊörâ]ÞiCèÿt<âÇâed‹|ÉCmH"—óå,‡îÄ¯rÐÍQ¶d™sË|y1›®ª
+GÈ¤Ð¶/Rå•'¢öÔ¡úõ%ElÀvì]²#blgY¸`µC¹¹ˆ,¤~»¬æm'DÊ>«’L¹üé@“S K& ®{«^ãØ’Ñƒx;gº y =y¼³2þžüÑ¿za¿‚ÂmˆÂÛ‡Q’‹o°[—½»è³#’õk%có³GREK¼}|\kŒavÉI_ü&”ÄM'HŸÿ	­{ìßêU|Kíu¡Ó²pï<veïßxìVÃ¿NWTÇLÅãÊ·TÕSU\Ñ"Å°i–i“Ï¬¦ýÅdÃmo†yš¢³1é;Û ñh!v4_³ê¹sÕÒºMg®È÷C¨U{Ï\mìÂS;OÕ
+?ìš\zÇ}¾©—èÄ™Ø,Rà¸žC<îŽð‹œN1Ä€N
+u!(z®ã÷˜×®/û³#òpüaê,‚úêOû‚Ïeš¹¡Orvp‘HOek–.ßI1\äIZò›½Œ¦_°×û.¼ÐåpAÙÕ8&ú7ö©â{üèð}?!j}ç»<ùòVjmºrôf0èÉ#É]¢¹¸ÌÁ É_5'¨I·Ðz–d:“¬Û‚æÑõoBI]Y±"3Î
+ù‰1³("°!Ó+Â £Šèz¥WÚ#º½ï™?z¿;ölZ(â0~u=7ËÖ7/óeì*os2“¤²÷ôk}§÷ó68Çtñöpx²«dïØxvŸ¶Õíà~”~í…âá<#&sL6²']™DÀÐ×ndqQöœ[åŸê@7µ)KêŠ*þ£Íæˆ±iÅŸDYA]âßG†¿uÿq¢kNHø4ªàrhRÎ¶¥%téòso¡¶âúöZ©©$c,*¸*bÏÕu]ê.jpVÎªÎ³
+Ä	¯ØËï¢cê°_Ü‡äi)0  ,*7÷f×ŒqüÏ½MŒm£²±üˆG3=}HŠärFÃ'(™¥óÍ]òžûŽ/ûOÞõ%a=¿ŽÑ¬bâÅb¶â÷ƒIr¡~Üî4G¼JýPØÂÚ¥ÖqïEó©Ô[––²{Ù¤ÀvÌª‚˜MJ¨Ö#æÙ—Ï|íªvå&#ËŠo„~ñ7ÜŠ0žÁ—;õ’¬¬û:h¡—úû’æ+3…´xVË~E‡Š ^§ðvÙé®Õ‡a™Ø:¼ê÷€ïáÞ¿=´ws•è©pÍþ#OìÊåñ¦[þó±ª•„j5[yŽÔ¿½b›ìKp²ÙjX-^¨úÇªXRªUqõ!Lÿö:®Ø2`."É.&Øßöô-*U=sšÌÙ0!t~(OÎíXFí 7|MFýÓ&ã^xºf±Fì~Ý+8fün¯.ÙÙ€ç8S"I·[aæ".©’p Å‹‚MŸí*u+EÔÖ„Õ«”og’øóð­4Ã@ô¤ ËEG®%¥f­IiFñÌTßÁð¤Z,fÉ˜¶pÆ¼,µ
+ÿøz‰KwÙÒãÅM²òý›ÁŠÔ*ë¯*YJÜKƒ‘ðhµ$D¼ñã‹}/‹ü[;é«w~^¿9nž/ ®‰ïy†„°S6‘ó¶â‹rÙírÛ‘Á\X¯Ó…?'tž²Xé‹µ½)!’Ew“ÿëÜã?]¨-þÛ›÷ïÖº¾¾D ­V;öÆ•Ñyµ,°·æ0§ 8êz(†]‰ {(ø©èÃö0	Å—:ÀAqi‡œÔ÷äOAåõçlÃAíOAÙ±B-Ù±c&ÁõBµÖÝ	4È—ì\ŒãJ"¬Šä·úŽ\8®jpRƒªÁ¯÷ÐýádÝ¶E£(qJúo³›p7¯¯>¾¤Frƒ 9XwúUP
+}½Ô-pwuAÿIŽ]©ò(WIÄ<ï£ðÅY7‘^_Ì wxü6Hô±j;3õT‡/ÃšS;fš)oý‰_¿‘þ¾]ÙÂÄ‚òð‰TØ ¤O¯EžŒIØ}!¸]ÈWœÞNT£¹)î4:hpœYEï9o_{$§™…‡bÄôúOIr½%è*\Ð|ÌEÎ‰nI*¸âáïÛÄ?S<ÞY>l'ê5qstûGôšÊ¡½§È9s›¢×Á³îÓLŸmØ‹6:kí·êLmþ½ÎŽ;—Á"GÈNèõcºß†Œ}ÂìN}×1Êf8â
+·ãi'_Hg‹ÄÙ=‡¸pù¨u ‚ÎC‹;O1¥ggw»õ¨éJ 0ÇìÅ9ªÊã	wïìñà4LqqT‚©ýd‡™ŠC‡¦·ƒ9´,<¿?îÖÝ­$ºkõEëµE—Æb<ío7°aŒ]%ÛKCÄ5ß+VC„´.ÁhÞ»:T«µIšâª\ ­0ßþöiqÙµÈžø¹ãd2çHþ¿ðòïÉwIZløn”§ÿÖœ·FjšZÅ²õÂÆdBë·Ùº
+,v’—s]YBÉO@S½ÅWÁ‚<½MÊ³¾¼º÷§?yKÏ:µM'ç='»ÏüÎ^dn,0°jäøm‘vˆÈ&ö-FªœY&ÐvVì½kC@›.|3ý8·pÄÈAÔn&"OßÒ²RX‚iÛÊ)5?Ã8Š‰Õí¶Ÿ¤P“Ñ¨K2&Gº2ó·ºVþ–›—Ó.iQÊ âK”C%7ÍœQž9	oîÿPKÕÆ“Ê¸&   ´  PK   Ï‘h[               input.tsux         UT æÜiÙôi¯iVKsÚH¾»ŠÿÐáHlðÚÎB¶°!˜
+~àZ8
+©­…F«»¶øïÛó	DöB1êž¯ß=_³	Nñ¦øŠá$±ßä±ÛôÃ(Á+g•³ ¼â‡„¸…	Šï\Ä~¸úQ«·+gø±X€ËB®õžcä½õÊY³	pwÕ‚®çãºÉ&	ÁbKÃ†%é÷7ä”ÔÕ>dŠèÍü²}ðyn>œRÁLiüßÊH3['öZpy.±¿Z‹ôðw²‰Z°tŽê¼ôcLÏ`|Hß{=˜Þ'ÚA€BXÂ™5ç peÛèñˆ’!lÄït-E“þÀñVXªµîfÃà–½×þzt*×'¹­>ÆÈñã)cAù­R)½6ˆ1t<,Þ™]·rþëÐÓ|ªÓ<=¥	¼ÑW&wOãþíSwL§Ýi?KÒšm'.‹qÁTöå0 ýÇhõ]òeºÂg!UÝCYùšë„ooÁýôaÔTWÕuhIƒ…4 î+uG­Z–Icü'A.ž•ãs_U#h»•ß÷/>bœ†å1êU2ßp<¯ÿFFF¡VU·ä¥ê9ÔÐvƒàŸÂàÃjôýpøKˆ´_àsÈ7ôô-’Ô2sÑÞw“ èt:&Àzjò#öµØH-ÍÚGtæy¹ÑÙ©äÔóÙIGæáéeÒ‡Ñp2í?öÇÙôlýÐcÛ²¼(<È‹Œ‹Dª¶ç’"‘æ.©#\ÒøËª¦~ËÕ$ñkÕ	yY­u÷´#IôÿÜÈ¥	@'ìæ»úJçÄ|¾jPÊzÃŸ´HÖ²ÄÆŸ“®’Õ£³†ï¾ûØõaÚ½…_ýyZ…4—y¨b©NEÕŠQŒÒX—Nš‰:,"ÿ1ÛrjÆeÌ6à®pE‹ŸÖ­›p‘ÝÐ‚­V¥M^ýB‹–‹/ÉçãB&`»ÆÖÐ6¥pÒëÒÅO*±k‡gë²ô©X¿‘ß$ÔŸJ…Y‹ï¬Ý8i,$šªª°•ï‚IWáƒ:”) "Ñ
+&y,?;”aB+Ìn&ó¸ªF6íœ·Y›ÛÒßw7];ÒÛvûàíŽmÝ$ò(±zï×­|›w:¾–[ý…Q£ý	@KNÐEA8±„íªz¾cöNavO`J@Í²×ŸDŽ‹Õ=ÉrzÙŸâ
+v*:7µö—B.0ƒRäÖíŒ*ä zþÊ×GnCí…ž¦Ï×Ÿ¥rýKÓˆC¬›r¬›2¬=Ç8ÄûVŽ÷­Ïq`AÙDÄÀöpúñòÜ“„£Œä‡QïÁºµHÕÜcÈÈ]¡–m7N!¢¨Û~®ÒIN_e¡­¼Ü•ë³~Fgý¼c‘Í¼"“¦>cj7)>ZÈ°&m”]›»]s¹¼’~õcä6%O)½4â»Ð«Oê!ópŒÊïþPKøÒé[\  £  PK   ™°h[ÕÆ“Ê¸&   ´            ¶    main.tsux         UT ãiPK   Ï‘h[øÒé[\  £            ¶'  input.tsux         UT æÜiPK      ›   ¿+    
+
+## FILE: apps\client-tauri\src\Renderer.ts
+---------------------------
+import * as THREE from 'three';
+import { InputState } from '@bf42lite/sim'; // <--- FIX: Added Import
+
+export class Renderer {
+  private scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer;
+  
+  private entities = new Map<number, THREE.Mesh>();
+
+  constructor() {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x87CEEB); 
+    this.scene.fog = new THREE.Fog(0x87CEEB, 20, 100); 
+
+    // 1. Basic Floor
+    const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(200, 200),
+        new THREE.MeshStandardMaterial({ color: 0x2a3b2a })
+    );
+    plane.rotation.x = -Math.PI / 2;
+    this.scene.add(plane);
+
+    // 2. Lighting
+    const light = new THREE.DirectionalLight(0xffffff, 1.2);
+    light.position.set(20, 50, 20);
+    light.castShadow = true;
+    this.scene.add(light);
+    this.scene.add(new THREE.AmbientLight(0x404040)); 
+
+    // 3. Camera Setup
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    // 4. Renderer Setup
+    const canvas = document.getElementById('game') as HTMLCanvasElement;
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    
+    window.addEventListener('resize', () => {
+        this.camera.aspect = window.innerWidth / window.innerHeight;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+
+  // UPDATED SIGNATURE: Takes full state object
+  public updateEntity(id: number, state: any, isMe: boolean) {
+    let mesh = this.entities.get(id);
+
+    // 1. Create Mesh (Handle types)
+    if (!mesh) {
+        let geometry;
+        let material;
+
+        if (state.type === 'flag') {
+             // Tall Box for Flag
+             geometry = new THREE.BoxGeometry(1, 8, 1);
+             material = new THREE.MeshStandardMaterial({ color: 0x888888 }); 
+        } else {
+             // Soldier Capsule
+             geometry = new THREE.CapsuleGeometry(0.4, 1.8, 4, 8);
+             material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        }
+
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.castShadow = true;
+        this.scene.add(mesh);
+        this.entities.set(id, mesh);
+    }
+
+    // 2. Update Visuals
+    mesh.position.set(state.pos.x, state.pos.y, state.pos.z);
+
+    // --- FLAG LOGIC ---
+    if (state.type === 'flag') {
+        mesh.position.y = 4; // Sit on ground (height/2)
+        
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (state.team === 1) mat.color.setHex(0xff0000);      // Axis Red
+        else if (state.team === 2) mat.color.setHex(0x0000ff); // Allies Blue
+        else mat.color.setHex(0xcccccc);                       // Neutral Grey
+        
+        return; // Done with flag
+    }
+
+    // --- SOLDIER LOGIC ---
+    mesh.position.y += 0.9; // Capsule offset
+    mesh.rotation.set(0, state.rot, 0);
+    
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    if (isMe) {
+        this.camera.position.set(state.pos.x, state.pos.y + 1.6, state.pos.z);
+        // Fix: InputState is now imported
+        this.camera.rotation.set(state.pitch || InputState.viewY[id] || 0, state.rot, 0, 'YXZ');
+        mesh.visible = false; 
+    } else {
+        mesh.visible = true;
+        // Use Team Color if available, else Red
+        if (state.team === 1) mat.color.setHex(0xff0000);
+        else if (state.team === 2) mat.color.setHex(0x0000ff);
+        else mat.color.setHex(0xff0000);
+    }
+  }
+
+  public removeEntity(id: number) {
+    const mesh = this.entities.get(id);
+    if (mesh) {
+        this.scene.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        this.entities.delete(id);
+    }
+  }
+
+  public render() {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  public getCamera() {
+      return this.camera;
+  }
+
+  public drawTracer(start: THREE.Vector3, end: THREE.Vector3) {
+      const material = new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 2 });
+      const points = [start, end];
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const line = new THREE.Line(geometry, material);
+      
+      this.scene.add(line);
+      setTimeout(() => {
+          this.scene.remove(line);
+          geometry.dispose();
+          material.dispose();
+      }, 100);
+  }
+}
+
+## FILE: apps\client-tauri\src\WeaponSystem.ts
+---------------------------
+import * as THREE from 'three';
+import { Renderer } from './Renderer';
+import { NetworkManager } from './managers/NetworkManager';
+import { InputState } from '@bf42lite/sim';
+
+// Mirror of Server Config
+const WEAPONS = {
+  0: { rate: 0.12 }, // Assault
+  1: { rate: 0.15 }, // Medic
+  2: { rate: 1.50 }, // Scout (Slow!)
+};
+
+export class WeaponSystem {
+  private lastFireTime = 0;
+  // Remove fixed constant: private readonly FIRE_RATE = 0.15; 
+  private readonly RANGE = 100;     
+
+  private raycaster = new THREE.Raycaster();
+  
+  // [ADD THIS] To track what we are holding
+  public currentClassId = 0;
+
+  constructor(
+      private renderer: Renderer,
+      private net: NetworkManager
+  ) {}
+
+  public setClass(classId: number) {
+      this.currentClassId = classId;
+  }
+
+  public update(_dt: number, myEntityId: number, currentTick: number) {
+    if (myEntityId < 0) return;
+
+    // Get Fire Rate for current class
+    const stats = WEAPONS[this.currentClassId as keyof typeof WEAPONS] || WEAPONS[0];
+
+    const isShooting = (InputState.buttons[myEntityId] & 2) !== 0;
+
+    if (isShooting) {
+      const now = performance.now() / 1000; 
+      
+      // [UPDATED] Use stats.rate
+      if (now - this.lastFireTime > stats.rate) {
+        this.fire(currentTick);
+        this.lastFireTime = now;
+      }
+    }
+  }
+
+  // ... rest of fire() is fine ...
+  private fire(tick: number) {
+    const camera = this.renderer.getCamera();
+    this.raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+    const start = camera.position.clone();
+    const direction = this.raycaster.ray.direction.clone();
+    const end = start.clone().add(direction.clone().multiplyScalar(this.RANGE));
+
+    this.net.sendFire(
+        { x: start.x, y: start.y, z: start.z },
+        { x: direction.x, y: direction.y, z: direction.z },
+        tick
+    );
+
+    const visualOffset = new THREE.Vector3(0.2, -0.2, 0.5);
+    visualOffset.applyQuaternion(camera.quaternion);
+    const visualStart = start.clone().add(visualOffset);
+
+    this.renderer.drawTracer(visualStart, end);
+  }
+}
+
+## FILE: apps\client-tauri\src\managers\NetworkManager.ts
+---------------------------
+import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
+import { ClientInput, ClientFire } from '@bf42lite/protocol';
+import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
+import { Health, Soldier, CapturePoint, Team, Loadout } from '@bf42lite/games-bf42'; // [FIX] Added Loadout
+import { Renderer } from '../Renderer';
+
+interface InterpolationBuffer {
+    snapshots: { 
+        tick: number, 
+        pos: { x: number, y: number, z: number }, 
+        rot: number,
+        timestamp: number 
+    }[];
+}
+
+export class NetworkManager {
+    private net: NetworkAdapter;
+    private myServerId = -1;
+    private serverToLocal = new Map<number, number>();
+    private remoteBuffers = new Map<number, InterpolationBuffer>();
+    
+    public onConnected?: () => void;
+    public onDisconnected?: () => void;
+
+    public onWelcome?: (serverId: number) => void;
+    public onSnapshot?: (msg: any) => void;
+    public onHitConfirmed?: (damage: number) => void;
+
+    constructor() {
+        this.net = new WebSocketAdapter();
+        
+        this.net.onConnect(() => {
+            console.log("[Net] WebSocket Connected");
+            if (this.onConnected) this.onConnected();
+        });
+
+        this.net.onDisconnect(() => {
+            console.log("[Net] WebSocket Disconnected");
+            if (this.onDisconnected) this.onDisconnected();
+        });
+        
+        this.net.onMessage((msg) => {
+            if (msg.type === 'welcome') {
+                console.log(`[Net] Joined match. Server ID: ${msg.playerId}`);
+                this.myServerId = msg.playerId;
+                if (this.onWelcome) this.onWelcome(msg.playerId);
+            }
+            else if (msg.type === 'snapshot') {
+                if (this.onSnapshot) this.onSnapshot(msg);
+            }
+            else if (msg.type === 'hitConfirmed') {
+                if (this.onHitConfirmed) this.onHitConfirmed(msg.damage);            
+            }
+        });
+    }
+
+    public sendSpawnRequest(classId: number) {
+        this.net.send({ type: 'spawn_request', classId });
+    }
+
+    public connect(url: string) {
+        this.net.connect(url);
+    }
+
+    public send(cmd: ClientInput) {
+        this.net.send(cmd);
+    }
+
+    public sendFire(origin: {x: number, y: number, z: number}, direction: {x: number, y: number, z: number}, tick: number) {
+        const msg: ClientFire = { type: 'fire', tick, origin, direction, weaponId: 1 };
+        this.net.send(msg);
+    }
+
+    public registerLocalPlayer(serverId: number, localId: number) {
+        this.serverToLocal.set(serverId, localId);
+    }
+
+    public getLocalId(serverId: number): number | undefined {
+        return this.serverToLocal.get(serverId);
+    }
+
+    public processRemoteEntities(msg: any, world: SimWorld, renderer: Renderer) {
+        const activeServerIds = new Set<number>();
+        const now = performance.now();
+
+        msg.entities.forEach((serverEnt: any) => {
+            activeServerIds.add(serverEnt.id);
+
+            if (serverEnt.id === this.myServerId) return;
+
+            let localId = this.serverToLocal.get(serverEnt.id);
+
+            // --- 1. SPAWN LOGIC ---
+            if (localId === undefined) {
+                localId = addEntity(world);
+                addComponent(world, Transform, localId);
+                
+                // Check Type
+                if (serverEnt.type === 'flag') {
+                    addComponent(world, CapturePoint, localId);
+                    addComponent(world, Team, localId);
+                } else {
+                    // Default to Soldier
+                    addComponent(world, Soldier, localId);
+                    addComponent(world, Health, localId); 
+                    addComponent(world, Team, localId);
+                    addComponent(world, Loadout, localId); // [FIX] Add Loadout Component
+                }
+                
+                Transform.x[localId] = serverEnt.pos.x;
+                Transform.y[localId] = serverEnt.pos.y;
+                Transform.z[localId] = serverEnt.pos.z;
+                Transform.rotation[localId] = serverEnt.rot;
+
+                this.serverToLocal.set(serverEnt.id, localId);
+                this.remoteBuffers.set(localId, { snapshots: [] });
+            }
+
+            // --- 2. UPDATE BUFFER ---
+            const buffer = this.remoteBuffers.get(localId); 
+            if (buffer) {
+                buffer.snapshots.push({
+                    tick: msg.tick,
+                    pos: serverEnt.pos,
+                    rot: serverEnt.rot,
+                    timestamp: now
+                });
+                if (buffer.snapshots.length > 20) buffer.snapshots.shift();
+            }
+
+            // --- 3. SYNC DATA ---
+            if (serverEnt.type === 'flag') {
+                CapturePoint.progress[localId] = serverEnt.captureProgress;
+                CapturePoint.team[localId] = serverEnt.team; 
+            } else {
+                Health.current[localId] = serverEnt.health;
+                Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
+                Team.id[localId] = serverEnt.team;
+                
+                // [FIX] Sync the Class ID from Server to Client Component
+                if (serverEnt.classId !== undefined) {
+                    Loadout.classId[localId] = serverEnt.classId;
+                }
+            }
+        });
+
+        // REMOVE DISCONNECTED
+        for (const [sId, lId] of this.serverToLocal.entries()) {
+            if (!activeServerIds.has(sId) && sId !== this.myServerId) {
+                removeEntity(world, lId);
+                this.serverToLocal.delete(sId);
+                this.remoteBuffers.delete(lId);
+                renderer.removeEntity(lId);
+            }
+        }
+    }
+
+    public interpolateRemotePlayers(renderTime: number) {
+        for (const [lid, buffer] of this.remoteBuffers) {
+            if (buffer.snapshots.length < 2) continue;
+
+            let t0 = buffer.snapshots[0];
+            let t1 = buffer.snapshots[1];
+
+            for (let i = 0; i < buffer.snapshots.length - 1; i++) {
+                if (buffer.snapshots[i].timestamp <= renderTime && buffer.snapshots[i+1].timestamp >= renderTime) {
+                    t0 = buffer.snapshots[i];
+                    t1 = buffer.snapshots[i+1];
+                    break;
+                }
+            }
+
+            const total = t1.timestamp - t0.timestamp;
+            const alpha = total > 0 ? (renderTime - t0.timestamp) / total : 0;
+            const clampedAlpha = Math.max(0, Math.min(1, alpha));
+
+            Transform.x[lid] = t0.pos.x + (t1.pos.x - t0.pos.x) * clampedAlpha;
+            Transform.y[lid] = t0.pos.y + (t1.pos.y - t0.pos.y) * clampedAlpha;
+            Transform.z[lid] = t0.pos.z + (t1.pos.z - t0.pos.z) * clampedAlpha;
+            Transform.rotation[lid] = t0.rot + (t1.rot - t0.rot) * clampedAlpha;
+        }
+    }
+}
+
+## FILE: apps\client-tauri\src\managers\UIManager.ts
+---------------------------
+export class UIManager {
+    private ui: {
+        deployScreen: HTMLElement | null;
+        hudLayer: HTMLElement | null;
+        healthVal: HTMLElement | null;
+        healthFill: HTMLElement | null;
+        spawnBtn: HTMLElement | null;
+        ticketsAxis: HTMLElement | null;
+        ticketsAllies: HTMLElement | null;
+        fps: HTMLElement | null;
+        rtt: HTMLElement | null;
+        hitmarker: HTMLElement | null;
+        gameOverScreen: HTMLElement | null;
+        endTitle: HTMLElement | null;
+        ammoCurr: HTMLElement | null;
+        ammoRes: HTMLElement | null;
+        weaponName: HTMLElement | null;
+    };
+    private selectedSpawnId = -1;
+    private hitTimeout: number | null = null;
+    
+    // FIX: Update signature to accept classId
+    private onSpawnRequest: (classId: number) => void;
+    private selectedClassId = 0; // Default to Assault
+
+    constructor(onSpawnRequest: (classId: number) => void) {
+        this.onSpawnRequest = onSpawnRequest;
+        
+        this.ui = {
+            deployScreen: document.getElementById('deploy-screen'),
+            hudLayer: document.getElementById('hud-layer'),
+            healthVal: document.getElementById('health-val'),
+            healthFill: document.getElementById('health-fill'),
+            spawnBtn: document.getElementById('btn-spawn'),
+            ticketsAxis: document.getElementById('tickets-axis'),
+            ticketsAllies: document.getElementById('tickets-allies'),
+            fps: document.getElementById('fps'),
+            rtt: document.getElementById('rtt'),
+            hitmarker: document.getElementById('hitmarker'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            endTitle: document.getElementById('end-title'),
+            ammoCurr: document.getElementById('ammo-curr'),
+            ammoRes: document.getElementById('ammo-res'),
+            weaponName: document.getElementById('weapon-name')
+        };
+
+        this.initListeners();
+    }
+
+    private initListeners() {
+        // 1. Class Selection Listeners (NEW)
+        const classBtns = document.querySelectorAll('.class-btn');
+        classBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update Visuals
+                classBtns.forEach(b => b.classList.remove('selected'));
+                const target = e.target as HTMLElement;
+                target.classList.add('selected');
+                
+                // Update Logic
+                const id = target.getAttribute('data-id');
+                if (id) this.selectedClassId = parseInt(id);
+            });
+        });
+
+        // 2. Map / Spawn Point Click Listener
+        const mapContainer = document.querySelector('.map-container');
+        if (mapContainer) {
+            mapContainer.addEventListener('click', (e: Event) => {
+                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement;
+                if (!target) return;
+                
+                document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
+                target.classList.add('selected');
+                
+                this.selectedSpawnId = parseInt(target.dataset.id || "-1");
+            });
+        }
+
+        // 3. Spawn Button Click Listener
+        if (this.ui.spawnBtn) {
+            this.ui.spawnBtn.addEventListener('click', () => {
+                // Note: We can relax the spawn point requirement if we are just doing random spawns for now
+                // if (this.selectedSpawnId === -1) { ... } 
+
+                this.setDeployMode(false);
+                
+                // Pass the selected class ID to the game loop
+                this.onSpawnRequest(this.selectedClassId);
+            });
+        }
+    }
+
+    public setDeployMode(isDeploying: boolean) {
+        if (isDeploying) {
+            this.ui.deployScreen?.classList.remove('hidden');
+            this.ui.hudLayer?.classList.add('hidden');
+            document.exitPointerLock();
+        } else {
+            this.ui.deployScreen?.classList.add('hidden');
+            this.ui.hudLayer?.classList.remove('hidden');
+            document.body.requestPointerLock();
+        }
+    }
+
+    public updateStats(fps: number, rtt: number) {
+        if (this.ui.fps) this.ui.fps.innerText = fps.toString();
+        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toString();
+    }
+
+    public updateHealth(current: number) {
+        if (this.ui.healthVal) this.ui.healthVal.innerText = current.toString();
+        if (this.ui.healthFill) this.ui.healthFill.style.width = `${current}%`;
+    }
+
+    public updateTickets(axis: number, allies: number) {
+        if (this.ui.ticketsAxis) this.ui.ticketsAxis.innerText = axis.toString();
+        if (this.ui.ticketsAllies) this.ui.ticketsAllies.innerText = allies.toString();
+    }
+
+    public showHitMarker() {
+        if (!this.ui.hitmarker) return;
+        this.ui.hitmarker.classList.remove('hit-active');
+        void this.ui.hitmarker.offsetWidth; 
+        this.ui.hitmarker.classList.add('hit-active');
+        if (this.hitTimeout) clearTimeout(this.hitTimeout);
+        this.hitTimeout = window.setTimeout(() => {
+            this.ui.hitmarker?.classList.remove('hit-active');
+        }, 200);
+    }
+
+    public setGameOver(isGameOver: boolean, winningTeam: string) {
+        if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
+        if (isGameOver) {
+            this.ui.gameOverScreen.classList.add('visible');
+            this.ui.endTitle.innerText = winningTeam;
+            document.exitPointerLock();
+        } else {
+            this.ui.gameOverScreen.classList.remove('visible');
+        }
+    }
+
+    public updateAmmo(current: number, reserve: number, weaponName?: string) {
+    if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+    if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+    if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
+}
+
+    public updateRespawn(isDead: boolean, timer: number) {
+        if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
+
+        if (isDead) {
+            this.ui.deployScreen.style.display = 'flex'; 
+            
+            if (timer > 0) {
+                this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
+                this.ui.spawnBtn.setAttribute('disabled', 'true');
+                this.ui.spawnBtn.style.pointerEvents = 'none';
+                this.ui.spawnBtn.style.opacity = '0.5';
+            } else {
+                this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
+                this.ui.spawnBtn.removeAttribute('disabled');
+                this.ui.spawnBtn.style.pointerEvents = 'auto';
+                this.ui.spawnBtn.style.opacity = '1.0';
+            }
+        } else {
+            this.ui.deployScreen.style.display = 'none';
+        }
+    }
+}
+
+## FILE: apps\client-tauri\src\systems\Reconciler.ts
+---------------------------
+import { Transform, Velocity, SimWorld } from '@bf42lite/sim';
+import { ClientInput, EntityState } from '@bf42lite/protocol';
+
+export interface InputHistory {
+    tick: number;
+    input: ClientInput;
+    pos: { x: number; y: number; z: number };
+    timestamp: number;
+}
+
+/**
+ * Client-side reconciler for predicted movement.
+ * ... (rest of comment) ...
+ */
+export class Reconciler {
+    private history: InputHistory[] = [];
+
+    // Normal correction threshold (â‰ˆ1m).
+    private readonly ERROR_THRESHOLD_SQ = 1.0;
+
+    // Teleport/spawn threshold (â‰ˆ10m).
+    private readonly TELEPORT_THRESHOLD_SQ = 100.0;
+
+    /**
+     * Record the current predicted state.
+     *
+     * Call this once per local simulation step, after applying inputs.
+     */
+    public pushHistory(
+        tick: number,
+        input: ClientInput,
+        x: number,
+        y: number,
+        z: number
+    ) {
+        this.history.push({
+            tick,
+            input,
+            pos: { x, y, z },
+            timestamp: performance.now(),
+        });
+    }
+
+    public clearHistory() {
+        this.history.length = 0;
+    }
+
+    /**
+     * Compare a server snapshot to the local history and correct if needed.
+     */
+    public reconcile(
+        serverTick: number,
+        serverState: EntityState,
+        eid: number,
+        world: SimWorld,
+        movementSystem: (w: SimWorld) => void
+    ): number {
+        // --- PATCH 2: Start ---
+        if (!serverState.pos || this.history.length === 0) {
+            return 0;
+        }
+    
+        // 1. Prefer exact match
+        let historyIndex = this.history.findIndex(h => h.tick === serverTick);
+    
+        // 2. If no exact match, fall back to closest tick we have
+        if (historyIndex === -1) {
+            let closestIndex = -1;
+            let closestDiff = Number.POSITIVE_INFINITY;
+    
+            for (let i = 0; i < this.history.length; i++) {
+                const diff = Math.abs(this.history[i].tick - serverTick);
+                if (diff < closestDiff) {
+                    closestDiff = diff;
+                    closestIndex = i;
+                }
+            }
+    
+            if (closestIndex === -1) {
+                return 0;
+            }
+    
+            historyIndex = closestIndex;
+    
+            // Optional: inspect how far off the ticks are
+            const picked = this.history[historyIndex];
+            console.debug(
+                `[Reconciler] No exact history for serverTick=${serverTick}, ` +
+                `using closest tick=${picked.tick} (Î”=${closestDiff})`
+            );
+        }
+    
+        const historyState = this.history[historyIndex];
+    
+        // RTT is time since we originally simulated that tick
+        const rtt = Math.round(performance.now() - historyState.timestamp);
+    
+        // 3. Compute spatial error
+        const dx = historyState.pos.x - serverState.pos.x;
+        const dy = historyState.pos.y - serverState.pos.y;
+        const dz = historyState.pos.z - serverState.pos.z;
+        const distSq = dx * dx + dy * dy + dz * dz;
+        // --- PATCH 2: End ---
+
+        // --- Existing Error Handling Logic ---
+
+        // 1) Teleport: error is massive, probably a respawn.
+        if (distSq > this.TELEPORT_THRESHOLD_SQ) {
+            console.warn(`[Reconciler] Teleport detected (ErrorSq=${distSq.toFixed(2)})`);
+            
+            Transform.x[eid] = serverState.pos.x;
+            Transform.y[eid] = serverState.pos.y;
+            Transform.z[eid] = serverState.pos.z;
+
+            if (serverState.vel) {
+                Velocity.x[eid] = serverState.vel.x;
+                Velocity.y[eid] = serverState.vel.y;
+                Velocity.z[eid] = serverState.vel.z;
+            }
+
+            // Start fresh.
+            this.clearHistory();
+            return rtt;
+        }
+
+        // 2) Normal correction: small but noticeable mismatch.
+        if (distSq > this.ERROR_THRESHOLD_SQ) {
+            console.warn(
+                `[Reconciler] Correction\n` +
+                `  Tick=${serverTick} ErrorSq=${distSq.toFixed(2)}\n` +
+                `  ClientPos=(${historyState.pos.x.toFixed(2)}, ${historyState.pos.y.toFixed(2)}, ${historyState.pos.z.toFixed(2)})\n` +
+                `  ServerPos=(${serverState.pos.x.toFixed(2)}, ${serverState.pos.y.toFixed(2)}, ${serverState.pos.z.toFixed(2)})`,
+            );
+
+            // For now we simply trust the server fully.
+            Transform.x[eid] = serverState.pos.x;
+            Transform.y[eid] = serverState.pos.y;
+            Transform.z[eid] = serverState.pos.z;
+
+            if (serverState.vel) {
+                Velocity.x[eid] = serverState.vel.x;
+                Velocity.y[eid] = serverState.vel.y;
+                Velocity.z[eid] = serverState.vel.z;
+            }
+
+            // NOTE: Full replay logic would go here.
+            // For now, snapping is fine, but we *must* clear old history
+            // to prevent compounding errors.
+            this.history.splice(0, historyIndex + 1);
+            return rtt;
+        }
+
+        // 3) No correction: server and client agree.
+        
+        // Clear processed history
+        this.history.splice(0, historyIndex + 1);
+
+        // Return RTT (was computed at the top)
+        return rtt;
+    }
+}
+

@@ -8,9 +8,7 @@ const GRAVITY = -25.0;        // New: Snappier gravity (was -20)
 const JUMP_FORCE = 9.0;       // New: Higher jump to match gravity
 const GROUND_TOLERANCE = 0.05;// New: Forgiving check (was 0.001)
 
-// [FIX] Button mask is no longer used, jump is a direct property
-// const BUTTON_JUMP = 1; 
-
+const BUTTON_JUMP = 1; 
 export const MOVEMENT_CONSTANTS = {
   MOVE_SPEED: 10.0,
   AIR_SPEED_FACTOR: 0.6,
@@ -33,10 +31,9 @@ export const createMovementSystem = () => {
 
       // 1. GROUND CHECK
       // We use a larger tolerance so we don't miss jumps due to micro-floating
-      // TODO: Later, replace this with a raycast
-      const isGrounded = Transform.y[id] < GROUND_TOLERANCE;
-      if (Transform.y[id] < 0) Transform.y[id] = 0; // Floor
-      
+      // TODO: Later, replace this with a raycast for platforms/terrain
+      const isGrounded = Transform.y[id] <= GROUND_TOLERANCE;
+
       // 2. APPLY ROTATION
       Transform.rotation[id] = InputState.viewX[id];
 
@@ -44,9 +41,8 @@ export const createMovementSystem = () => {
       // Reduce speed if in the air for better "physics feel"
       const speed = isGrounded ? MOVE_SPEED : (MOVE_SPEED * AIR_SPEED_FACTOR);
 
-      // [FIX] Use new InputState.axes structure
-      const forward = InputState.axes.forward[id];
-      const right = InputState.axes.right[id];
+      const forward = InputState.moveY[id];
+      const right = InputState.moveX[id];
       
       const angle = Transform.rotation[id];
       const sin = Math.sin(angle);
@@ -61,8 +57,7 @@ export const createMovementSystem = () => {
       // 4. GRAVITY & JUMPING
       Velocity.y[id] += GRAVITY * dt;
 
-      // [FIX] Use new InputState.axes structure
-      const wantsJump = InputState.axes.jump[id] === 1;
+      const wantsJump = (InputState.buttons[id] & BUTTON_JUMP) !== 0;
 
       if (isGrounded && wantsJump) {
         // Only allow jump if not already shooting up (prevents double-force glitches)
@@ -77,13 +72,17 @@ export const createMovementSystem = () => {
       Transform.y[id] += Velocity.y[id] * dt;
 
       // 6. FLOOR COLLISION
-      // Hard clamp for now. A real solution would "slide"
+      // Hard constraint to keep us on the map
       if (Transform.y[id] < 0) {
         Transform.y[id] = 0;
-        Velocity.y[id] = 0;
+        
+        // If we were falling, stop. 
+        // If we just jumped (Vel > 0), let it happen!
+        if (Velocity.y[id] < 0) {
+            Velocity.y[id] = 0;
+        }
       }
     }
-
     return world;
   });
 };

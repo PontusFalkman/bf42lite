@@ -10,11 +10,10 @@ export const ClientInputSchema = z.object({
     right: z.number(),
     jump: z.boolean(),
     shoot: z.boolean(),
-    reload: z.boolean(),
+    reload: z.boolean(), // <--- ADDED
     yaw: z.number(),
     pitch: z.number()
-  }),
-  rttTimestamp: z.number() // <-- ADD THIS LINE
+  })
 });
 
 // Fire Proposal
@@ -56,9 +55,7 @@ export const EntityStateSchema = z.object({
   ammoRes: z.number().optional(),
   kills: z.number().optional(),
   deaths: z.number().optional(),
-  lastProcessedTick: z.number().optional(),
-  aura_charge_progress: z.number().optional(), // <-- ADDED .optional()
-  is_healing_aura_active: z.boolean().optional(), // <-- ADDED .optional()
+  lastProcessedTick: z.number().optional() 
 });
 
 // Hit Confirmation

@@ -1,7 +1,6 @@
 // apps/client-tauri/src-tauri/src/sim.rs
 use std::collections::HashMap;
-use crate::protocol::{TickSnapshot, EntitySnapshot, GameModeState, TeamId, HealthStruct, StaminaStruct, TeamStruct, ScoreStruct, ClientMessage};
-use crate::player::Player;
+use crate::protocol::{TickSnapshot, EntitySnapshot, GameModeState, TeamId, HealthStruct, StaminaStruct, TeamStruct, ScoreStruct, ClientMessage, LoadoutStruct};
 use crate::systems;
 
 pub struct SimState {
@@ -56,8 +55,7 @@ impl SimState {
                 stamina: Some(StaminaStruct { current: 100.0, max: 100.0 }),
                 team: Some(TeamStruct { id: p.team }),
                 score: Some(ScoreStruct { kills: p.score_kills, deaths: p.score_deaths }),
-                aura_charge_progress: p.aura_charge_progress,
-                is_healing_aura_active: p.is_healing_aura_active,
+                loadout: Some(LoadoutStruct { class_id: p.class_id }),
             });
         }
 

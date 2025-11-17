@@ -1,17 +1,22 @@
 {
   "name": "@bf42lite/games-bf42",
-  "version": "0.0.1",
+  "version": "1.3.0",
+  "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "dev": "tsc -w"
   },
   "dependencies": {
     "@bf42lite/sim": "workspace:*",
-    "@bf42lite/protocol": "workspace:*", 
+    "@bf42lite/protocol": "workspace:*",
+    "@bf42lite/net": "workspace:*",
     "bitecs": "^0.3.40"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@types/node": "^24.10.1"
+
   }
 }

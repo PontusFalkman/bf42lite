@@ -1,57 +1,71 @@
-// apps/client-tauri/src-tauri/src/gameloop.rs
-use std::time::{Instant, Duration};
-use crate::network::NetworkState;
-use crate::sim::SimState;
-use crate::systems; // Ensure systems is imported
+import { defineSystem, defineQuery, removeComponent, hasComponent } from 'bitecs';
+import { GameRules, Health, Ammo, Stats, RespawnTimer, Team } from '../components';
+import { SimWorld, Transform, Velocity } from '@bf42lite/sim';
 
-// --- AURA CONSTANTS ---
-const AURA_CHARGE_TIME: f32 = 3.0; // 3 seconds to charge
-const AURA_HEAL_RADIUS: f32 = 10.0; // 10 units
-const AURA_HEAL_RATE: f32 = 1.0; // 1% (or 1HP) per second at 100% strength
+export const createGameLoopSystem = () => {
+  // We need to query the Rules AND the Players
+  const rulesQuery = defineQuery([GameRules]);
+  const playerQuery = defineQuery([Health, Transform, Stats, Ammo, Team]); 
+  
+  let resetTimer = 0;
 
-pub struct GameLoop {
-    pub network: NetworkState,
-    pub sim: SimState,
-    start_time: Instant,
-}
+  return defineSystem((world: SimWorld) => {
+    const rulesEnts = rulesQuery(world);
+    if (!rulesEnts.length) return world;
+    const rid = rulesEnts[0];
 
-impl GameLoop {
-    pub fn new() -> Self {
-        Self {
-            network: NetworkState::new(),
-            sim: SimState::new(),
-            start_time: Instant::now(),
-        }
-    }
-
-    pub fn init(&mut self) {
-        println!("[GAME] GameLoop Initialized");
-        self.network.listen("0.0.0.0:9001");
-        self.start_time = Instant::now();
-    }
-
-    pub fn tick(&mut self, dt: f32) {
-        let current_time = self.start_time.elapsed().as_secs_f32();
-
-        // 1. Network
-        self.network.update(current_time, &mut self.sim);
-
-        // 2. Simulation
-        // --- MOVEMENT ---
-        systems::movement::update(&mut self.sim.players, &self.network.inputs, dt, self.sim.frame_count);
-
-        // --- COMBAT ---
-        systems::combat::update(&mut self.sim.players, &self.network.inputs, dt, current_time);
+    // 1. Check for Game Over
+    if (GameRules.state[rid] === 0) {
+      if (GameRules.ticketsAxis[rid] <= 0 || GameRules.ticketsAllies[rid] <= 0) {
+        console.log("GAME OVER - WAITING FOR RESET");
+        GameRules.state[rid] = 1; 
+        resetTimer = world.time + 5; // 5 Second intermission
+      }
+    } 
+    
+    // 2. Handle Reset
+    else if (GameRules.state[rid] === 1) {
+      if (world.time > resetTimer) {
+        console.log("--- RESETTING MATCH ---");
         
-        // --- AURA SYSTEM (NEW) ---
-        // (The full healing logic we just added)
-        // ...
-        // --- END AURA SYSTEM ---
+        // A. Reset Rules
+        GameRules.ticketsAxis[rid] = 100;
+        GameRules.ticketsAllies[rid] = 100;
+        GameRules.state[rid] = 0;
 
-        self.sim.frame_count += 1;
+        // B. Reset All Players
+        const players = playerQuery(world);
+        for (const pid of players) {
+          // 1. Reset Stats
+          Stats.kills[pid] = 0;
+          Stats.deaths[pid] = 0;
 
-        // 3. Send Snapshots
-        let snapshot = self.sim.snapshot();
-        self.network.broadcast_snapshot(snapshot);
+          // 2. Reset Health & Life
+          Health.current[pid] = Health.max[pid];
+          Health.isDead[pid] = 0; // Alive immediately
+          
+          // 3. Remove active respawn timers if any
+          if (hasComponent(world, RespawnTimer, pid)) {
+            removeComponent(world, RespawnTimer, pid);
+          }
+
+          // 4. Refill Ammo
+          Ammo.current[pid] = Ammo.magSize[pid];
+          Ammo.reserve[pid] = 120;
+
+          // 5. Teleport to Random Spawn
+          Transform.x[pid] = (Math.random() - 0.5) * 40;
+          Transform.z[pid] = (Math.random() - 0.5) * 40;
+          Transform.y[pid] = 5; // Drop from sky
+          
+          // 6. Stop Momentum
+          Velocity.x[pid] = 0;
+          Velocity.y[pid] = 0;
+          Velocity.z[pid] = 0;
+        }
+      }
     }
-}
+
+    return world;
+  });
+};

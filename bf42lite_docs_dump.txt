@@ -1,0 +1,473 @@
+﻿===============================
+ DUMP FOR: docs
+===============================
+
+---------- DIRECTORY TREE ----------
+
+Folder PATH listing for volume New Volume
+Volume serial number is BC16-B8E7
+D:\BF42LITE\DOCS
+    00_index.md
+    10_vision_core.md
+    20_design_gameplay.md
+    30_design_sim_arch.md
+    40_design_net_protocol.md
+    50_design_client_rendering.md
+    60_backlog_phase1_core_mvp.md
+    70_repo_structure.md
+    80_backlog_phase2_expansion.md
+    
+No subfolders exist 
+
+
+---------- FILE CONTENTS ----------
+
+## FILE: docs\00_index.md
+---------------------------
+#### `docs/00_index.md`
+*New Index File*
+```markdown
+# bf42lite Documentation Index (v1.3)
+
+Simplified modular documentation focusing on LAN gameplay and hybrid authority.
+
+## ðŸ§­ Design
+- [10_vision_core.md](./10_vision_core.md)
+- [20_design_gameplay.md](./20_design_gameplay.md)
+- [30_design_sim_arch.md](./30_design_sim_arch.md)
+
+## ðŸŒ Networking
+- [40_design_net_protocol.md](./40_design_net_protocol.md)
+
+## ðŸ’» Client
+- [50_design_client_rendering.md](./50_design_client_rendering.md)
+
+## ðŸ—‚ Backlog
+- [60_development_backlog.md](./60_development_backlog.md)
+
+## âš™ï¸ Infrastructure
+- [70_repo_structure.md](./70_repo_structure.md)
+
+## FILE: docs\10_vision_core.md
+---------------------------
+# Vision & Core Goals (v1.3)
+
+**Project:** bf42lite
+**Genre:** LAN / Local Multiplayer FPS
+**Inspiration:** Battlefield 1942
+**Players:** 2â€“12 (MVP: 2â€“4)
+**Platforms:** Windows (primary), Linux (AppImage), macOS (later)
+**Engine Stack:** JS/TS (Client Physics) + Three.js + Tauri + Rust (Server State)
+
+## Vision
+Deliver fast and responsive LAN battles with smooth movement, readable visuals, and consistent state.
+Use Client Authority for movement and aiming, while the server ensures consistent results for health, tickets, and confirmed hits.
+
+## Core Principles
+* **Client controls continuous physics** (movement, aiming).
+* **Server controls all discrete game rules** (health, kills, scores).
+* **Hits feel instant** (client prediction) but are reconciled by the server so all players see the same outcome.
+* **Minimal setup:** single host, quick join.
+
+## Focus
+LAN gameplay (no anti-cheat, but full consistency). Updated for Client-Predicted, Server-Reconciled Hits.
+
+## FILE: docs\20_design_gameplay.md
+---------------------------
+# Gameplay Design (v1.3)
+
+## Core Loop
+Host or join â†’ Spawn â†’ Move, shoot, capture flags â†’ Die and respawn â†’ Tickets or time expire.
+
+## Modes
+| Mode | Description | Phase |
+| :--- | :--- | :--- |
+| **Conquest** | Hold control points to drain enemy tickets. | 4+ |
+| **Team DM** | Eliminate enemies; tickets = respawns. | 4+ |
+| **Sandbox** | Physics/weapons testing. | 2+ |
+
+## Classes (Later)
+* **Assault, Engineer, Support, Recon** (light roles only).
+
+## Weapons (Phases 2â€“4)
+* Rifle, SMG, Sniper, Grenade.
+
+## Maps
+* **Warehouse (MVP)**
+* **Island (Phase 5)**
+
+## FILE: docs\30_design_sim_arch.md
+---------------------------
+# Simulation Architecture (v1.3)
+
+The architecture explicitly avoids cross-language determinism by splitting continuous vs. discrete responsibilities.
+
+## Authority Split
+| Feature | Authority | Location | Reason |
+| :--- | :--- | :--- | :--- |
+| **Movement Physics** | Client | `packages/sim` (TS) | Instant input response. |
+| **Collision (visual)** | Client | TS | Immediate feedback. |
+| **Hit Detection (final)** | Server | Rust | Ensures both players see the same result. |
+| **Health/Death** | Server | Rust | Centralized game rules. |
+| **Scoring/Tickets** | Server | Rust | Consistent match flow. |
+| **Rate Limits** | Server | Rust | Prevents accidental spam. |
+
+## Hit Model: Predict + Reconcile
+**Client**
+1.  Performs raycast.
+2.  Shows hit spark / marker immediately.
+3.  Sends a fire proposal: `{ type: "fire", origin, direction, weaponId, clientTick }`
+
+**Server**
+1.  Re-runs the raycast using authoritative positions.
+2.  Confirms if the hit is valid.
+3.  Computes damage.
+4.  Broadcasts a final event: `{ type: "hitConfirmed", shooterId, targetId, damage }`
+
+*This avoids â€œI was behind cover on my screenâ€ even on LAN.*
+
+## Determinism Rules
+* **Client** runs fixed timestep (1/60).
+* **Server** stores authoritative transforms from client reports.
+* **Server** validates movement with simple checks (max speed, max teleport).
+* **Server** performs only discrete logic (health, respawns, tickets).
+
+## FILE: docs\40_design_net_protocol.md
+---------------------------
+# Networking Protocol (v1.3)
+
+## Transport
+* **UDP:** State updates (positions, rotations).
+* **TCP/WebSocket:** Reliable events (joins, hits, killfeed, system messages).
+
+## Message Structure
+
+### Client â†’ Server
+* **State Update:** `{ type: 'update', x, y, z, yaw }`
+* **Fire Proposal:** `{ type: 'fire', origin, direction, weaponId, clientTick }`
+* **Actions:** `{ type: 'respawn', classId }`, etc.
+
+### Server â†’ Client
+* **Snapshot:** `{ type: 'snapshot', entities: [...], scores, tickets }`
+* **Hit Confirmation:** `{ type: 'hitConfirmed', shooterId, targetId, damage }`
+* **Death Event:** `{ type: 'death', victimId, killerId }`
+
+## Encoding
+* `msgpackr` for binary transport.
+* `zod` schemas for strict validation (`packages/protocol`).
+
+## Snapshot Rate
+Target: 10â€“20 Hz snapshots, client interpolates to 60 FPS.
+
+## FILE: docs\50_design_client_rendering.md
+---------------------------
+# Client Rendering (v1.3)
+
+## Tech
+Three.js + React overlay.
+
+## Interpolation
+* **Local player:** Immediate (predicted).
+* **Remote players:** Interpolated between last two snapshots for smoothness.
+
+## Visual Style
+* Low-poly, flat shading, readable silhouettes.
+* Target 60 FPS on basic GPUs/APUs.
+
+## FILE: docs\60_backlog_phase1_core_mvp.md
+---------------------------
+# Development Backlog (v1.3)
+
+**Current Focus:** Phase 4 â€” Core Gameplay & Hit Reconciliation
+
+## Phases
+| Phase | Goal | Deliverables |
+| :--- | :--- | :--- |
+| **1** | Core MVP | Movement, ECS loop, glTF models |
+| **2** | LAN Loopback | Host/join, basic messages |
+| **3** | Visual Polish | Camera, HUD, map |
+| **4** | Core Gameplay | Shooting, hit reconcile, death/respawn, tickets |
+| **5** | Expansion | Vehicles, Island map, class roles |
+
+## Phase 4 Acceptance Criteria
+* [ ] Player movement is smooth on other clients via interpolation.
+* [ ] Client proposes fire; server validates and confirms hits.
+* [ ] Server applies damage, death, respawn logic.
+* [ ] Tickets drain reliably and reach Game Over state.
+
+## FILE: docs\70_repo_structure.md
+---------------------------
+# Infrastructure & Repo Layout (v1.4)
+
+## Tree Overview
+
+```text
+bf42lite/
+â”œâ”€â”€ .gitattributes
+â”œâ”€â”€ .gitignore
+â”œâ”€â”€ README.md
+â”œâ”€â”€ bf_42_lite_simplified_docs.md
+â”œâ”€â”€ package.json
+â”œâ”€â”€ pnpm-lock.yaml
+â”œâ”€â”€ pnpm-workspace.yaml
+â”œâ”€â”€ tsconfig.base.json
+â”œâ”€â”€ apps/
+â”‚   â””â”€â”€ client-tauri/
+â”‚       â”œâ”€â”€ src/          # TypeScript client: rendering, input, prediction
+â”‚       â”œâ”€â”€ src-tauri/    # Rust host: state, validation, relay (inside the app)
+â”‚       â”œâ”€â”€ public/       # Static assets (models, etc.)
+â”‚       â””â”€â”€ dist/         # Built client bundle
+â”œâ”€â”€ packages/
+â”‚   â”œâ”€â”€ sim/              # Shared ECS simulation: movement, health, etc.
+â”‚   â”œâ”€â”€ net/              # Networking adapters (loopback, WebSocket)
+â”‚   â”œâ”€â”€ protocol/         # Binary schemas and helpers
+â”‚   â””â”€â”€ host-node/        # Dev-only Node host
+â””â”€â”€ docs/                 # Modular design + backlog docs
+
+
+## FILE: docs\80_backlog_phase2_expansion.md
+---------------------------
+Phase 2 expands bf42lite from infantry-only combat into a simplified combined-arms Battlefield-style game.
+The goal is to introduce classes, vehicles, conquest mode, dynamic spawning, and a larger map while keeping all systems â€œLiteâ€ and manageable for a solo developer.
+
+Purpose
+
+Phase 2 introduces several major features:
+
+â€¢ Lite classes
+â€¢ Simplified vehicle framework
+â€¢ Conquest game mode
+â€¢ Dynamic spawnpoints
+â€¢ Ticket bleed
+â€¢ Stationary defenses
+â€¢ Island-style combined-arms map
+
+This phase also sets the foundation for future projects such as BF2Lite and BF2142Lite.
+
+High-Level Deliverables
+
+Gameplay:
+
+Three infantry classes with simplified abilities.
+
+Basic loadout system.
+
+Vehicles:
+
+GenericVehicle base class.
+
+First vehicle: Tank using simplified hover-based movement.
+
+Game Mode:
+
+Conquest mode including capture points and capture progress.
+
+Spawning:
+
+Deploy screen allowing spawnpoint selection based on flag ownership.
+
+Map:
+
+Island map with flags, beaches, hills, and sea approach routes.
+
+Balancing:
+
+Ticket bleed based on majority flag ownership.
+
+Stationary Defenses:
+
+AA gun and coastal gun implemented as immobile vehicles.
+
+Phase Breakdown
+
+3.1. Conquest Core
+
+Flag Zones:
+
+Each flag has a capture radius and an ownership state.
+
+Capture progress increases toward the team with more players inside the radius.
+
+Progress stops if team counts are equal.
+
+Dynamic Spawnpoints:
+
+Each flag contains several spawnpoints.
+
+When a team captures a flag, its spawnpoints become available to that team.
+
+Ticket System Update:
+
+Teams still lose a ticket when a player dies.
+
+A team holding more than half the flags causes enemy tickets to drain slowly over time.
+
+This component should be completed before vehicle work begins.
+
+3.2. Lite Classes
+
+Class Selection:
+
+Added to Deploy Screen.
+
+Loadouts assigned per class.
+
+Grunt:
+
+Primary weapon: SMG.
+
+Ability: Heal aura activates if stationary for several seconds.
+
+Heavy:
+
+Primary weapon: Bazooka.
+
+Ability: Wrench repairs friendly vehicles when used as melee.
+
+Scout:
+
+Primary weapon: Bolt-action rifle.
+
+Ability: High-zoom mode for long-range aiming.
+
+3.3. Vehicle Core Framework
+
+Mount System:
+
+Player enters vehicle with a key press.
+
+Player model becomes hidden.
+
+Camera attaches to vehicle seat.
+
+Inputs are sent to the vehicle instead of the player character.
+
+GenericVehicle Architecture:
+
+Health value.
+
+Seat definitions.
+
+Movement model type (land, air, sea).
+
+Weapon systems.
+
+Spawn and respawn properties.
+
+Tank (Land Vehicle):
+
+Uses four downward raycasts to simulate hover-like suspension.
+
+Remains upright at all times.
+
+Independent turret and barrel rotation.
+
+Slow but powerful movement and firing.
+
+3.4. Additional Vehicle Units
+
+Plane:
+
+Always moves forward.
+
+Pitch controlled by mouse vertical input.
+
+Roll controlled by mouse horizontal input.
+
+No stall system; simplified flight.
+
+Boat:
+
+Uses buoyancy to stay near water level.
+
+Forward acceleration and slow turning.
+
+Stationary Defenses:
+
+Coastal gun with high-damage shell.
+
+AA gun with high rate of fire.
+
+Implemented as vehicles without movement.
+
+Phase 2 Map: Island
+
+Map Design Goals:
+
+Large enough for vehicle combat.
+
+Several flag zones (beach, hill, center).
+
+Shoreline for boat landings.
+
+Open sky for aircraft.
+
+Areas for stationary defenses.
+
+Technical Requirements
+
+Physics:
+
+VehicleController for all vehicles.
+
+Hover simulation with raycasts.
+
+Simplified buoyancy for boats.
+
+Simplified pitch/roll flight model.
+
+Networking:
+
+Vehicle input messages from client to server.
+
+Vehicle state included in snapshots.
+
+Vehicles predicted locally with server reconciliation.
+
+Rendering:
+
+Cameras mounted to vehicle seats.
+
+Turret rotation animations.
+
+Optional visual effects for boats and planes.
+
+UI:
+
+Updated Deploy Screen with class and spawnpoint selection.
+
+Indicators for flag ownership and capture progress.
+
+Display for active vehicle seat.
+
+Optional Stretch Goals
+
+Infantry:
+
+Grenade launcher for Heavy.
+
+Smoke grenade for Scout.
+
+Vehicles:
+
+Jeep (fast, unarmored).
+
+Transport boat.
+
+Commander (Lite):
+
+Single ability: artillery strike triggered by a marked location.
+
+Acceptance Criteria
+
+Phase 2 is complete when:
+
+â€¢ Flags can be captured and ownership changes correctly.
+â€¢ Ticket bleed works and can end a match.
+â€¢ Class selection functions at spawn.
+â€¢ Vehicles can be entered and exited consistently.
+â€¢ Tank movement and firing are functional.
+â€¢ Planes and boats operate with basic stability.
+â€¢ Island map performs at or near 60 FPS.
+â€¢ Multiple clients can play a full Conquest match from start to finish.
+

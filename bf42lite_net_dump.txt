@@ -1,0 +1,1428 @@
+﻿===============================
+ DUMP FOR: packages/net
+===============================
+
+---------- DIRECTORY TREE ----------
+
+Folder PATH listing for volume New Volume
+Volume serial number is BC16-B8E7
+D:\BF42LITE\PACKAGES\NET
+ª   package.json
+ª   tsconfig.json
+ª   
++---dist
+ª   ª   tsconfig.tsbuildinfo
+ª   ª   
+ª   +---src
+ª           index.d.ts
+ª           index.js
+ª           LoopbackAdapter.d.ts
+ª           LoopbackAdapter.js
+ª           types.d.ts
+ª           types.js
+ª           WebSocketAdapter.d.ts
+ª           WebSocketAdapter.js
+ª           
++---node_modules
+ª   +---.bin
+ª   ª       tsc
+ª   ª       tsc.CMD
+ª   ª       tsc.ps1
+ª   ª       tsserver
+ª   ª       tsserver.CMD
+ª   ª       tsserver.ps1
+ª   ª       
+ª   +---@bf42lite
+ª   ª   +---protocol
+ª   ª       ª   package.json
+ª   ª       ª   tsconfig.json
+ª   ª       ª   
+ª   ª       +---dist
+ª   ª       ª   ª   tsconfig.tsbuildinfo
+ª   ª       ª   ª   
+ª   ª       ª   +---src
+ª   ª       ª           index.d.ts
+ª   ª       ª           index.js
+ª   ª       ª           schema.d.ts
+ª   ª       ª           schema.js
+ª   ª       ª           
+ª   ª       +---node_modules
+ª   ª       ª   +---.bin
+ª   ª       ª   ª       tsc
+ª   ª       ª   ª       tsc.CMD
+ª   ª       ª   ª       tsc.ps1
+ª   ª       ª   ª       tsserver
+ª   ª       ª   ª       tsserver.CMD
+ª   ª       ª   ª       tsserver.ps1
+ª   ª       ª   ª       
+ª   ª       ª   +---typescript
+ª   ª       ª   ª   ª   LICENSE.txt
+ª   ª       ª   ª   ª   package.json
+ª   ª       ª   ª   ª   README.md
+ª   ª       ª   ª   ª   SECURITY.md
+ª   ª       ª   ª   ª   ThirdPartyNoticeText.txt
+ª   ª       ª   ª   ª   
+ª   ª       ª   ª   +---bin
+ª   ª       ª   ª   ª       tsc
+ª   ª       ª   ª   ª       tsserver
+ª   ª       ª   ª   ª       
+ª   ª       ª   ª   +---lib
+ª   ª       ª   ª   ª   ª   lib.d.ts
+ª   ª       ª   ª   ª   ª   lib.decorators.d.ts
+ª   ª       ª   ª   ª   ª   lib.decorators.legacy.d.ts
+ª   ª       ª   ª   ª   ª   lib.dom.asynciterable.d.ts
+ª   ª       ª   ª   ª   ª   lib.dom.d.ts
+ª   ª       ª   ª   ª   ª   lib.dom.iterable.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.collection.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.core.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.generator.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.iterable.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.proxy.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.reflect.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.symbol.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2015.symbol.wellknown.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2016.array.include.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2016.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2016.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2016.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.arraybuffer.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.date.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.object.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.sharedmemory.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2017.typedarrays.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.asyncgenerator.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.asynciterable.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2018.regexp.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.array.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.object.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2019.symbol.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.bigint.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.date.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.number.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.sharedmemory.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2020.symbol.wellknown.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2021.weakref.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.array.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.error.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.object.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.regexp.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2022.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2023.array.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2023.collection.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2023.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2023.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2023.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.arraybuffer.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.collection.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.object.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.regexp.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.sharedmemory.d.ts
+ª   ª       ª   ª   ª   ª   lib.es2024.string.d.ts
+ª   ª       ª   ª   ª   ª   lib.es5.d.ts
+ª   ª       ª   ª   ª   ª   lib.es6.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.array.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.collection.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.decorators.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.disposable.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.error.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.float16.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.full.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.intl.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.iterator.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.promise.d.ts
+ª   ª       ª   ª   ª   ª   lib.esnext.sharedmemory.d.ts
+ª   ª       ª   ª   ª   ª   lib.scripthost.d.ts
+ª   ª       ª   ª   ª   ª   lib.webworker.asynciterable.d.ts
+ª   ª       ª   ª   ª   ª   lib.webworker.d.ts
+ª   ª       ª   ª   ª   ª   lib.webworker.importscripts.d.ts
+ª   ª       ª   ª   ª   ª   lib.webworker.iterable.d.ts
+ª   ª       ª   ª   ª   ª   tsc.js
+ª   ª       ª   ª   ª   ª   tsserver.js
+ª   ª       ª   ª   ª   ª   tsserverlibrary.d.ts
+ª   ª       ª   ª   ª   ª   tsserverlibrary.js
+ª   ª       ª   ª   ª   ª   typescript.d.ts
+ª   ª       ª   ª   ª   ª   typescript.js
+ª   ª       ª   ª   ª   ª   typesMap.json
+ª   ª       ª   ª   ª   ª   typingsInstaller.js
+ª   ª       ª   ª   ª   ª   watchGuard.js
+ª   ª       ª   ª   ª   ª   _tsc.js
+ª   ª       ª   ª   ª   ª   _tsserver.js
+ª   ª       ª   ª   ª   ª   _typingsInstaller.js
+ª   ª       ª   ª   ª   ª   
+ª   ª       ª   ª   ª   +---cs
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---de
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---es
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---fr
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---it
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---ja
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---ko
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---pl
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---pt-br
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---ru
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---tr
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---zh-cn
+ª   ª       ª   ª   ª   ª       diagnosticMessages.generated.json
+ª   ª       ª   ª   ª   ª       
+ª   ª       ª   ª   ª   +---zh-tw
+ª   ª       ª   ª   ª           diagnosticMessages.generated.json
+ª   ª       ª   ª   ª           
+ª   ª       ª   ª   +---node_modules
+ª   ª       ª   ª       +---.bin
+ª   ª       ª   ª               tsc
+ª   ª       ª   ª               tsc.CMD
+ª   ª       ª   ª               tsc.ps1
+ª   ª       ª   ª               tsserver
+ª   ª       ª   ª               tsserver.CMD
+ª   ª       ª   ª               tsserver.ps1
+ª   ª       ª   ª               
+ª   ª       ª   +---zod
+ª   ª       ª       ª   index.cjs
+ª   ª       ª       ª   index.d.cts
+ª   ª       ª       ª   index.d.ts
+ª   ª       ª       ª   index.js
+ª   ª       ª       ª   LICENSE
+ª   ª       ª       ª   package.json
+ª   ª       ª       ª   README.md
+ª   ª       ª       ª   
+ª   ª       ª       +---src
+ª   ª       ª       ª   ª   index.ts
+ª   ª       ª       ª   ª   
+ª   ª       ª       ª   +---v3
+ª   ª       ª       ª   ª   ª   errors.ts
+ª   ª       ª       ª   ª   ª   external.ts
+ª   ª       ª       ª   ª   ª   index.ts
+ª   ª       ª       ª   ª   ª   standard-schema.ts
+ª   ª       ª       ª   ª   ª   types.ts
+ª   ª       ª       ª   ª   ª   ZodError.ts
+ª   ª       ª       ª   ª   ª   
+ª   ª       ª       ª   ª   +---benchmarks
+ª   ª       ª       ª   ª   ª       datetime.ts
+ª   ª       ª       ª   ª   ª       discriminatedUnion.ts
+ª   ª       ª       ª   ª   ª       index.ts
+ª   ª       ª       ª   ª   ª       ipv4.ts
+ª   ª       ª       ª   ª   ª       object.ts
+ª   ª       ª       ª   ª   ª       primitives.ts
+ª   ª       ª       ª   ª   ª       realworld.ts
+ª   ª       ª       ª   ª   ª       string.ts
+ª   ª       ª       ª   ª   ª       union.ts
+ª   ª       ª       ª   ª   ª       
+ª   ª       ª       ª   ª   +---helpers
+ª   ª       ª       ª   ª   ª       enumUtil.ts
+ª   ª       ª       ª   ª   ª       errorUtil.ts
+ª   ª       ª       ª   ª   ª       parseUtil.ts
+ª   ª       ª       ª   ª   ª       partialUtil.ts
+ª   ª       ª       ª   ª   ª       typeAliases.ts
+ª   ª       ª       ª   ª   ª       util.ts
+ª   ª       ª       ª   ª   ª       
+ª   ª       ª       ª   ª   +---locales
+ª   ª       ª       ª   ª   ª       en.ts
+ª   ª       ª       ª   ª   ª       
+ª   ª       ª       ª   ª   +---tests
+ª   ª       ª       ª   ª           all-errors.test.ts
+ª   ª       ª       ª   ª           anyunknown.test.ts
+ª   ª       ª       ª   ª           array.test.ts
+ª   ª       ª       ª   ª           async-parsing.test.ts
+ª   ª       ª       ª   ª           async-refinements.test.ts
+ª   ª       ª       ª   ª           base.test.ts
+ª   ª       ª       ª   ª           bigint.test.ts
+ª   ª       ª       ª   ª           branded.test.ts
+ª   ª       ª       ª   ª           catch.test.ts
+ª   ª       ª       ª   ª           coerce.test.ts
+ª   ª       ª       ª   ª           complex.test.ts
+ª   ª       ª       ª   ª           custom.test.ts
+ª   ª       ª       ª   ª           date.test.ts
+ª   ª       ª       ª   ª           deepmasking.test.ts
+ª   ª       ª       ª   ª           default.test.ts
+ª   ª       ª       ª   ª           description.test.ts
+ª   ª       ª       ª   ª           discriminated-unions.test.ts
+ª   ª       ª       ª   ª           enum.test.ts
+ª   ª       ª       ª   ª           error.test.ts
+ª   ª       ª       ª   ª           firstparty.test.ts
+ª   ª       ª       ª   ª           firstpartyschematypes.test.ts
+ª   ª       ª       ª   ª           function.test.ts
+ª   ª       ª       ª   ª           generics.test.ts
+ª   ª       ª       ª   ª           instanceof.test.ts
+ª   ª       ª       ª   ª           intersection.test.ts
+ª   ª       ª       ª   ª           language-server.source.ts
+ª   ª       ª       ª   ª           language-server.test.ts
+ª   ª       ª       ª   ª           literal.test.ts
+ª   ª       ª       ª   ª           map.test.ts
+ª   ª       ª       ª   ª           masking.test.ts
+ª   ª       ª       ª   ª           mocker.test.ts
+ª   ª       ª       ª   ª           Mocker.ts
+ª   ª       ª       ª   ª           nan.test.ts
+ª   ª       ª       ª   ª           nativeEnum.test.ts
+ª   ª       ª       ª   ª           nullable.test.ts
+ª   ª       ª       ª   ª           number.test.ts
+ª   ª       ª       ª   ª           object-augmentation.test.ts
+ª   ª       ª       ª   ª           object-in-es5-env.test.ts
+ª   ª       ª       ª   ª           object.test.ts
+ª   ª       ª       ª   ª           optional.test.ts
+ª   ª       ª       ª   ª           parser.test.ts
+ª   ª       ª       ª   ª           parseUtil.test.ts
+ª   ª       ª       ª   ª           partials.test.ts
+ª   ª       ª       ª   ª           pickomit.test.ts
+ª   ª       ª       ª   ª           pipeline.test.ts
+ª   ª       ª       ª   ª           preprocess.test.ts
+ª   ª       ª       ª   ª           primitive.test.ts
+ª   ª       ª       ª   ª           promise.test.ts
+ª   ª       ª       ª   ª           readonly.test.ts
+ª   ª       ª       ª   ª           record.test.ts
+ª   ª       ª       ª   ª           recursive.test.ts
+ª   ª       ª       ª   ª           refine.test.ts
+ª   ª       ª       ª   ª           safeparse.test.ts
+ª   ª       ª       ª   ª           set.test.ts
+ª   ª       ª       ª   ª           standard-schema.test.ts
+ª   ª       ª       ª   ª           string.test.ts
+ª   ª       ª       ª   ª           transformer.test.ts
+ª   ª       ª       ª   ª           tuple.test.ts
+ª   ª       ª       ª   ª           unions.test.ts
+ª   ª       ª       ª   ª           validations.test.ts
+ª   ª       ª       ª   ª           void.test.ts
+ª   ª       ª       ª   ª           
+ª   ª       ª       ª   +---v4
+ª   ª       ª       ª   ª   ª   index.ts
+ª   ª       ª       ª   ª   ª   
+ª   ª       ª       ª   ª   +---classic
+ª   ª       ª       ª   ª   ª   ª   checks.ts
+ª   ª       ª       ª   ª   ª   ª   coerce.ts
+ª   ª       ª       ª   ª   ª   ª   compat.ts
+ª   ª       ª       ª   ª   ª   ª   errors.ts
+ª   ª       ª       ª   ª   ª   ª   external.ts
+ª   ª       ª       ª   ª   ª   ª   index.ts
+ª   ª       ª       ª   ª   ª   ª   iso.ts
+ª   ª       ª       ª   ª   ª   ª   parse.ts
+ª   ª       ª       ª   ª   ª   ª   schemas.ts
+ª   ª       ª       ª   ª   ª   ª   
+ª   ª       ª       ª   ª   ª   +---tests
+ª   ª       ª       ª   ª   ª           anyunknown.test.ts
+ª   ª       ª       ª   ª   ª           array.test.ts
+ª   ª       ª       ª   ª   ª           assignability.test.ts
+ª   ª       ª       ª   ª   ª           async-parsing.test.ts
+ª   ª       ª       ª   ª   ª           async-refinements.test.ts
+ª   ª       ª       ª   ª   ª           base.test.ts
+ª   ª       ª       ª   ª   ª           bigint.test.ts
+ª   ª       ª       ª   ª   ª           brand.test.ts
+ª   ª       ª       ª   ª   ª           catch.test.ts
+ª   ª       ª       ª   ª   ª           coalesce.test.ts
+ª   ª       ª       ª   ª   ª           coerce.test.ts
+ª   ª       ª       ª   ª   ª           continuability.test.ts
+ª   ª       ª       ª   ª   ª           custom.test.ts
+ª   ª       ª       ª   ª   ª           date.test.ts
+ª   ª       ª       ª   ª   ª           datetime.test.ts
+ª   ª       ª       ª   ª   ª           default.test.ts
+ª   ª       ª       ª   ª   ª           description.test.ts
+ª   ª       ª       ª   ª   ª           discriminated-unions.test.ts
+ª   ª       ª       ª   ª   ª           enum.test.ts
+ª   ª       ª       ª   ª   ª           error-utils.test.ts
+ª   ª       ª       ª   ª   ª           error.test.ts
+ª   ª       ª       ª   ª   ª           file.test.ts
+ª   ª       ª       ª   ª   ª           firstparty.test.ts
+ª   ª       ª       ª   ª   ª           function.test.ts
+ª   ª       ª       ª   ª   ª           generics.test.ts
+ª   ª       ª       ª   ª   ª           index.test.ts
+ª   ª       ª       ª   ª   ª           instanceof.test.ts
+ª   ª       ª       ª   ª   ª           intersection.test.ts
+ª   ª       ª       ª   ª   ª           json.test.ts
+ª   ª       ª       ª   ª   ª           lazy.test.ts
+ª   ª       ª       ª   ª   ª           literal.test.ts
+ª   ª       ª       ª   ª   ª           map.test.ts
+ª   ª       ª       ª   ª   ª           nan.test.ts
+ª   ª       ª       ª   ª   ª           nested-refine.test.ts
+ª   ª       ª       ª   ª   ª           nonoptional.test.ts
+ª   ª       ª       ª   ª   ª           nullable.test.ts
+ª   ª       ª       ª   ª   ª           number.test.ts
+ª   ª       ª       ª   ª   ª           object.test.ts
+ª   ª       ª       ª   ª   ª           optional.test.ts
+ª   ª       ª       ª   ª   ª           partial.test.ts
+ª   ª       ª       ª   ª   ª           pickomit.test.ts
+ª   ª       ª       ª   ª   ª           pipe.test.ts
+ª   ª       ª       ª   ª   ª           prefault.test.ts
+ª   ª       ª       ª   ª   ª           preprocess.test.ts
+ª   ª       ª       ª   ª   ª           primitive.test.ts
+ª   ª       ª       ª   ª   ª           promise.test.ts
+ª   ª       ª       ª   ª   ª           prototypes.test.ts
+ª   ª       ª       ª   ª   ª           readonly.test.ts
+ª   ª       ª       ª   ª   ª           record.test.ts
+ª   ª       ª       ª   ª   ª           recursive-types.test.ts
+ª   ª       ª       ª   ª   ª           refine.test.ts
+ª   ª       ª       ª   ª   ª           registries.test.ts
+ª   ª       ª       ª   ª   ª           set.test.ts
+ª   ª       ª       ª   ª   ª           standard-schema.test.ts
+ª   ª       ª       ª   ª   ª           string-formats.test.ts
+ª   ª       ª       ª   ª   ª           string.test.ts
+ª   ª       ª       ª   ª   ª           stringbool.test.ts
+ª   ª       ª       ª   ª   ª           template-literal.test.ts
+ª   ª       ª       ª   ª   ª           to-json-schema.test.ts
+ª   ª       ª       ª   ª   ª           transform.test.ts
+ª   ª       ª       ª   ª   ª           tuple.test.ts
+ª   ª       ª       ª   ª   ª           union.test.ts
+ª   ª       ª       ª   ª   ª           validations.test.ts
+ª   ª       ª       ª   ª   ª           void.test.ts
+ª   ª       ª       ª   ª   ª           
+ª   ª       ª       ª   ª   +---core
+ª   ª       ª       ª   ª   ª   ª   api.ts
+ª   ª       ª       ª   ª   ª   ª   checks.ts
+ª   ª       ª       ª   ª   ª   ª   config.ts
+ª   ª       ª       ª   ª   ª   ª   core.ts
+ª   ª       ª       ª   ª   ª   ª   doc.ts
+ª   ª       ª       ª   ª   ª   ª   errors.ts
+ª   ª       ª       ª   ª   ª   ª   function.ts
+ª   ª       ª       ª   ª   ª   ª   index.ts
+ª   ª       ª       ª   ª   ª   ª   json-schema.ts
+ª   ª       ª       ª   ª   ª   ª   parse.ts
+ª   ª       ª       ª   ª   ª   ª   regexes.ts
+ª   ª       ª       ª   ª   ª   ª   registries.ts
+ª   ª       ª       ª   ª   ª   ª   schemas.ts
+ª   ª       ª       ª   ª   ª   ª   standard-schema.ts
+ª   ª       ª       ª   ª   ª   ª   to-json-schema.ts
+ª   ª       ª       ª   ª   ª   ª   util.ts
+ª   ª       ª       ª   ª   ª   ª   versions.ts
+ª   ª       ª       ª   ª   ª   ª   zsf.ts
+ª   ª       ª       ª   ª   ª   ª   
+ª   ª       ª       ª   ª   ª   +---tests
+ª   ª       ª       ª   ª   ª       ª   index.test.ts
+ª   ª       ª       ª   ª   ª       ª   
+ª   ª       ª       ª   ª   ª       +---locales
+ª   ª       ª       ª   ª   ª               be.test.ts
+ª   ª       ª       ª   ª   ª               en.test.ts
+ª   ª       ª       ª   ª   ª               ru.test.ts
+ª   ª       ª       ª   ª   ª               tr.test.ts
+ª   ª       ª       ª   ª   ª               
+ª   ª       ª       ª   ª   +---locales
+ª   ª       ª       ª   ª   ª       ar.ts
+ª   ª       ª       ª   ª   ª       az.ts
+ª   ª       ª       ª   ª   ª       be.ts
+ª   ª       ª       ª   ª   ª       ca.ts
+ª   ª       ª       ª   ª   ª       cs.ts
+ª   ª       ª       ª   ª   ª       de.ts
+ª   ª       ª       ª   ª   ª       en.ts
+ª   ª       ª       ª   ª   ª       eo.ts
+ª   ª       ª       ª   ª   ª       es.ts
+ª   ª       ª       ª   ª   ª       fa.ts
+ª   ª       ª       ª   ª   ª       fi.ts
+ª   ª       ª       ª   ª   ª       fr-CA.ts
+ª   ª       ª       ª   ª   ª       fr.ts
+ª   ª       ª       ª   ª   ª       he.ts
+ª   ª       ª       ª   ª   ª       hu.ts
+ª   ª       ª       ª   ª   ª       id.ts
+ª   ª       ª       ª   ª   ª       index.ts
+ª   ª       ª       ª   ª   ª       it.ts
+ª   ª       ª       ª   ª   ª       ja.ts
+ª   ª       ª       ª   ª   ª       kh.ts
+ª   ª       ª       ª   ª   ª       ko.ts
+ª   ª       ª       ª   ª   ª       mk.ts
+ª   ª       ª       ª   ª   ª       ms.ts
+ª   ª       ª       ª   ª   ª       nl.ts
+ª   ª       ª       ª   ª   ª       no.ts
+ª   ª       ª       ª   ª   ª       ota.ts
+ª   ª       ª       ª   ª   ª       pl.ts
+ª   ª       ª       ª   ª   ª       ps.ts
+ª   ª       ª       ª   ª   ª       pt.ts
+ª   ª       ª       ª   ª   ª       ru.ts
+ª   ª       ª       ª   ª   ª       sl.ts
+ª   ª       ª       ª   ª   ª       sv.ts
+ª   ª       ª       ª   ª   ª       ta.ts
+ª   ª       ª       ª   ª   ª       th.ts
+ª   ª       ª       ª   ª   ª       tr.ts
+ª   ª       ª       ª   ª   ª       ua.ts
+ª   ª       ª       ª   ª   ª       ur.ts
+ª   ª       ª       ª   ª   ª       vi.ts
+ª   ª       ª       ª   ª   ª       zh-CN.ts
+ª   ª       ª       ª   ª   ª       zh-TW.ts
+ª   ª       ª       ª   ª   ª       
+ª   ª       ª       ª   ª   +---mini
+ª   ª       ª       ª   ª       ª   checks.ts
+ª   ª       ª       ª   ª       ª   coerce.ts
+ª   ª       ª       ª   ª       ª   external.ts
+ª   ª       ª       ª   ª       ª   index.ts
+ª   ª       ª       ª   ª       ª   iso.ts
+ª   ª       ª       ª   ª       ª   parse.ts
+ª   ª       ª       ª   ª       ª   schemas.ts
+ª   ª       ª       ª   ª       ª   
+ª   ª       ª       ª   ª       +---tests
+ª   ª       ª       ª   ª               assignability.test.ts
+ª   ª       ª       ª   ª               brand.test.ts
+ª   ª       ª       ª   ª               checks.test.ts
+ª   ª       ª       ª   ª               computed.test.ts
+ª   ª       ª       ª   ª               error.test.ts
+ª   ª       ª       ª   ª               functions.test.ts
+ª   ª       ª       ª   ª               index.test.ts
+ª   ª       ª       ª   ª               number.test.ts
+ª   ª       ª       ª   ª               object.test.ts
+ª   ª       ª       ª   ª               prototypes.test.ts
+ª   ª       ª       ª   ª               recursive-types.test.ts
+ª   ª       ª       ª   ª               string.test.ts
+ª   ª       ª       ª   ª               
+ª   ª       ª       ª   +---v4-mini
+ª   ª       ª       ª           index.ts
+ª   ª       ª       ª           
+ª   ª       ª       +---v3
+ª   ª       ª       ª   ª   errors.cjs
+ª   ª       ª       ª   ª   errors.d.cts
+ª   ª       ª       ª   ª   errors.d.ts
+ª   ª       ª       ª   ª   errors.js
+ª   ª       ª       ª   ª   external.cjs
+ª   ª       ª       ª   ª   external.d.cts
+ª   ª       ª       ª   ª   external.d.ts
+ª   ª       ª       ª   ª   external.js
+ª   ª       ª       ª   ª   index.cjs
+ª   ª       ª       ª   ª   index.d.cts
+ª   ª       ª       ª   ª   index.d.ts
+ª   ª       ª       ª   ª   index.js
+ª   ª       ª       ª   ª   standard-schema.cjs
+ª   ª       ª       ª   ª   standard-schema.d.cts
+ª   ª       ª       ª   ª   standard-schema.d.ts
+ª   ª       ª       ª   ª   standard-schema.js
+ª   ª       ª       ª   ª   types.cjs
+ª   ª       ª       ª   ª   types.d.cts
+ª   ª       ª       ª   ª   types.d.ts
+ª   ª       ª       ª   ª   types.js
+ª   ª       ª       ª   ª   ZodError.cjs
+ª   ª       ª       ª   ª   ZodError.d.cts
+ª   ª       ª       ª   ª   ZodError.d.ts
+ª   ª       ª       ª   ª   ZodError.js
+ª   ª       ª       ª   ª   
+ª   ª       ª       ª   +---helpers
+ª   ª       ª       ª   ª       enumUtil.cjs
+ª   ª       ª       ª   ª       enumUtil.d.cts
+ª   ª       ª       ª   ª       enumUtil.d.ts
+ª   ª       ª       ª   ª       enumUtil.js
+ª   ª       ª       ª   ª       errorUtil.cjs
+ª   ª       ª       ª   ª       errorUtil.d.cts
+ª   ª       ª       ª   ª       errorUtil.d.ts
+ª   ª       ª       ª   ª       errorUtil.js
+ª   ª       ª       ª   ª       parseUtil.cjs
+ª   ª       ª       ª   ª       parseUtil.d.cts
+ª   ª       ª       ª   ª       parseUtil.d.ts
+ª   ª       ª       ª   ª       parseUtil.js
+ª   ª       ª       ª   ª       partialUtil.cjs
+ª   ª       ª       ª   ª       partialUtil.d.cts
+ª   ª       ª       ª   ª       partialUtil.d.ts
+ª   ª       ª       ª   ª       partialUtil.js
+ª   ª       ª       ª   ª       typeAliases.cjs
+ª   ª       ª       ª   ª       typeAliases.d.cts
+ª   ª       ª       ª   ª       typeAliases.d.ts
+ª   ª       ª       ª   ª       typeAliases.js
+ª   ª       ª       ª   ª       util.cjs
+ª   ª       ª       ª   ª       util.d.cts
+ª   ª       ª       ª   ª       util.d.ts
+ª   ª       ª       ª   ª       util.js
+ª   ª       ª       ª   ª       
+ª   ª       ª       ª   +---locales
+ª   ª       ª       ª           en.cjs
+ª   ª       ª       ª           en.d.cts
+ª   ª       ª       ª           en.d.ts
+ª   ª       ª       ª           en.js
+ª   ª       ª       ª           
+ª   ª       ª       +---v4
+ª   ª       ª       ª   ª   index.cjs
+ª   ª       ª       ª   ª   index.d.cts
+ª   ª       ª       ª   ª   index.d.ts
+ª   ª       ª       ª   ª   index.js
+ª   ª       ª       ª   ª   
+ª   ª       ª       ª   +---classic
+ª   ª       ª       ª   ª       checks.cjs
+ª   ª       ª       ª   ª       checks.d.cts
+ª   ª       ª       ª   ª       checks.d.ts
+ª   ª       ª       ª   ª       checks.js
+ª   ª       ª       ª   ª       coerce.cjs
+ª   ª       ª       ª   ª       coerce.d.cts
+ª   ª       ª       ª   ª       coerce.d.ts
+ª   ª       ª       ª   ª       coerce.js
+ª   ª       ª       ª   ª       compat.cjs
+ª   ª       ª       ª   ª       compat.d.cts
+ª   ª       ª       ª   ª       compat.d.ts
+ª   ª       ª       ª   ª       compat.js
+ª   ª       ª       ª   ª       errors.cjs
+ª   ª       ª       ª   ª       errors.d.cts
+ª   ª       ª       ª   ª       errors.d.ts
+ª   ª       ª       ª   ª       errors.js
+ª   ª       ª       ª   ª       external.cjs
+ª   ª       ª       ª   ª       external.d.cts
+ª   ª       ª       ª   ª       external.d.ts
+ª   ª       ª       ª   ª       external.js
+ª   ª       ª       ª   ª       index.cjs
+ª   ª       ª       ª   ª       index.d.cts
+ª   ª       ª       ª   ª       index.d.ts
+ª   ª       ª       ª   ª       index.js
+ª   ª       ª       ª   ª       iso.cjs
+ª   ª       ª       ª   ª       iso.d.cts
+ª   ª       ª       ª   ª       iso.d.ts
+ª   ª       ª       ª   ª       iso.js
+ª   ª       ª       ª   ª       parse.cjs
+ª   ª       ª       ª   ª       parse.d.cts
+ª   ª       ª       ª   ª       parse.d.ts
+ª   ª       ª       ª   ª       parse.js
+ª   ª       ª       ª   ª       schemas.cjs
+ª   ª       ª       ª   ª       schemas.d.cts
+ª   ª       ª       ª   ª       schemas.d.ts
+ª   ª       ª       ª   ª       schemas.js
+ª   ª       ª       ª   ª       
+ª   ª       ª       ª   +---core
+ª   ª       ª       ª   ª       api.cjs
+ª   ª       ª       ª   ª       api.d.cts
+ª   ª       ª       ª   ª       api.d.ts
+ª   ª       ª       ª   ª       api.js
+ª   ª       ª       ª   ª       checks.cjs
+ª   ª       ª       ª   ª       checks.d.cts
+ª   ª       ª       ª   ª       checks.d.ts
+ª   ª       ª       ª   ª       checks.js
+ª   ª       ª       ª   ª       core.cjs
+ª   ª       ª       ª   ª       core.d.cts
+ª   ª       ª       ª   ª       core.d.ts
+ª   ª       ª       ª   ª       core.js
+ª   ª       ª       ª   ª       doc.cjs
+ª   ª       ª       ª   ª       doc.d.cts
+ª   ª       ª       ª   ª       doc.d.ts
+ª   ª       ª       ª   ª       doc.js
+ª   ª       ª       ª   ª       errors.cjs
+ª   ª       ª       ª   ª       errors.d.cts
+ª   ª       ª       ª   ª       errors.d.ts
+ª   ª       ª       ª   ª       errors.js
+ª   ª       ª       ª   ª       function.cjs
+ª   ª       ª       ª   ª       function.d.cts
+ª   ª       ª       ª   ª       function.d.ts
+ª   ª       ª       ª   ª       function.js
+ª   ª       ª       ª   ª       index.cjs
+ª   ª       ª       ª   ª       index.d.cts
+ª   ª       ª       ª   ª       index.d.ts
+ª   ª       ª       ª   ª       index.js
+ª   ª       ª       ª   ª       json-schema.cjs
+ª   ª       ª       ª   ª       json-schema.d.cts
+ª   ª       ª       ª   ª       json-schema.d.ts
+ª   ª       ª       ª   ª       json-schema.js
+ª   ª       ª       ª   ª       parse.cjs
+ª   ª       ª       ª   ª       parse.d.cts
+ª   ª       ª       ª   ª       parse.d.ts
+ª   ª       ª       ª   ª       parse.js
+ª   ª       ª       ª   ª       regexes.cjs
+ª   ª       ª       ª   ª       regexes.d.cts
+ª   ª       ª       ª   ª       regexes.d.ts
+ª   ª       ª       ª   ª       regexes.js
+ª   ª       ª       ª   ª       registries.cjs
+ª   ª       ª       ª   ª       registries.d.cts
+ª   ª       ª       ª   ª       registries.d.ts
+ª   ª       ª       ª   ª       registries.js
+ª   ª       ª       ª   ª       schemas.cjs
+ª   ª       ª       ª   ª       schemas.d.cts
+ª   ª       ª       ª   ª       schemas.d.ts
+ª   ª       ª       ª   ª       schemas.js
+ª   ª       ª       ª   ª       standard-schema.cjs
+ª   ª       ª       ª   ª       standard-schema.d.cts
+ª   ª       ª       ª   ª       standard-schema.d.ts
+ª   ª       ª       ª   ª       standard-schema.js
+ª   ª       ª       ª   ª       to-json-schema.cjs
+ª   ª       ª       ª   ª       to-json-schema.d.cts
+ª   ª       ª       ª   ª       to-json-schema.d.ts
+ª   ª       ª       ª   ª       to-json-schema.js
+ª   ª       ª       ª   ª       util.cjs
+ª   ª       ª       ª   ª       util.d.cts
+ª   ª       ª       ª   ª       util.d.ts
+ª   ª       ª       ª   ª       util.js
+ª   ª       ª       ª   ª       versions.cjs
+ª   ª       ª       ª   ª       versions.d.cts
+ª   ª       ª       ª   ª       versions.d.ts
+ª   ª       ª       ª   ª       versions.js
+ª   ª       ª       ª   ª       
+ª   ª       ª       ª   +---locales
+ª   ª       ª       ª   ª       ar.cjs
+ª   ª       ª       ª   ª       ar.d.cts
+ª   ª       ª       ª   ª       ar.d.ts
+ª   ª       ª       ª   ª       ar.js
+ª   ª       ª       ª   ª       az.cjs
+ª   ª       ª       ª   ª       az.d.cts
+ª   ª       ª       ª   ª       az.d.ts
+ª   ª       ª       ª   ª       az.js
+ª   ª       ª       ª   ª       be.cjs
+ª   ª       ª       ª   ª       be.d.cts
+ª   ª       ª       ª   ª       be.d.ts
+ª   ª       ª       ª   ª       be.js
+ª   ª       ª       ª   ª       ca.cjs
+ª   ª       ª       ª   ª       ca.d.cts
+ª   ª       ª       ª   ª       ca.d.ts
+ª   ª       ª       ª   ª       ca.js
+ª   ª       ª       ª   ª       cs.cjs
+ª   ª       ª       ª   ª       cs.d.cts
+ª   ª       ª       ª   ª       cs.d.ts
+ª   ª       ª       ª   ª       cs.js
+ª   ª       ª       ª   ª       de.cjs
+ª   ª       ª       ª   ª       de.d.cts
+ª   ª       ª       ª   ª       de.d.ts
+ª   ª       ª       ª   ª       de.js
+ª   ª       ª       ª   ª       en.cjs
+ª   ª       ª       ª   ª       en.d.cts
+ª   ª       ª       ª   ª       en.d.ts
+ª   ª       ª       ª   ª       en.js
+ª   ª       ª       ª   ª       eo.cjs
+ª   ª       ª       ª   ª       eo.d.cts
+ª   ª       ª       ª   ª       eo.d.ts
+ª   ª       ª       ª   ª       eo.js
+ª   ª       ª       ª   ª       es.cjs
+ª   ª       ª       ª   ª       es.d.cts
+ª   ª       ª       ª   ª       es.d.ts
+ª   ª       ª       ª   ª       es.js
+ª   ª       ª       ª   ª       fa.cjs
+ª   ª       ª       ª   ª       fa.d.cts
+ª   ª       ª       ª   ª       fa.d.ts
+ª   ª       ª       ª   ª       fa.js
+ª   ª       ª       ª   ª       fi.cjs
+ª   ª       ª       ª   ª       fi.d.cts
+ª   ª       ª       ª   ª       fi.d.ts
+ª   ª       ª       ª   ª       fi.js
+ª   ª       ª       ª   ª       fr-CA.cjs
+ª   ª       ª       ª   ª       fr-CA.d.cts
+ª   ª       ª       ª   ª       fr-CA.d.ts
+ª   ª       ª       ª   ª       fr-CA.js
+ª   ª       ª       ª   ª       fr.cjs
+ª   ª       ª       ª   ª       fr.d.cts
+ª   ª       ª       ª   ª       fr.d.ts
+ª   ª       ª       ª   ª       fr.js
+ª   ª       ª       ª   ª       he.cjs
+ª   ª       ª       ª   ª       he.d.cts
+ª   ª       ª       ª   ª       he.d.ts
+ª   ª       ª       ª   ª       he.js
+ª   ª       ª       ª   ª       hu.cjs
+ª   ª       ª       ª   ª       hu.d.cts
+ª   ª       ª       ª   ª       hu.d.ts
+ª   ª       ª       ª   ª       hu.js
+ª   ª       ª       ª   ª       id.cjs
+ª   ª       ª       ª   ª       id.d.cts
+ª   ª       ª       ª   ª       id.d.ts
+ª   ª       ª       ª   ª       id.js
+ª   ª       ª       ª   ª       index.cjs
+ª   ª       ª       ª   ª       index.d.cts
+ª   ª       ª       ª   ª       index.d.ts
+ª   ª       ª       ª   ª       index.js
+ª   ª       ª       ª   ª       it.cjs
+ª   ª       ª       ª   ª       it.d.cts
+ª   ª       ª       ª   ª       it.d.ts
+ª   ª       ª       ª   ª       it.js
+ª   ª       ª       ª   ª       ja.cjs
+ª   ª       ª       ª   ª       ja.d.cts
+ª   ª       ª       ª   ª       ja.d.ts
+ª   ª       ª       ª   ª       ja.js
+ª   ª       ª       ª   ª       kh.cjs
+ª   ª       ª       ª   ª       kh.d.cts
+ª   ª       ª       ª   ª       kh.d.ts
+ª   ª       ª       ª   ª       kh.js
+ª   ª       ª       ª   ª       ko.cjs
+ª   ª       ª       ª   ª       ko.d.cts
+ª   ª       ª       ª   ª       ko.d.ts
+ª   ª       ª       ª   ª       ko.js
+ª   ª       ª       ª   ª       mk.cjs
+ª   ª       ª       ª   ª       mk.d.cts
+ª   ª       ª       ª   ª       mk.d.ts
+ª   ª       ª       ª   ª       mk.js
+ª   ª       ª       ª   ª       ms.cjs
+ª   ª       ª       ª   ª       ms.d.cts
+ª   ª       ª       ª   ª       ms.d.ts
+ª   ª       ª       ª   ª       ms.js
+ª   ª       ª       ª   ª       nl.cjs
+ª   ª       ª       ª   ª       nl.d.cts
+ª   ª       ª       ª   ª       nl.d.ts
+ª   ª       ª       ª   ª       nl.js
+ª   ª       ª       ª   ª       no.cjs
+ª   ª       ª       ª   ª       no.d.cts
+ª   ª       ª       ª   ª       no.d.ts
+ª   ª       ª       ª   ª       no.js
+ª   ª       ª       ª   ª       ota.cjs
+ª   ª       ª       ª   ª       ota.d.cts
+ª   ª       ª       ª   ª       ota.d.ts
+ª   ª       ª       ª   ª       ota.js
+ª   ª       ª       ª   ª       pl.cjs
+ª   ª       ª       ª   ª       pl.d.cts
+ª   ª       ª       ª   ª       pl.d.ts
+ª   ª       ª       ª   ª       pl.js
+ª   ª       ª       ª   ª       ps.cjs
+ª   ª       ª       ª   ª       ps.d.cts
+ª   ª       ª       ª   ª       ps.d.ts
+ª   ª       ª       ª   ª       ps.js
+ª   ª       ª       ª   ª       pt.cjs
+ª   ª       ª       ª   ª       pt.d.cts
+ª   ª       ª       ª   ª       pt.d.ts
+ª   ª       ª       ª   ª       pt.js
+ª   ª       ª       ª   ª       ru.cjs
+ª   ª       ª       ª   ª       ru.d.cts
+ª   ª       ª       ª   ª       ru.d.ts
+ª   ª       ª       ª   ª       ru.js
+ª   ª       ª       ª   ª       sl.cjs
+ª   ª       ª       ª   ª       sl.d.cts
+ª   ª       ª       ª   ª       sl.d.ts
+ª   ª       ª       ª   ª       sl.js
+ª   ª       ª       ª   ª       sv.cjs
+ª   ª       ª       ª   ª       sv.d.cts
+ª   ª       ª       ª   ª       sv.d.ts
+ª   ª       ª       ª   ª       sv.js
+ª   ª       ª       ª   ª       ta.cjs
+ª   ª       ª       ª   ª       ta.d.cts
+ª   ª       ª       ª   ª       ta.d.ts
+ª   ª       ª       ª   ª       ta.js
+ª   ª       ª       ª   ª       th.cjs
+ª   ª       ª       ª   ª       th.d.cts
+ª   ª       ª       ª   ª       th.d.ts
+ª   ª       ª       ª   ª       th.js
+ª   ª       ª       ª   ª       tr.cjs
+ª   ª       ª       ª   ª       tr.d.cts
+ª   ª       ª       ª   ª       tr.d.ts
+ª   ª       ª       ª   ª       tr.js
+ª   ª       ª       ª   ª       ua.cjs
+ª   ª       ª       ª   ª       ua.d.cts
+ª   ª       ª       ª   ª       ua.d.ts
+ª   ª       ª       ª   ª       ua.js
+ª   ª       ª       ª   ª       ur.cjs
+ª   ª       ª       ª   ª       ur.d.cts
+ª   ª       ª       ª   ª       ur.d.ts
+ª   ª       ª       ª   ª       ur.js
+ª   ª       ª       ª   ª       vi.cjs
+ª   ª       ª       ª   ª       vi.d.cts
+ª   ª       ª       ª   ª       vi.d.ts
+ª   ª       ª       ª   ª       vi.js
+ª   ª       ª       ª   ª       zh-CN.cjs
+ª   ª       ª       ª   ª       zh-CN.d.cts
+ª   ª       ª       ª   ª       zh-CN.d.ts
+ª   ª       ª       ª   ª       zh-CN.js
+ª   ª       ª       ª   ª       zh-TW.cjs
+ª   ª       ª       ª   ª       zh-TW.d.cts
+ª   ª       ª       ª   ª       zh-TW.d.ts
+ª   ª       ª       ª   ª       zh-TW.js
+ª   ª       ª       ª   ª       
+ª   ª       ª       ª   +---mini
+ª   ª       ª       ª           checks.cjs
+ª   ª       ª       ª           checks.d.cts
+ª   ª       ª       ª           checks.d.ts
+ª   ª       ª       ª           checks.js
+ª   ª       ª       ª           coerce.cjs
+ª   ª       ª       ª           coerce.d.cts
+ª   ª       ª       ª           coerce.d.ts
+ª   ª       ª       ª           coerce.js
+ª   ª       ª       ª           external.cjs
+ª   ª       ª       ª           external.d.cts
+ª   ª       ª       ª           external.d.ts
+ª   ª       ª       ª           external.js
+ª   ª       ª       ª           index.cjs
+ª   ª       ª       ª           index.d.cts
+ª   ª       ª       ª           index.d.ts
+ª   ª       ª       ª           index.js
+ª   ª       ª       ª           iso.cjs
+ª   ª       ª       ª           iso.d.cts
+ª   ª       ª       ª           iso.d.ts
+ª   ª       ª       ª           iso.js
+ª   ª       ª       ª           parse.cjs
+ª   ª       ª       ª           parse.d.cts
+ª   ª       ª       ª           parse.d.ts
+ª   ª       ª       ª           parse.js
+ª   ª       ª       ª           schemas.cjs
+ª   ª       ª       ª           schemas.d.cts
+ª   ª       ª       ª           schemas.d.ts
+ª   ª       ª       ª           schemas.js
+ª   ª       ª       ª           
+ª   ª       ª       +---v4-mini
+ª   ª       ª               index.cjs
+ª   ª       ª               index.d.cts
+ª   ª       ª               index.d.ts
+ª   ª       ª               index.js
+ª   ª       ª               
+ª   ª       +---src
+ª   ª               index.ts
+ª   ª               schema.ts
+ª   ª               
+ª   +---@types
+ª   ª   +---node
+ª   ª       ª   assert.d.ts
+ª   ª       ª   async_hooks.d.ts
+ª   ª       ª   buffer.buffer.d.ts
+ª   ª       ª   buffer.d.ts
+ª   ª       ª   child_process.d.ts
+ª   ª       ª   cluster.d.ts
+ª   ª       ª   console.d.ts
+ª   ª       ª   constants.d.ts
+ª   ª       ª   crypto.d.ts
+ª   ª       ª   dgram.d.ts
+ª   ª       ª   diagnostics_channel.d.ts
+ª   ª       ª   dns.d.ts
+ª   ª       ª   domain.d.ts
+ª   ª       ª   events.d.ts
+ª   ª       ª   fs.d.ts
+ª   ª       ª   globals.d.ts
+ª   ª       ª   globals.typedarray.d.ts
+ª   ª       ª   http.d.ts
+ª   ª       ª   http2.d.ts
+ª   ª       ª   https.d.ts
+ª   ª       ª   index.d.ts
+ª   ª       ª   inspector.d.ts
+ª   ª       ª   inspector.generated.d.ts
+ª   ª       ª   LICENSE
+ª   ª       ª   module.d.ts
+ª   ª       ª   net.d.ts
+ª   ª       ª   os.d.ts
+ª   ª       ª   package.json
+ª   ª       ª   path.d.ts
+ª   ª       ª   perf_hooks.d.ts
+ª   ª       ª   process.d.ts
+ª   ª       ª   punycode.d.ts
+ª   ª       ª   querystring.d.ts
+ª   ª       ª   readline.d.ts
+ª   ª       ª   README.md
+ª   ª       ª   repl.d.ts
+ª   ª       ª   sea.d.ts
+ª   ª       ª   sqlite.d.ts
+ª   ª       ª   stream.d.ts
+ª   ª       ª   string_decoder.d.ts
+ª   ª       ª   test.d.ts
+ª   ª       ª   timers.d.ts
+ª   ª       ª   tls.d.ts
+ª   ª       ª   trace_events.d.ts
+ª   ª       ª   tty.d.ts
+ª   ª       ª   url.d.ts
+ª   ª       ª   util.d.ts
+ª   ª       ª   v8.d.ts
+ª   ª       ª   vm.d.ts
+ª   ª       ª   wasi.d.ts
+ª   ª       ª   worker_threads.d.ts
+ª   ª       ª   zlib.d.ts
+ª   ª       ª   
+ª   ª       +---assert
+ª   ª       ª       strict.d.ts
+ª   ª       ª       
+ª   ª       +---compatibility
+ª   ª       ª       iterators.d.ts
+ª   ª       ª       
+ª   ª       +---dns
+ª   ª       ª       promises.d.ts
+ª   ª       ª       
+ª   ª       +---fs
+ª   ª       ª       promises.d.ts
+ª   ª       ª       
+ª   ª       +---readline
+ª   ª       ª       promises.d.ts
+ª   ª       ª       
+ª   ª       +---stream
+ª   ª       ª       consumers.d.ts
+ª   ª       ª       promises.d.ts
+ª   ª       ª       web.d.ts
+ª   ª       ª       
+ª   ª       +---timers
+ª   ª       ª       promises.d.ts
+ª   ª       ª       
+ª   ª       +---ts5.6
+ª   ª       ª   ª   buffer.buffer.d.ts
+ª   ª       ª   ª   globals.typedarray.d.ts
+ª   ª       ª   ª   index.d.ts
+ª   ª       ª   ª   
+ª   ª       ª   +---compatibility
+ª   ª       ª           float16array.d.ts
+ª   ª       ª           
+ª   ª       +---ts5.7
+ª   ª       ª   ª   index.d.ts
+ª   ª       ª   ª   
+ª   ª       ª   +---compatibility
+ª   ª       ª           float16array.d.ts
+ª   ª       ª           
+ª   ª       +---web-globals
+ª   ª               abortcontroller.d.ts
+ª   ª               crypto.d.ts
+ª   ª               domexception.d.ts
+ª   ª               events.d.ts
+ª   ª               fetch.d.ts
+ª   ª               navigator.d.ts
+ª   ª               storage.d.ts
+ª   ª               streams.d.ts
+ª   ª               
+ª   +---msgpackr
+ª   ª   ª   benchmark.md
+ª   ª   ª   index.d.cts
+ª   ª   ª   index.d.ts
+ª   ª   ª   index.js
+ª   ª   ª   iterators.js
+ª   ª   ª   LICENSE
+ª   ª   ª   node-index.js
+ª   ª   ª   pack.d.cts
+ª   ª   ª   pack.d.ts
+ª   ª   ª   pack.js
+ª   ª   ª   package.json
+ª   ª   ª   README.md
+ª   ª   ª   rollup.config.js
+ª   ª   ª   SECURITY.md
+ª   ª   ª   stream.js
+ª   ª   ª   struct.js
+ª   ª   ª   test-worker.js
+ª   ª   ª   unpack.d.cts
+ª   ª   ª   unpack.d.ts
+ª   ª   ª   unpack.js
+ª   ª   ª   
+ª   ª   +---dist
+ª   ª   ª       index-no-eval.cjs
+ª   ª   ª       index-no-eval.cjs.map
+ª   ª   ª       index-no-eval.min.js
+ª   ª   ª       index-no-eval.min.js.map
+ª   ª   ª       index.js
+ª   ª   ª       index.js.map
+ª   ª   ª       index.min.js
+ª   ª   ª       index.min.js.map
+ª   ª   ª       node.cjs
+ª   ª   ª       node.cjs.map
+ª   ª   ª       test.js
+ª   ª   ª       test.js.map
+ª   ª   ª       unpack-no-eval.cjs
+ª   ª   ª       unpack-no-eval.cjs.map
+ª   ª   ª       
+ª   ª   +---node_modules
+ª   ª       +---.bin
+ª   ª               download-msgpackr-prebuilds
+ª   ª               download-msgpackr-prebuilds.CMD
+ª   ª               download-msgpackr-prebuilds.ps1
+ª   ª               
+ª   +---typescript
+ª       ª   LICENSE.txt
+ª       ª   package.json
+ª       ª   README.md
+ª       ª   SECURITY.md
+ª       ª   ThirdPartyNoticeText.txt
+ª       ª   
+ª       +---bin
+ª       ª       tsc
+ª       ª       tsserver
+ª       ª       
+ª       +---lib
+ª       ª   ª   lib.d.ts
+ª       ª   ª   lib.decorators.d.ts
+ª       ª   ª   lib.decorators.legacy.d.ts
+ª       ª   ª   lib.dom.asynciterable.d.ts
+ª       ª   ª   lib.dom.d.ts
+ª       ª   ª   lib.dom.iterable.d.ts
+ª       ª   ª   lib.es2015.collection.d.ts
+ª       ª   ª   lib.es2015.core.d.ts
+ª       ª   ª   lib.es2015.d.ts
+ª       ª   ª   lib.es2015.generator.d.ts
+ª       ª   ª   lib.es2015.iterable.d.ts
+ª       ª   ª   lib.es2015.promise.d.ts
+ª       ª   ª   lib.es2015.proxy.d.ts
+ª       ª   ª   lib.es2015.reflect.d.ts
+ª       ª   ª   lib.es2015.symbol.d.ts
+ª       ª   ª   lib.es2015.symbol.wellknown.d.ts
+ª       ª   ª   lib.es2016.array.include.d.ts
+ª       ª   ª   lib.es2016.d.ts
+ª       ª   ª   lib.es2016.full.d.ts
+ª       ª   ª   lib.es2016.intl.d.ts
+ª       ª   ª   lib.es2017.arraybuffer.d.ts
+ª       ª   ª   lib.es2017.d.ts
+ª       ª   ª   lib.es2017.date.d.ts
+ª       ª   ª   lib.es2017.full.d.ts
+ª       ª   ª   lib.es2017.intl.d.ts
+ª       ª   ª   lib.es2017.object.d.ts
+ª       ª   ª   lib.es2017.sharedmemory.d.ts
+ª       ª   ª   lib.es2017.string.d.ts
+ª       ª   ª   lib.es2017.typedarrays.d.ts
+ª       ª   ª   lib.es2018.asyncgenerator.d.ts
+ª       ª   ª   lib.es2018.asynciterable.d.ts
+ª       ª   ª   lib.es2018.d.ts
+ª       ª   ª   lib.es2018.full.d.ts
+ª       ª   ª   lib.es2018.intl.d.ts
+ª       ª   ª   lib.es2018.promise.d.ts
+ª       ª   ª   lib.es2018.regexp.d.ts
+ª       ª   ª   lib.es2019.array.d.ts
+ª       ª   ª   lib.es2019.d.ts
+ª       ª   ª   lib.es2019.full.d.ts
+ª       ª   ª   lib.es2019.intl.d.ts
+ª       ª   ª   lib.es2019.object.d.ts
+ª       ª   ª   lib.es2019.string.d.ts
+ª       ª   ª   lib.es2019.symbol.d.ts
+ª       ª   ª   lib.es2020.bigint.d.ts
+ª       ª   ª   lib.es2020.d.ts
+ª       ª   ª   lib.es2020.date.d.ts
+ª       ª   ª   lib.es2020.full.d.ts
+ª       ª   ª   lib.es2020.intl.d.ts
+ª       ª   ª   lib.es2020.number.d.ts
+ª       ª   ª   lib.es2020.promise.d.ts
+ª       ª   ª   lib.es2020.sharedmemory.d.ts
+ª       ª   ª   lib.es2020.string.d.ts
+ª       ª   ª   lib.es2020.symbol.wellknown.d.ts
+ª       ª   ª   lib.es2021.d.ts
+ª       ª   ª   lib.es2021.full.d.ts
+ª       ª   ª   lib.es2021.intl.d.ts
+ª       ª   ª   lib.es2021.promise.d.ts
+ª       ª   ª   lib.es2021.string.d.ts
+ª       ª   ª   lib.es2021.weakref.d.ts
+ª       ª   ª   lib.es2022.array.d.ts
+ª       ª   ª   lib.es2022.d.ts
+ª       ª   ª   lib.es2022.error.d.ts
+ª       ª   ª   lib.es2022.full.d.ts
+ª       ª   ª   lib.es2022.intl.d.ts
+ª       ª   ª   lib.es2022.object.d.ts
+ª       ª   ª   lib.es2022.regexp.d.ts
+ª       ª   ª   lib.es2022.string.d.ts
+ª       ª   ª   lib.es2023.array.d.ts
+ª       ª   ª   lib.es2023.collection.d.ts
+ª       ª   ª   lib.es2023.d.ts
+ª       ª   ª   lib.es2023.full.d.ts
+ª       ª   ª   lib.es2023.intl.d.ts
+ª       ª   ª   lib.es2024.arraybuffer.d.ts
+ª       ª   ª   lib.es2024.collection.d.ts
+ª       ª   ª   lib.es2024.d.ts
+ª       ª   ª   lib.es2024.full.d.ts
+ª       ª   ª   lib.es2024.object.d.ts
+ª       ª   ª   lib.es2024.promise.d.ts
+ª       ª   ª   lib.es2024.regexp.d.ts
+ª       ª   ª   lib.es2024.sharedmemory.d.ts
+ª       ª   ª   lib.es2024.string.d.ts
+ª       ª   ª   lib.es5.d.ts
+ª       ª   ª   lib.es6.d.ts
+ª       ª   ª   lib.esnext.array.d.ts
+ª       ª   ª   lib.esnext.collection.d.ts
+ª       ª   ª   lib.esnext.d.ts
+ª       ª   ª   lib.esnext.decorators.d.ts
+ª       ª   ª   lib.esnext.disposable.d.ts
+ª       ª   ª   lib.esnext.error.d.ts
+ª       ª   ª   lib.esnext.float16.d.ts
+ª       ª   ª   lib.esnext.full.d.ts
+ª       ª   ª   lib.esnext.intl.d.ts
+ª       ª   ª   lib.esnext.iterator.d.ts
+ª       ª   ª   lib.esnext.promise.d.ts
+ª       ª   ª   lib.esnext.sharedmemory.d.ts
+ª       ª   ª   lib.scripthost.d.ts
+ª       ª   ª   lib.webworker.asynciterable.d.ts
+ª       ª   ª   lib.webworker.d.ts
+ª       ª   ª   lib.webworker.importscripts.d.ts
+ª       ª   ª   lib.webworker.iterable.d.ts
+ª       ª   ª   tsc.js
+ª       ª   ª   tsserver.js
+ª       ª   ª   tsserverlibrary.d.ts
+ª       ª   ª   tsserverlibrary.js
+ª       ª   ª   typescript.d.ts
+ª       ª   ª   typescript.js
+ª       ª   ª   typesMap.json
+ª       ª   ª   typingsInstaller.js
+ª       ª   ª   watchGuard.js
+ª       ª   ª   _tsc.js
+ª       ª   ª   _tsserver.js
+ª       ª   ª   _typingsInstaller.js
+ª       ª   ª   
+ª       ª   +---cs
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---de
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---es
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---fr
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---it
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---ja
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---ko
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---pl
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---pt-br
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---ru
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---tr
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---zh-cn
+ª       ª   ª       diagnosticMessages.generated.json
+ª       ª   ª       
+ª       ª   +---zh-tw
+ª       ª           diagnosticMessages.generated.json
+ª       ª           
+ª       +---node_modules
+ª           +---.bin
+ª                   tsc
+ª                   tsc.CMD
+ª                   tsc.ps1
+ª                   tsserver
+ª                   tsserver.CMD
+ª                   tsserver.ps1
+ª                   
++---src
+        index.ts
+        LoopbackAdapter.ts
+        types.ts
+        WebSocketAdapter.ts
+        
+
+---------- FILE CONTENTS ----------
+
+## FILE: packages\net\package.json
+---------------------------
+{
+  "name": "@bf42lite/net",
+  "version": "1.3.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w"
+  },
+  "dependencies": {
+    "@bf42lite/protocol": "workspace:*",
+    "msgpackr": "^1.10.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.0.0"
+  }
+}
+
+## FILE: packages\net\tsconfig.json
+---------------------------
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "declaration": true,
+    "outDir": "dist",
+    "skipLibCheck": true,
+    "types": ["node"],
+    "composite": true
+  },
+  "include": ["src"]
+}
+
+## FILE: packages\net\src\index.ts
+---------------------------
+export * from './types';
+export * from './WebSocketAdapter';
+export * from './LoopbackAdapter';
+
+## FILE: packages\net\src\LoopbackAdapter.ts
+---------------------------
+import { NetworkAdapter, NetworkStats } from './types';
+import { ClientMessage, ServerMessage } from '@bf42lite/protocol';
+
+export class LoopbackAdapter implements NetworkAdapter {
+  private connected = false;
+  private peer: LoopbackAdapter | null = null;
+  
+  private onMsgCallbacks: ((msg: any) => void)[] = [];
+  private onConnectCallbacks: (() => void)[] = [];
+  
+  public latencyMs = 0; 
+
+  constructor() {}
+
+  static pair(): [LoopbackAdapter, LoopbackAdapter] {
+    const a = new LoopbackAdapter();
+    const b = new LoopbackAdapter();
+    a.peer = b;
+    b.peer = a;
+    return [a, b];
+  }
+
+  async connect(_url: string): Promise<void> {
+    setTimeout(() => {
+      this.connected = true;
+      this.onConnectCallbacks.forEach(cb => cb());
+    }, 10);
+  }
+
+  disconnect() {
+    this.connected = false;
+  }
+
+  isConnected() { return this.connected; }
+
+  send(msg: ClientMessage | ServerMessage) {
+    const peer = this.peer; // Capture locally to satisfy TS in setTimeout
+    if (!peer) return;
+    
+    const data = JSON.parse(JSON.stringify(msg));
+
+    if (this.latencyMs > 0) {
+      setTimeout(() => peer.receive(data), this.latencyMs);
+    } else {
+      peer.receive(data);
+    }
+  }
+
+  private receive(msg: any) {
+    if (this.connected) {
+      this.onMsgCallbacks.forEach(cb => cb(msg));
+    }
+  }
+
+  onMessage(cb: (msg: any) => void) { this.onMsgCallbacks.push(cb); }
+  onConnect(cb: () => void) { this.onConnectCallbacks.push(cb); }
+  onDisconnect(_cb: (reason?: string) => void) {}
+  
+  getStats(): NetworkStats {
+    return { rtt: 0, loss: 0, bytesIn: 0, bytesOut: 0 };
+  }
+}
+
+## FILE: packages\net\src\types.ts
+---------------------------
+import { ClientMessage, ServerMessage } from '@bf42lite/protocol';
+
+export interface NetworkStats {
+  rtt: number;      // Round Trip Time (ms)
+  loss: number;     // Packet loss % (simulated or real)
+  bytesIn: number;
+  bytesOut: number;
+}
+
+export interface NetworkAdapter {
+  // Connection Management
+  connect(url: string): Promise<void>;
+  disconnect(): void;
+  isConnected(): boolean;
+
+  // Messaging
+  send(msg: ClientMessage): void;
+  
+  // Event Listeners
+  onMessage(callback: (msg: ServerMessage) => void): void;
+  onConnect(callback: () => void): void;
+  onDisconnect(callback: (reason?: string) => void): void;
+
+  // Diagnostics
+  getStats(): NetworkStats;
+}
+
+## FILE: packages\net\src\WebSocketAdapter.ts
+---------------------------
+import { NetworkAdapter, NetworkStats } from './types';
+import { pack, unpack } from 'msgpackr';
+import { ClientMessage, ServerMessage } from '@bf42lite/protocol';
+
+export class WebSocketAdapter implements NetworkAdapter {
+  private socket: WebSocket | null = null;
+  private handlers = {
+    message: [] as ((msg: ServerMessage) => void)[],
+    connect: [] as (() => void)[],
+    disconnect: [] as ((reason?: string) => void)[]
+  };
+  
+  private stats: NetworkStats = { rtt: 0, loss: 0, bytesIn: 0, bytesOut: 0 };
+
+  isConnected(): boolean {
+    return this.socket?.readyState === WebSocket.OPEN;
+  }
+
+  async connect(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.socket = new WebSocket(url);
+      this.socket.binaryType = 'arraybuffer';
+
+      this.socket.onopen = () => {
+        console.log(`[Net] Connected to ${url}`);
+        this.handlers.connect.forEach(cb => cb());
+        resolve();
+      };
+
+      this.socket.onerror = (err) => {
+        console.error('[Net] Connection Error', err);
+        if (this.socket?.readyState !== WebSocket.OPEN) {
+          reject(err);
+        }
+      };
+
+      this.socket.onclose = (event) => {
+        console.log('[Net] Disconnected', event.reason);
+        this.handlers.disconnect.forEach(cb => cb(event.reason));
+      };
+
+      this.socket.onmessage = (event) => {
+        try {
+          const data = new Uint8Array(event.data as ArrayBuffer);
+          this.stats.bytesIn += data.byteLength;
+          
+          // Decode Binary -> Object
+          const msg = unpack(data) as ServerMessage;
+          
+          this.handlers.message.forEach(cb => cb(msg));
+        } catch (e) {
+          console.error('[Net] Failed to decode message', e);
+        }
+      };
+    });
+  }
+
+  disconnect(): void {
+    this.socket?.close();
+  }
+
+  send(msg: ClientMessage): void {
+    if (!this.isConnected()) return;
+
+    // Encode Object -> Binary
+    const data = pack(msg);
+    this.stats.bytesOut += data.byteLength;
+    
+    this.socket?.send(data);
+  }
+
+  onMessage(cb: (msg: ServerMessage) => void) { this.handlers.message.push(cb); }
+  onConnect(cb: () => void) { this.handlers.connect.push(cb); }
+  onDisconnect(cb: (reason?: string) => void) { this.handlers.disconnect.push(cb); }
+
+  getStats() { return this.stats; }
+}
+

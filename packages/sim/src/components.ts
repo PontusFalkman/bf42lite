@@ -11,17 +11,14 @@ export const Transform = defineComponent({
 
 export const Velocity = defineComponent(Vector3);
 
-// [FIX] Updated InputState to match new ClientGame.ts
+// Generic Input: The Engine doesn't care what "Button 1" does.
+// It just knows the button is pressed.
 export const InputState = defineComponent({
-  axes: {
-    forward: Types.f32,
-    right: Types.f32,
-    jump: Types.ui8,
-    shoot: Types.ui8,
-    reload: Types.ui8,
-  },
-  viewX: Types.f32,    // Mouse X
-  viewY: Types.f32,    // Mouse Y
+  moveX: Types.f32,    // WASD / Left Stick X
+  moveY: Types.f32,    // WASD / Left Stick Y
+  viewX: Types.f32,    // Mouse X / Right Stick X
+  viewY: Types.f32,    // Mouse Y / Right Stick Y
+  buttons: Types.ui32, // Bitmask for actions (Jump, Fire, Reload, Enter Vehicle)
   lastTick: Types.ui32
 });
 
@@ -32,5 +29,7 @@ export const Me = defineComponent(); // Local player authority
 export interface SimWorld extends IWorld {
   time: number;
   dt: number;
+  // The engine doesn't know about 'tickets', but it allows
+  // modules to attach arbitrary data if needed.
   [key: string]: any; 
 }

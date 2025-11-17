@@ -30,8 +30,7 @@ pub struct EntitySnapshot {
     pub stamina: Option<StaminaStruct>,
     pub team: Option<TeamStruct>,
     pub score: Option<ScoreStruct>,
-    pub aura_charge_progress: f32,
-    pub is_healing_aura_active: bool,
+    pub loadout: Option<LoadoutStruct>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -42,6 +41,8 @@ pub struct StaminaStruct { pub current: f32, pub max: f32 }
 pub struct TeamStruct { pub id: TeamId }
 #[derive(Serialize, Deserialize)]
 pub struct ScoreStruct { pub kills: u32, pub deaths: u32 }
+#[derive(Serialize, Deserialize)]
+pub struct LoadoutStruct { pub class_id: u8 }
 
 #[derive(Serialize, Deserialize)]
 pub struct GameModeState {

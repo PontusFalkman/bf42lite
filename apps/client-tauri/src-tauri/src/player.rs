@@ -18,9 +18,7 @@ pub struct Player {
     pub fire_cooldown: f32, 
     pub score_kills: u32,
     pub score_deaths: u32,
-    pub last_time_damage_taken: f32,
-    pub aura_charge_progress: f32,
-    pub is_healing_aura_active: bool,
+    pub class_id: u8,
 }
 
 impl Player {
@@ -37,9 +35,7 @@ impl Player {
             fire_cooldown: 0.0,
             score_kills: 0,
             score_deaths: 0,
-            last_time_damage_taken: 0.0,
-            aura_charge_progress: 0.0,
-            is_healing_aura_active: false,
+            class_id: 0,
         }
     }
 

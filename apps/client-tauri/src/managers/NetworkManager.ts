@@ -1,8 +1,7 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { ClientInput, ClientFire } from '@bf42lite/protocol';
-import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim'; // [FIX] Removed hasComponent
-import { hasComponent } from 'bitecs'; // [FIX] Added hasComponent from bitecs
-import { Health, Soldier, CapturePoint, Team, Loadout, Aura } from '@bf42lite/games-bf42'; // [FIX] Added Aura
+import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
+import { Health, Soldier, CapturePoint, Team, Loadout } from '@bf42lite/games-bf42'; // [FIX] Added Loadout
 import { Renderer } from '../Renderer';
 
 interface InterpolationBuffer {
@@ -38,119 +37,114 @@ export class NetworkManager {
         this.net.onDisconnect(() => {
             console.log("[Net] WebSocket Disconnected");
             if (this.onDisconnected) this.onDisconnected();
-            this.serverToLocal.clear();
-            this.remoteBuffers.clear();
         });
-
+        
         this.net.onMessage((msg) => {
             if (msg.type === 'welcome') {
+                console.log(`[Net] Joined match. Server ID: ${msg.playerId}`);
                 this.myServerId = msg.playerId;
-                if (this.onWelcome) this.onWelcome(this.myServerId);
+                if (this.onWelcome) this.onWelcome(msg.playerId);
             }
-            if (msg.type === 'snapshot') {
+            else if (msg.type === 'snapshot') {
                 if (this.onSnapshot) this.onSnapshot(msg);
             }
-            if (msg.type === 'hitConfirmed') {
-                if (this.onHitConfirmed) this.onHitConfirmed(msg.damage);
+            else if (msg.type === 'hitConfirmed') {
+                if (this.onHitConfirmed) this.onHitConfirmed(msg.damage);            
             }
         });
+    }
+
+    public sendSpawnRequest(classId: number) {
+        this.net.send({ type: 'spawn_request', classId });
     }
 
     public connect(url: string) {
         this.net.connect(url);
     }
 
-    public isConnected() {
-        return this.net.isConnected();
+    public send(cmd: ClientInput) {
+        this.net.send(cmd);
     }
 
-    public sendInput(input: ClientInput) {
-        this.net.send(input);
-    }
-
-    public sendFire(fire: ClientFire) {
-        this.net.send(fire);
-    }
-
-    public send(msg: any) {
+    public sendFire(origin: {x: number, y: number, z: number}, direction: {x: number, y: number, z: number}, tick: number) {
+        const msg: ClientFire = { type: 'fire', tick, origin, direction, weaponId: 1 };
         this.net.send(msg);
     }
 
-    public getMyServerId() {
-        return this.myServerId;
+    public registerLocalPlayer(serverId: number, localId: number) {
+        this.serverToLocal.set(serverId, localId);
     }
 
-    public getServerToLocalMap() {
-        return this.serverToLocal;
+    public getLocalId(serverId: number): number | undefined {
+        return this.serverToLocal.get(serverId);
     }
 
-    // This is the big one: update the local ECS world from a server snapshot
-    public processSnapshot(msg: any, world: SimWorld, renderer: Renderer) {
-        this.myServerId = msg.myId;
-
+    public processRemoteEntities(msg: any, world: SimWorld, renderer: Renderer) {
         const activeServerIds = new Set<number>();
-        for (const entity of msg.entities) {
-            const sId = entity.id;
-            activeServerIds.add(sId);
+        const now = performance.now();
 
-            let lId = this.serverToLocal.get(sId);
-            if (!lId) {
-                lId = addEntity(world);
-                this.serverToLocal.set(sId, lId);
-                addComponent(world, Transform, lId);
-                addComponent(world, Health, lId);
-                addComponent(world, Team, lId);
+        msg.entities.forEach((serverEnt: any) => {
+            activeServerIds.add(serverEnt.id);
+
+            if (serverEnt.id === this.myServerId) return;
+
+            let localId = this.serverToLocal.get(serverEnt.id);
+
+            // --- 1. SPAWN LOGIC ---
+            if (localId === undefined) {
+                localId = addEntity(world);
+                addComponent(world, Transform, localId);
                 
-                if (!hasComponent(world, Soldier, lId)) {
-                    addComponent(world, Soldier, lId);
+                // Check Type
+                if (serverEnt.type === 'flag') {
+                    addComponent(world, CapturePoint, localId);
+                    addComponent(world, Team, localId);
+                } else {
+                    // Default to Soldier
+                    addComponent(world, Soldier, localId);
+                    addComponent(world, Health, localId); 
+                    addComponent(world, Team, localId);
+                    addComponent(world, Loadout, localId); // [FIX] Add Loadout Component
                 }
-                if (!hasComponent(world, Aura, lId)) { // [NEW] Add Aura
-                    addComponent(world, Aura, lId);
-                }
-                if (sId === this.myServerId) {
-                    console.log(`[NET] My local ID is ${lId}`);
-                }
+                
+                Transform.x[localId] = serverEnt.pos.x;
+                Transform.y[localId] = serverEnt.pos.y;
+                Transform.z[localId] = serverEnt.pos.z;
+                Transform.rotation[localId] = serverEnt.rot;
+
+                this.serverToLocal.set(serverEnt.id, localId);
+                this.remoteBuffers.set(localId, { snapshots: [] });
             }
 
-            // 1. Update Core Components
-            Transform.x[lId] = entity.pos.x;
-            Transform.y[lId] = entity.pos.y;
-            Transform.z[lId] = entity.pos.z;
-            Transform.rotation[lId] = entity.rot;
-
-            if (entity.health) Health.current[lId] = entity.health;
-            if (entity.team) Team.id[lId] = entity.team;
-            
-            // [NEW] Update Aura Component
-            // Check if fields exist (they are optional in the schema)
-            if (entity.aura_charge_progress !== undefined) {
-                Aura.progress[lId] = entity.aura_charge_progress;
-            }
-            if (entity.is_healing_aura_active !== undefined) {
-                Aura.active[lId] = entity.is_healing_aura_active ? 1 : 0;
-            }
-
-            // 2. Interpolation Buffering (for remotes)
-            if (sId !== this.myServerId) {
-                if (!this.remoteBuffers.has(lId)) {
-                    this.remoteBuffers.set(lId, { snapshots: [] });
-                }
-                const buffer = this.remoteBuffers.get(lId)!;
-                buffer.snapshots.push({ 
-                    tick: msg.tick, 
-                    pos: entity.pos, 
-                    rot: entity.rot, 
-                    timestamp: Date.now() 
+            // --- 2. UPDATE BUFFER ---
+            const buffer = this.remoteBuffers.get(localId); 
+            if (buffer) {
+                buffer.snapshots.push({
+                    tick: msg.tick,
+                    pos: serverEnt.pos,
+                    rot: serverEnt.rot,
+                    timestamp: now
                 });
+                if (buffer.snapshots.length > 20) buffer.snapshots.shift();
+            }
+
+            // --- 3. SYNC DATA ---
+            if (serverEnt.type === 'flag') {
+                CapturePoint.progress[localId] = serverEnt.captureProgress;
+                CapturePoint.team[localId] = serverEnt.team; 
+            } else {
+                Health.current[localId] = serverEnt.health;
+                Health.isDead[localId] = serverEnt.isDead ? 1 : 0;
+                Team.id[localId] = serverEnt.team;
                 
-                // Prune old snapshots
-                if (buffer.snapshots.length > 10) {
-                    buffer.snapshots.shift();
+                // [FIX] Sync the Class ID from Server to Client Component
+                if (serverEnt.classId !== undefined) {
+                    Loadout.classId[localId] = serverEnt.classId;
                 }
             }
-        }
+        });
 
-        // 3. Remove stale entities
+        // REMOVE DISCONNECTED
         for (const [sId, lId] of this.serverToLocal.entries()) {
             if (!activeServerIds.has(sId) && sId !== this.myServerId) {
                 removeEntity(world, lId);
@@ -183,7 +177,7 @@ export class NetworkManager {
             Transform.x[lid] = t0.pos.x + (t1.pos.x - t0.pos.x) * clampedAlpha;
             Transform.y[lid] = t0.pos.y + (t1.pos.y - t0.pos.y) * clampedAlpha;
             Transform.z[lid] = t0.pos.z + (t1.pos.z - t0.pos.z) * clampedAlpha;
-            Transform.rotation[lid] = t0.rot + (t1.rot - t0.rot) * clampedAlpha; // Note: needs lerpAngle
+            Transform.rotation[lid] = t0.rot + (t1.rot - t0.rot) * clampedAlpha;
         }
     }
 }

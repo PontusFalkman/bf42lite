@@ -1,15 +1,17 @@
+// packages/sim/tsconfig.json
 {
   "compilerOptions": {
-    "composite": true,
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "esModuleInterop": true,
     "strict": true,
-    "declaration": true,
-    "outDir": "dist",
-    "rootDir": "src", 
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "declarationDir": "dist",
+    "composite": true
   },
   "include": ["src"]
 }
