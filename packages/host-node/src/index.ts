@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { pack, unpack } from 'msgpackr';
-import { createSimulation, addEntity, addComponent } from '@bf42lite/sim';
+import { createSimulation, addEntity, addComponent } from '@bf42lite/engine-core';
 import { ClientMessage, ServerMessage, Snapshot } from '@bf42lite/protocol';
 
 import * as Game from '@bf42lite/games-bf42'; 

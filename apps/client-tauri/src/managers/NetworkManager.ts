@@ -1,6 +1,6 @@
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { ClientInput, ClientFire } from '@bf42lite/protocol';
-import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
+import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/engine-core';
 import { Health, Soldier, CapturePoint, Team, Loadout } from '@bf42lite/games-bf42'; // [FIX] Added Loadout
 import { Renderer } from '../Renderer';
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { InputState } from '@bf42lite/sim'; // <--- FIX: Added Import
+import { InputState } from '@bf42lite/engine-core'; // <--- FIX: Added Import
 
 export class Renderer {
   private scene: THREE.Scene;

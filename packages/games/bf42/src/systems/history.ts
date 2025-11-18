@@ -1,5 +1,5 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { Transform, SimWorld } from '@bf42lite/sim';
+import { Transform, SimWorld } from '@bf42lite/engine-core';
 import { Health, Team } from '../components';
 
 // 1. The "Tape Recorder"

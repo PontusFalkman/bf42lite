@@ -15,7 +15,7 @@ export default defineConfig({
   resolve: {
     // FIX: Force Vite to use the source TS files instead of the CJS dist files
     alias: {
-      '@bf42lite/sim': resolve(__dirname, '../../packages/sim/src/index.ts'),
+      '@bf42lite/engine-core': resolve(__dirname, '../../packages/sim/src/index.ts'),
       '@bf42lite/games-bf42': resolve(__dirname, '../../packages/games/bf42/src/index.ts'),
       '@bf42lite/net': resolve(__dirname, '../../packages/net/src/index.ts'),
       '@bf42lite/protocol': resolve(__dirname, '../../packages/protocol/src/index.ts'),

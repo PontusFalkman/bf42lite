@@ -1,4 +1,4 @@
-import { SimWorld, addComponent, addEntity, createMovementSystem, SystemFactory, InputState, Transform, defineQuery } from '@bf42lite/sim';
+import { SimWorld, addComponent, addEntity, createMovementSystem, SystemFactory, InputState, Transform, defineQuery } from '@bf42lite/engine-core';
 import { ClientMessage } from '@bf42lite/protocol'; 
 import { createCombatSystem } from './systems/combat';
 import { createRespawnSystem } from './systems/respawn';

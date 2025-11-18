@@ -1,7 +1,7 @@
 import { defineSystem, defineQuery } from 'bitecs';
 // [ADD IMPORTS]
 import { GameRules, CapturePoint, Team } from '../components'; 
-import { SimWorld } from '@bf42lite/sim'; 
+import { SimWorld } from '@bf42lite/engine-core'; 
 
 const BLEED_INTERVAL = 1.0; // Seconds between ticket removal
 const BLEED_AMOUNT = 1;     // How many tickets to remove

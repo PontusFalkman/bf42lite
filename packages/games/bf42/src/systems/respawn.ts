@@ -1,5 +1,5 @@
 import { defineSystem, defineQuery, addComponent, removeComponent, hasComponent } from 'bitecs';
-import { Transform, Velocity, SimWorld, InputState } from '@bf42lite/sim';
+import { Transform, Velocity, SimWorld, InputState } from '@bf42lite/engine-core';
 import { Health, RespawnTimer } from '../components'; // Ammo not needed here anymore
 
 const RESPAWN_TIME = 3.0;

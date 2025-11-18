@@ -2,3 +2,4 @@ packages:
   - 'packages/*'
   - 'packages/games/*'
   - 'apps/*'
+  - "packages/engine-core"

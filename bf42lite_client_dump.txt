@@ -36,7 +36,7 @@ import {
     addEntity,
     defineQuery, 
     createMovementSystem
-} from '@bf42lite/sim';
+} from '@bf42lite/engine-core';
 
 import { 
     Health, 
@@ -301,6 +301,7 @@ export class ClientGame {
     }
 }
 
+
 ## FILE: apps\client-tauri\src\InputManager.ts
 ---------------------------
 import { ClientInput } from '@bf42lite/protocol';
@@ -388,6 +389,7 @@ export class InputManager {
   }
 }
 
+
 ## FILE: apps\client-tauri\src\main.ts
 ---------------------------
 import { ClientGame } from './ClientGame';
@@ -398,6 +400,7 @@ document.addEventListener('contextmenu', event => event.preventDefault());
 console.log("Starting bf42lite Client...");
 const game = new ClientGame();
 game.start();
+
 
 ## FILE: apps\client-tauri\src\old fully functional ts backup.zip
 ---------------------------
@@ -447,7 +450,7 @@ v*:7µö—B.0ƒRäÖíŒ*ä zþÊ×GnCí…ž¦Ï×Ÿ¥rýKÓˆC¬›r¬�
 ## FILE: apps\client-tauri\src\Renderer.ts
 ---------------------------
 import * as THREE from 'three';
-import { InputState } from '@bf42lite/sim'; // <--- FIX: Added Import
+import { InputState } from '@bf42lite/engine-core'; // <--- FIX: Added Import
 
 export class Renderer {
   private scene: THREE.Scene;
@@ -583,12 +586,13 @@ export class Renderer {
   }
 }
 
+
 ## FILE: apps\client-tauri\src\WeaponSystem.ts
 ---------------------------
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
 import { NetworkManager } from './managers/NetworkManager';
-import { InputState } from '@bf42lite/sim';
+import { InputState } from '@bf42lite/engine-core';
 
 // Mirror of Server Config
 const WEAPONS = {
@@ -657,11 +661,12 @@ export class WeaponSystem {
   }
 }
 
+
 ## FILE: apps\client-tauri\src\managers\NetworkManager.ts
 ---------------------------
 import { WebSocketAdapter, NetworkAdapter } from '@bf42lite/net';
 import { ClientInput, ClientFire } from '@bf42lite/protocol';
-import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/sim';
+import { SimWorld, addEntity, addComponent, removeEntity, Transform } from '@bf42lite/engine-core';
 import { Health, Soldier, CapturePoint, Team, Loadout } from '@bf42lite/games-bf42'; // [FIX] Added Loadout
 import { Renderer } from '../Renderer';
 
@@ -843,6 +848,7 @@ export class NetworkManager {
     }
 }
 
+
 ## FILE: apps\client-tauri\src\managers\UIManager.ts
 ---------------------------
 export class UIManager {
@@ -1016,9 +1022,10 @@ export class UIManager {
     }
 }
 
+
 ## FILE: apps\client-tauri\src\systems\Reconciler.ts
 ---------------------------
-import { Transform, Velocity, SimWorld } from '@bf42lite/sim';
+import { Transform, Velocity, SimWorld } from '@bf42lite/engine-core';
 import { ClientInput, EntityState } from '@bf42lite/protocol';
 
 export interface InputHistory {
@@ -1179,4 +1186,5 @@ export class Reconciler {
         return rtt;
     }
 }
+
 

@@ -9,9 +9,11 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@sim/*": ["packages/sim/src/*"],
-      "@net/*": ["packages/net/src/*"],
-      "@protocol/*": ["packages/protocol/src/*"]
+      "@bf42lite/sim": ["packages/sim/src"],
+      "@bf42lite/engine-core": ["packages/engine-core/src"],
+      "@bf42lite/games-bf42": ["packages/games/bf42/src"],
+      "@bf42lite/protocol": ["packages/protocol/src"],
+      "@bf42lite/net": ["packages/net/src"]
     }
   }
 }

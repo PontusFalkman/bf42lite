@@ -8,7 +8,7 @@ import {
     addEntity,
     defineQuery, 
     createMovementSystem
-} from '@bf42lite/sim';
+} from '@bf42lite/engine-core';
 
 import { 
     Health, 

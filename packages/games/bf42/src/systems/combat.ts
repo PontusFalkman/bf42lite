@@ -1,5 +1,5 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { Transform, InputState, SimWorld } from '@bf42lite/sim'; 
+import { Transform, InputState, SimWorld } from '@bf42lite/engine-core'; 
 import { Health, CombatState, GameRules, Team, Ammo, Stats, Loadout } from '../components'; // [ADD Loadout]
 import { getPoseAtTick } from './history';
 import { WEAPONS } from '../index'; // [IMPORT WEAPONS]

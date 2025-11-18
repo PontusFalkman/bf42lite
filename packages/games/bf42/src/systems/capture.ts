@@ -1,5 +1,5 @@
 import { defineSystem, defineQuery } from 'bitecs';
-import { Transform, SimWorld } from '@bf42lite/sim';
+import { Transform, SimWorld } from '@bf42lite/engine-core';
 import { CapturePoint, Team, Health } from '../components';
 
 const CAPTURE_RATE = 20; // Points per second

@@ -1,4 +1,4 @@
-import { Transform, Velocity, SimWorld } from '@bf42lite/sim';
+import { Transform, Velocity, SimWorld } from '@bf42lite/engine-core';
 import { ClientInput, EntityState } from '@bf42lite/protocol';
 
 export interface InputHistory {
