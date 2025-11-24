@@ -10,8 +10,8 @@ use crate::sim::FlagZone;
 pub fn update_conquest(
     flags: &mut Vec<FlagZone>,
     players: &HashMap<u32, Player>,
-    tickets_a: &mut i32,
-    tickets_b: &mut i32,
+    tickets_a: &mut f32,
+    tickets_b: &mut f32,
     dt: f32,
 ) {
     if dt <= 0.0 {
@@ -128,9 +128,10 @@ pub fn update_conquest(
         }
     }
 
-    // === 2) Ticket bleed based on majority flags ===
+    // === 2) Ticket bleed based on majority control ===
     let mut owned_a = 0u32;
     let mut owned_b = 0u32;
+
     for flag in flags.iter() {
         match flag.owner {
             TeamId::TeamA => owned_a += 1,
@@ -140,20 +141,18 @@ pub fn update_conquest(
     }
 
     if owned_a > owned_b {
-        // Team A has more flags -> bleed Team B.
-        let bleed = ((owned_a - owned_b) as f32) * TICKET_BLEED_PER_FLAG * dt;
-        *tickets_b -= bleed as i32;
+        let advantage = (owned_a - owned_b) as f32;
+        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        *tickets_b -= bleed;
+        if *tickets_b < 0.0 {
+            *tickets_b = 0.0;
+        }
     } else if owned_b > owned_a {
-        // Team B has more flags -> bleed Team A.
-        let bleed = ((owned_b - owned_a) as f32) * TICKET_BLEED_PER_FLAG * dt;
-        *tickets_a -= bleed as i32;
-    }
-
-    // Clamp tickets to non-negative.
-    if *tickets_a < 0 {
-        *tickets_a = 0;
-    }
-    if *tickets_b < 0 {
-        *tickets_b = 0;
+        let advantage = (owned_b - owned_a) as f32;
+        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        *tickets_a -= bleed;
+        if *tickets_a < 0.0 {
+            *tickets_a = 0.0;
+        }
     }
 }

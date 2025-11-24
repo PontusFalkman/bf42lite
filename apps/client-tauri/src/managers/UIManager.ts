@@ -129,18 +129,27 @@ export class UIManager {
 
     // Tickets + objective text
     public updateTickets(axis: number, allies: number) {
+        // Round for display but keep logic using original floats
+        const axisRounded = Math.max(0, Math.round(axis));
+        const alliesRounded = Math.max(0, Math.round(allies));
+    
+        // AXIS
         if (this.ui.ticketsAxis) {
-            this.ui.ticketsAxis.innerText = axis.toString();
-            if (axis <= 20) this.ui.ticketsAxis.classList.add('low');
+            this.ui.ticketsAxis.innerText = axisRounded.toString();
+    
+            if (axisRounded <= 20) this.ui.ticketsAxis.classList.add('low');
             else this.ui.ticketsAxis.classList.remove('low');
         }
-
+    
+        // ALLIES
         if (this.ui.ticketsAllies) {
-            this.ui.ticketsAllies.innerText = allies.toString();
-            if (allies <= 20) this.ui.ticketsAllies.classList.add('low');
+            this.ui.ticketsAllies.innerText = alliesRounded.toString();
+    
+            if (alliesRounded <= 20) this.ui.ticketsAllies.classList.add('low');
             else this.ui.ticketsAllies.classList.remove('low');
         }
-
+    
+        // OBJECTIVE TEXT (still uses float logic, works fine)
         if (this.ui.objectiveText) {
             if (axis <= 0 && allies > 0) {
                 this.ui.objectiveText.innerText = 'ALLIES ARE WINNING – HOLD YOUR FLAGS';
@@ -151,6 +160,7 @@ export class UIManager {
             }
         }
     }
+    
 
     // Center status line (respawn / capturing hints)
     public setCenterStatus(text: string) {

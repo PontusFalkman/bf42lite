@@ -18,8 +18,8 @@ use crate::player::Player;
 
 pub struct SimState {
     pub players: HashMap<u32, Player>,
-    pub tickets_a: i32,
-    pub tickets_b: i32,
+    pub tickets_a: f32,
+    pub tickets_b: f32,
     pub frame_count: u64,
     pub flags: Vec<FlagZone>,
 }
@@ -44,11 +44,9 @@ impl SimState {
     pub fn new() -> Self {
         Self {
             players: HashMap::new(),
-            tickets_a: 100,
-            tickets_b: 100,
+            tickets_a: 100.0,
+            tickets_b: 100.0,
             frame_count: 0,
-
-            // Flags now come from the Warehouse map module.
             flags: crate::maps::warehouse::create_flags(),
         }
     }
@@ -98,13 +96,13 @@ impl SimState {
         );
 
         // 3. Game Mode Logic (winner)
-        let winner = if self.tickets_a <= 0 {
-            TeamId::TeamB
-        } else if self.tickets_b <= 0 {
-            TeamId::TeamA
-        } else {
-            TeamId::None
-        };
+let winner = if self.tickets_a <= 0.0 {
+    TeamId::TeamB
+} else if self.tickets_b <= 0.0 {
+    TeamId::TeamA
+} else {
+    TeamId::None
+};
 
         // 4. Snapshot Generation: entities
         let mut entities = Vec::new();
@@ -146,11 +144,11 @@ impl SimState {
             entities,
             flags,
             game_state: GameModeState {
-                team_a_tickets: self.tickets_a,
-                team_b_tickets: self.tickets_b,
+                team_a_tickets: self.tickets_a.round() as i32,
+                team_b_tickets: self.tickets_b.round() as i32,                
                 match_ended: winner != TeamId::None,
                 winner,
             },
-        }
+        }        
     }
 }
