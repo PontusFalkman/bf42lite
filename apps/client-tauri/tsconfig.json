@@ -1,21 +1,22 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+
+    "rootDir": "src",
+    "baseUrl": "./src",
+
     "strict": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "lib": ["ESNext", "DOM"],
-    "composite": true
+    "jsx": "react-jsx",
+
+    "paths": {
+      "@bf42lite/engine-core": ["../../packages/engine-core/src"],
+      "@bf42lite/games-bf42": ["../../packages/games/bf42/src"],
+      "@bf42lite/protocol": ["../../packages/protocol/src"],
+      "@bf42lite/net": ["../../packages/net/src"]
+    }
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../../packages/sim" },
-    { "path": "../../packages/protocol" },
-    { "path": "../../packages/net" },
-    { "path": "../../packages/games/bf42" }
-  ]
+  "include": ["src"]
 }

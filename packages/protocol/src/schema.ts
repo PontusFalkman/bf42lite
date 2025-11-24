@@ -12,81 +12,106 @@ export const ClientInputSchema = z.object({
     shoot: z.boolean(),
     reload: z.boolean(), // <--- ADDED
     yaw: z.number(),
-    pitch: z.number()
-  })
+    pitch: z.number(),
+  }),
 });
 
-// Fire Proposal
 export const ClientFireSchema = z.object({
   type: z.literal('fire'),
   tick: z.number(),
   origin: z.object({ x: z.number(), y: z.number(), z: z.number() }),
   direction: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-  weaponId: z.number().default(1)
+  weaponId: z.number(),
 });
 
 export const SpawnRequestSchema = z.object({
   type: z.literal('spawn_request'),
-  classId: z.number()
-});
-export const JoinRequestSchema = z.object({
-  type: z.literal('join'),
-  name: z.string()
+  classId: z.number(), // or z.enum([...]) if you have specific classes
 });
 
 export const ClientMessageSchema = z.union([
   ClientInputSchema,
   ClientFireSchema,
-  JoinRequestSchema,
-  SpawnRequestSchema
+  SpawnRequestSchema,
 ]);
 
-// --- 2. SERVER -> CLIENT ---
+// --- 2. SERVER -> CLIENT BASE TYPES ---
 
 export const EntityStateSchema = z.object({
   id: z.number(),
   pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-  vel: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+  vel: z
+    .object({ x: z.number(), y: z.number(), z: z.number() })
+    .optional(),
   rot: z.number(),
   health: z.number(),
   isDead: z.boolean(),
-  respawnTimer: z.number().optional(),
-  ammo: z.number().optional(),
-  ammoRes: z.number().optional(),
-  kills: z.number().optional(),
-  deaths: z.number().optional(),
-  lastProcessedTick: z.number().optional() 
+  // extra fields are allowed
+}).catchall(z.any());
+
+// Simple “v1” game-info block used by the old Node host.
+export const GameInfoSchema = z.object({
+  ticketsAxis: z.number(),
+  ticketsAllies: z.number(),
+  state: z.number(), // 0 = running, 1 = game over
 });
 
-// Hit Confirmation
-export const HitConfirmedSchema = z.object({
-  type: z.literal('hitConfirmed'),
-  shooterId: z.number(),
-  targetId: z.number(),
-  damage: z.number()
+// --- 3. CONQUEST / GAMEMODE STATE (RUST HOST) ---
+
+export const GameModeStateSchema = z.object({
+  team_a_tickets: z.number(),
+  team_b_tickets: z.number(),
+  match_ended: z.boolean(),
+  winner: z.any(), // keep loose (enum/string/number)
 });
+
+export const FlagSnapshotSchema = z.object({
+  id: z.number(),
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+  radius: z.number(),
+  owner: z.any(),   // same: can be enum/string/number
+  capture: z.number(),
+});
+
+// --- 4. SNAPSHOT (UNION OF OLD + NEW FIELDS) ---
 
 export const SnapshotSchema = z.object({
   type: z.literal('snapshot'),
   tick: z.number(),
-  game: z.object({
-    ticketsAxis: z.number(),
-    ticketsAllies: z.number(),
-    state: z.number()
-  }),
-  entities: z.array(EntityStateSchema)
+
+  entities: z.array(EntityStateSchema),
+
+  // Old Node-host block – optional so Rust host does not have to send it
+  game: GameInfoSchema.optional(),
+
+  // New Rust-host game-mode state
+  game_state: GameModeStateSchema.optional(),
+
+  // New Rust-host conquest flags
+  flags: z.array(FlagSnapshotSchema).optional().default([]),
 });
+
+// --- 5. OTHER SERVER → CLIENT MESSAGES ---
 
 export const WelcomeSchema = z.object({
   type: z.literal('welcome'),
-  playerId: z.number(),
-  tick: z.number()
+  yourId: z.number(),
 });
+
+export const HitConfirmedSchema = z.object({
+  type: z.literal('hit-confirmed'),
+  targetId: z.number(),
+  damage: z.number(),
+});
+
+// --- 6. MESSAGE UNION + TS TYPES ---
 
 export const ServerMessageSchema = z.union([
   SnapshotSchema,
   WelcomeSchema,
-  HitConfirmedSchema
+  HitConfirmedSchema,
 ]);
 
 export type ClientInput = z.infer<typeof ClientInputSchema>;

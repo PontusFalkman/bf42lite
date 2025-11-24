@@ -41,15 +41,23 @@ export const createMovementSystem = () => {
       // Reduce speed if in the air for better "physics feel"
       const speed = isGrounded ? MOVE_SPEED : (MOVE_SPEED * AIR_SPEED_FACTOR);
 
-      const forward = InputState.moveY[id];
-      const right = InputState.moveX[id];
+      const forward = -InputState.moveY[id]; // W = +1 (forward), S = -1 (backward)
+      const right   = InputState.moveX[id]; // A/D
       
-      const angle = Transform.rotation[id];
-      const sin = Math.sin(angle);
-      const cos = Math.cos(angle);
+      const yaw = Transform.rotation[id];
+      const sin = Math.sin(yaw);
+      const cos = Math.cos(yaw);
 
-      const dx = (right * cos) - (forward * sin);
-      const dz = (right * sin) + (forward * cos);
+// Match server basis exactly:
+// forward: (sin, cos)
+// right:   (cos, -sin)
+const vecFwdX   = sin;
+const vecFwdZ   = cos;
+const vecRightX = cos;
+const vecRightZ = -sin;
+
+const dx = vecFwdX * forward + vecRightX * right;
+const dz = vecFwdZ * forward + vecRightZ * right;
 
       Velocity.x[id] = dx * speed;
       Velocity.z[id] = dz * speed;

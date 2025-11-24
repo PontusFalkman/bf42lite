@@ -6,9 +6,10 @@
     "strict": true,
     "declaration": true,
     "outDir": "dist",
+    "rootDir": "src",
+    "composite": true,
     "skipLibCheck": true,
-    "types": ["node"],
-    "composite": true
+    "types": ["node"]
   },
   "include": ["src"]
 }

@@ -1,29 +1,25 @@
 {
-  "name": "client-tauri",
+  "name": "@bf42lite/client",
   "private": true,
-  "version": "1.3.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "tauri dev",
+    "dev": "cargo tauri dev",
+    "build": "cargo tauri build",
     "dev:web": "vite",
     "build:web": "vite build",
-    "build": "tauri build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@bf42lite/sim": "workspace:*",
+    "@bf42lite/engine-core": "workspace:*",
     "@bf42lite/games-bf42": "workspace:*",
     "@bf42lite/net": "workspace:*",
     "@bf42lite/protocol": "workspace:*",
-    "bitecs": "^0.3.40",
-    "three": "^0.160.0",
-    "zod": "^3.22.0"
+    "three": "^0.166.1"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.5.0",
-    "@types/three": "^0.160.0",
-    "typescript": "^5.0.0",
-    "vite": "^5.0.0"
+    "@types/three": "^0.181.0",
+    "typescript": "^5.3.2",
+    "vite": "^7.2.4"
   }
 }

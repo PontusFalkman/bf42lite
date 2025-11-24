@@ -1,4 +1,4 @@
-import { ClientGame } from './ClientGame';
+import { ClientGame } from './core/ClientGame';
 
 // Prevent context menu
 document.addEventListener('contextmenu', event => event.preventDefault());

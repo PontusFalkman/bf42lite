@@ -1,17 +1,19 @@
 {
   "name": "bf42lite",
   "version": "1.0.0",
+  "private": true,
+
   "scripts": {
     "dev": "npm-run-all --parallel dev:*",
-    "dev:client": "pnpm --filter client-tauri tauri dev",
-    "dev:host": "pnpm --filter @bf42lite/host-node dev",
+    "dev:client": "pnpm --filter @bf42lite/client dev",
+    "dev:host": "echo \"host-node not implemented yet\"",
     "build": "pnpm -r run build",
     "clean": "pnpm -r run clean",
     "prebuild": "node tools/check-workspace-deps.cjs"
   },
-  "private": true,
+
   "devDependencies": {
     "npm-run-all": "^4.1.5",
     "rimraf": "^5.0.0"
-  }  
+  }
 }

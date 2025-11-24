@@ -65,6 +65,7 @@ export class Reconciler {
     
         // 2. If no exact match, fall back to closest tick we have
         if (historyIndex === -1) {
+            console.warn(`[Reconciler] No history found for server tick ${serverTick}. Client history size: ${this.history.length}.`);
             let closestIndex = -1;
             let closestDiff = Number.POSITIVE_INFINITY;
     
@@ -105,6 +106,14 @@ export class Reconciler {
         // --- Existing Error Handling Logic ---
 
         // 1) Teleport: error is massive, probably a respawn.
+        // --- Optional: Log successful reconciliation ---
+    // if (distSq <= this.ERROR_THRESHOLD_SQ) {
+    //   console.log(`[Reconciler] Tick ${serverTick} reconciled successfully. ErrorSq: ${distSq.toFixed(4)}`);
+    // }
+    // --- End Optional ---
+
+    // --- Existing Error Handling Logic ---
+    // 1) Teleport: error is massive, probably a respawn.
         if (distSq > this.TELEPORT_THRESHOLD_SQ) {
             console.warn(`[Reconciler] Teleport detected (ErrorSq=${distSq.toFixed(2)})`);
             

@@ -1,7 +1,7 @@
 // apps/client-tauri/src-tauri/src/systems/combat.rs
 use std::collections::HashMap;
 use crate::player::{Player, RESPAWN_TIME};
-use crate::protocol::{ClientMessage, ClientInputs};
+use crate::protocol::ClientMessage;
 
 const DAMAGE_PER_HIT: f32 = 34.0; 
 const FIRE_RATE: f32 = 0.15;
@@ -23,30 +23,39 @@ pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, Clien
         .map(|(id, p)| (*id, p.transform.x, p.transform.y, p.transform.z, p.transform.yaw, p.transform.pitch, p.is_dead))
         .collect();
 
-    for (shooter_id, sx, sy, sz, syaw, spitch, sdead) in &shooter_data {
-        if *sdead { continue; }
-
-        if let Some(msg) = input_map.get(shooter_id) {
-            let ClientInputs(_, _, _, fire, _, _) = msg.1;
-            let current_cooldown = players.get(shooter_id).map(|p| p.fire_cooldown).unwrap_or(0.0);
-
-            if fire && current_cooldown <= 0.0 {
-                hits.push((*shooter_id, 0)); 
-                println!("[COMBAT] Player {} FIRED!", shooter_id);
-
-                let origin_x = *sx;
-                let origin_y = *sy + 0.6; 
-                let origin_z = *sz;
-                
-                // --- FIX: Removed Negative Signs to match Client Camera ---
-                // Was: -syaw.sin(), -syaw.cos()
-                // Now: syaw.sin(), syaw.cos()
-                let dir_x = syaw.sin() * spitch.cos();
-                let dir_y = spitch.sin();
-                let dir_z = syaw.cos() * spitch.cos();
-
-                let mut best_dist = 1000.0;
-                let mut hit_victim = None;
+        for (shooter_id, sx, sy, sz, syaw, spitch, sdead) in &shooter_data {
+            if *sdead {
+                continue;
+            }
+    
+            if let Some(msg) = input_map.get(shooter_id) {
+                // Derive the "fire" flag from the new client message shape.
+                let fire = match msg {
+                    ClientMessage::Input { axes, .. } => axes.shoot,
+                    ClientMessage::Fire { .. } => true,           // explicit fire message = fire
+                    _ => false,
+                };
+    
+                let current_cooldown = players
+                    .get(shooter_id)
+                    .map(|p| p.fire_cooldown)
+                    .unwrap_or(0.0);
+    
+                if fire && current_cooldown <= 0.0 {
+                    hits.push((*shooter_id, 0));
+                    println!("[COMBAT] Player {} FIRED!", shooter_id);
+    
+                    let origin_x = *sx;
+                    let origin_y = *sy + 0.6;
+                    let origin_z = *sz;
+    
+                    // Direction: already matched to client camera
+                    let dir_x = syaw.sin() * spitch.cos();
+                    let dir_y = spitch.sin();
+                    let dir_z = syaw.cos() * spitch.cos();
+    
+                    let mut best_dist = 1000.0;
+                    let mut hit_victim = None;    
 
                 for (victim_id, victim) in players.iter() {
                     if shooter_id == victim_id || victim.is_dead { continue; }

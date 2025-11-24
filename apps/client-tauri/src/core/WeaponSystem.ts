@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
-import { NetworkManager } from './managers/NetworkManager';
+import { NetworkManager } from '../managers/NetworkManager';
 import { InputState } from '@bf42lite/engine-core';
 
 // Mirror of Server Config

@@ -6,7 +6,8 @@
     "strict": true,
     "declaration": true,
     "outDir": "dist",
-    "composite": true
+    "composite": true,
+    "rootDir": "src"
   },
   "include": ["src"]
 }

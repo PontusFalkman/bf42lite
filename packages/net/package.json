@@ -2,10 +2,12 @@
   "name": "@bf42lite/net",
   "version": "1.3.0",
   "private": true,
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc -w"
+    "build": "tsc -b",
+    "dev": "tsc -b -w"
   },
   "dependencies": {
     "@bf42lite/protocol": "workspace:*",
