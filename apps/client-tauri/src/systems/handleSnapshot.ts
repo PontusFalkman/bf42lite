@@ -6,7 +6,7 @@ import type { NetworkManager } from '../managers/NetworkManager';
 import type { UIManager } from '../managers/UIManager';
 
 // Shape that NetworkManager.onSnapshot() gives us
-interface SnapshotMessage {
+export interface SnapshotMessage {
   type: 'snapshot';
   tick?: number;
   entities?: any[];
@@ -15,47 +15,61 @@ interface SnapshotMessage {
     team_a_tickets?: number;
     team_b_tickets?: number;
     match_ended?: boolean;
-  };
+    winner_team?: number | string | null;
+  } | null;
 }
 
+/**
+ * Centralized snapshot handler.
+ * - Feeds entity snapshots into NetworkManager (ECS + interpolation).
+ * - Updates conquest UI (tickets, flags, game over).
+ */
 export function handleSnapshot(
   msg: SnapshotMessage,
-  simWorld: SimWorld,
+  world: SimWorld,
   renderer: Renderer,
   net: NetworkManager,
-  ui: UIManager
-): void {
-  // Critical debug: do we see ANY flags at all?
-  console.log('[SNAPSHOT] Flags in snapshot:', msg.flags);
+  ui: UIManager,
+) {
+  // --- Entities / world sync (delegated to NetworkManager) ---
+  net.processRemoteEntities(msg, world, renderer);
 
-  //
-  // 1. FLAGS → ECS
-  //
-  net.processFlags(msg, simWorld);
-
-  //
-  // 2. REMOTE ENTITIES → ECS + Renderer
-  //
-  net.processRemoteEntities(msg, simWorld, renderer);
-
-  //
-  // 3. TICKETS → UI
-  //
+  // --- Tickets + basic game state ---
   const ticketsAxis = msg.game_state?.team_a_tickets ?? 0;
   const ticketsAllies = msg.game_state?.team_b_tickets ?? 0;
   ui.updateTickets(ticketsAxis, ticketsAllies);
 
-  //
-  // 4. GAME OVER → UI
-  //
-  const isGameOver = msg.game_state?.match_ended === true;
-  if (isGameOver) {
-    let winner = 'DRAW';
+  // --- Flags → HUD (strip + list) ---
+  if (msg.flags && msg.flags.length > 0) {
+    ui.updateFlagStrip(msg.flags as any);
+    ui.updateFlagList(
+      (msg.flags as any[]).map((f) => ({
+        id: f.id,
+        owner: f.owner,
+        capture: typeof f.capture === 'number' ? f.capture : 0,
+      })),
+    );
+  }
 
-    if (ticketsAxis <= 0 && ticketsAllies > 0) winner = 'ALLIES VICTORY';
-    else if (ticketsAllies <= 0 && ticketsAxis > 0) winner = 'AXIS VICTORY';
+  // --- Game over handling ---
+  const gameState = msg.game_state;
+  const isMatchEnded = !!gameState?.match_ended;
 
-    ui.setGameOver(true, winner);
+  if (isMatchEnded) {
+    // Prefer explicit winner if server sends it; otherwise infer from tickets.
+    let winnerTitle = 'DRAW';
+
+    if (gameState?.winner_team !== undefined && gameState?.winner_team !== null) {
+      const w = gameState.winner_team;
+      if (w === 1 || w === 'TeamA') winnerTitle = 'AXIS VICTORY';
+      else if (w === 2 || w === 'TeamB') winnerTitle = 'ALLIES VICTORY';
+    } else if (ticketsAxis > ticketsAllies) {
+      winnerTitle = 'AXIS VICTORY';
+    } else if (ticketsAllies > ticketsAxis) {
+      winnerTitle = 'ALLIES VICTORY';
+    }
+
+    ui.setGameOver(true, winnerTitle);
   } else {
     ui.setGameOver(false, '');
   }

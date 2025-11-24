@@ -12076,17 +12076,29 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       ª       __app__-permission-files
         ª   ª       ª       
         ª   ª       +---tauri-codegen-assets
+        ª   ª               0367117b0330c375b1ba3fae3a127641f1cf82e8359f1a6443c9469f51d5687c.js
+        ª   ª               083465b7f4e51b607280f958ba4a129fd7c9e068cabe9c0f1b6ed9affb6c6953.js
         ª   ª               09e71698437e4712ae7a50513108ba6d2ed89225f61291854068d445a08c9cbd.html
         ª   ª               0ad901a1f96c55e34630b9b3ae0386336daf129f2b4d518a1fb7d54d6ab741e2.js
+        ª   ª               265c039968be1d5c441c0db404cba23fccd99d49b290a9b816bc46855fe69021.js
+        ª   ª               51c1d76e4c14b7edd04bdb02a2dacb82342ae7ba32168060e0176fb84de3be45.html
+        ª   ª               5631b6a8cfd9f4360c6c5e1e1660d52e3d5b02a78c6cac375bbb41f117924723.js
+        ª   ª               567f59998d29df1912509767ea730409a5b956e47b280eec498ce0a2c62ac88e.html
         ª   ª               5b9b99d842b5346b00259bcb73d7fe1abd58494411ecac3669875c77b1da1c06.html
         ª   ª               5c21f90b8027888e4d3833e58f9c1713ed2308caa48f0f0223f6842988727498.glb
         ª   ª               65bb6c19477aba8d1d54a093b0329241022df57df1de39e372c162c9bdff4e42.html
+        ª   ª               67e61923f77b438d21246cea73ff04414f707276de45fddf664139e6c01778cd.html
         ª   ª               69a30d66cfa107421bf49e0b12e07f13cbce76f7de25196fab131a491e84283b.html
         ª   ª               6b4431c4d8c0608b1c4eaf543c43423269ca1bec06c557e73e3e4976b598bb14.html
         ª   ª               718387293e895980ee4b0fa858caa89cb9acf9b0266b56f2d56bc7beee8a1eaa.js
         ª   ª               7b0c353edf9bcf175354a6bc6c781b455a2e4f8d365a3f8521c6fcc35f0adbb0.js
+        ª   ª               7d2c06f08e13e453cd04b80289270f2b5a530802d648c485a32f813e33b0af29.js
+        ª   ª               7db0acec4406aa718f27333555eb748cc6ce1a80112d7007be80e2bd5099dd98.html
+        ª   ª               a00585fa33dc4dbfe8af8ffd75573362203451cc47c9d98e2b853f0e12e9fa1c.html
         ª   ª               a65380463cda47f47f23b78f9e0d394384d24728f89d1728490cea6c7aaa197a.js
         ª   ª               af67d612cbab81e741f55fbf7271fa4a5c54b15ded3d5d57c1b5b8652632fb7c.js
+        ª   ª               d09fe9c70f0fcb644ecbbb2967e00ae87be010df1364a7a9af0640b645b6ec36.js
+        ª   ª               e85e8e5883a6c15ae30c5304d845c862ac81b8403983819b5f78a91555621f71.html
         ª   ª               
         ª   +---camino-89b063881902b2f1
         ª   ª   ª   invoked.timestamp

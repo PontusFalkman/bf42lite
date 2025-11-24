@@ -43,291 +43,294 @@ game.start();
 ## FILE: apps\client-tauri\src\core\ClientGame.ts
 ---------------------------
 import {
-    createSimulation,
-    Transform,
-    Velocity,
-    InputState,
-    Me,
-    addComponent,
-    addEntity,
-    defineQuery,
-    createMovementSystem,
-  } from '@bf42lite/engine-core';
-  import {
-    Health,
-    Ammo,
-    Soldier,
-    Team,
-    CapturePoint,
-    Loadout,
-  } from '@bf42lite/games-bf42';
-  import { Renderer } from './Renderer';
-  import { NetworkManager } from '../managers/NetworkManager';
-  import { InputManager } from './InputManager';
-  import { UIManager } from '../managers/UIManager';
-  import { WeaponSystem } from './WeaponSystem';
-  import { Reconciler } from '../systems/Reconciler';
-  import { handleSnapshot } from '../systems/handleSnapshot';
-  import { updateGameFrame } from '../systems/updateGameFrame';
-  import { FlagRenderer } from './FlagRenderer';
-  import { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
-  
-  export class ClientGame {
-    private movementSystem = createMovementSystem();
-    private sim = createSimulation();
-    private flagRenderer: FlagRenderer;
-    private flags: FlagSnapshot[] = [];
-  
-    private renderer: Renderer;
-    private net: NetworkManager;
-    private input: InputManager;
-    private ui: UIManager;
-    private weaponSystem: WeaponSystem;
-    private reconciler: Reconciler;
-  
-    private localEntityId: number = -1;
-    private running: boolean = false;
-    private lastFrameTime: number = 0;
-    private currentTick: number = 0;
-    private currentFps: number = 0;
-    private lastRtt: number = 0;
-  
-    private sendAccumulator: number = 0;
-    private readonly SEND_INTERVAL = 1 / 30;
-    private readonly INTERPOLATION_DELAY_MS = 100;
-  
-    private playerQuery = defineQuery([Transform, Soldier]);
-    private flagQuery = defineQuery([CapturePoint, Transform]);
-  
-    constructor() {
-      this.renderer = new Renderer();
-      this.net = new NetworkManager();
-      this.input = new InputManager();
-      this.reconciler = new Reconciler();
-  
-      // Conquest flag renderer (uses the main THREE.Scene from Renderer)
-      this.flagRenderer = new FlagRenderer(this.renderer.getScene());
-  
-      // UI + class selection wiring
-      this.input.setInteraction(false);
-      this.weaponSystem = new WeaponSystem(this.renderer, this.net);
-      this.ui = new UIManager((classId: number) => {
-        console.log(`Spawn requested with Class ID: ${classId}`);
-        this.net.sendSpawnRequest(classId);
-        this.weaponSystem.setClass(classId);
-      });
-      this.input.setInteraction(true);
-  
-      this.initNetworkCallbacks();
-      this.net.connect('ws://localhost:8080');
-  
-      this.createLocalPlayer();
-    }
-  
-    private createLocalPlayer() {
-      this.localEntityId = addEntity(this.sim.world);
-  
-      addComponent(this.sim.world, Transform, this.localEntityId);
-      addComponent(this.sim.world, Velocity, this.localEntityId);
-      addComponent(this.sim.world, InputState, this.localEntityId);
-      addComponent(this.sim.world, Me, this.localEntityId);
-  
-      addComponent(this.sim.world, Health, this.localEntityId);
-      addComponent(this.sim.world, Ammo, this.localEntityId);
-      addComponent(this.sim.world, Soldier, this.localEntityId);
-      addComponent(this.sim.world, Team, this.localEntityId);
-      addComponent(this.sim.world, Loadout, this.localEntityId);
-    }
-  
-    private initNetworkCallbacks() {
-      this.net.onConnected = () => {
-        console.log('Connected to server');
-      };
-  
-      this.net.onDisconnected = () => {
-        console.log('Disconnected from server');
-      };
-  
-      this.net.onSnapshot = (msg: Snapshot) => {
-        // Centralized snapshot handling: entities, tickets, game over, etc.
-        handleSnapshot(msg, this.sim.world, this.renderer, this.net, this.ui);
-  
-        // --- Conquest flags ---
-        this.flags = msg.flags ?? [];
-        this.flagRenderer.updateFromSnapshot(this.flags);
-  
-        // --- Local player sync (restored) ---
-        const myServerEntity = msg.entities.find(
-          (e: any) => this.net.getLocalId(e.id) === this.localEntityId,
-        );
-  
-        if (myServerEntity) {
-          const wasDead = Health.isDead[this.localEntityId] === 1;
-          const isNowDead = !!myServerEntity.isDead;
-  
-          // Teleport on respawn to avoid smoothing artifacts
-          if (wasDead && !isNowDead && myServerEntity.pos) {
-            this.reconciler.clearHistory();
-            Transform.x[this.localEntityId] = myServerEntity.pos.x;
-            Transform.y[this.localEntityId] = myServerEntity.pos.y;
-            Transform.z[this.localEntityId] = myServerEntity.pos.z;
-          }
-  
-          // Health + death state
-// Health + death state.
-// Protocol now sends health as a plain number.
-const hp =
-  typeof myServerEntity.health === 'number'
-    ? myServerEntity.health
-    : 100;
+  createSimulation,
+  Transform,
+  Velocity,
+  InputState,
+  Me,
+  addComponent,
+  addEntity,
+  defineQuery,
+  createMovementSystem,
+} from '@bf42lite/engine-core';
+import {
+  Health,
+  Ammo,
+  Soldier,
+  Team,
+  CapturePoint,
+  Loadout,
+} from '@bf42lite/games-bf42';
+import { Renderer } from './Renderer';
+import { NetworkManager } from '../managers/NetworkManager';
+import { InputManager } from './InputManager';
+import { UIManager } from '../managers/UIManager';
+import { WeaponSystem } from './WeaponSystem';
+import { Reconciler } from '../systems/Reconciler';
+import { handleSnapshot } from '../systems/handleSnapshot';
+import { updateGameFrame } from '../systems/updateGameFrame';
+import { FlagRenderer } from './FlagRenderer';
+import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
 
-Health.current[this.localEntityId] = hp;
-Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
-this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+export class ClientGame {
+  private movementSystem = createMovementSystem();
+  private sim = createSimulation();
 
+  private flagRenderer: FlagRenderer;
+  private flags: FlagSnapshot[] = [];
 
-  
-          // Team
-          if (myServerEntity.team) {
-            Team.id[this.localEntityId] =
-              myServerEntity.team.id === 'TeamA' ? 1 : 2;
-          }
-  
-          // Loadout / class
-          if (myServerEntity.loadout) {
-            Loadout.classId[this.localEntityId] = myServerEntity.loadout.classId;
-          }
-  
-          // Ammo + weapon UI
-          const WEAPON_NAMES = { 0: 'THOMPSON', 1: 'MP40', 2: 'KAR98K' } as const;
-          const myClassId = Loadout.classId[this.localEntityId] || 0;
-          const name = WEAPON_NAMES[myClassId as keyof typeof WEAPON_NAMES];
-  
-          if (myServerEntity.ammo) {
-            this.ui.updateAmmo(
-              myServerEntity.ammo.current,
-              myServerEntity.ammo.reserve,
-              name,
-            );
-          }
-  
-          // Reconciliation (movement correction)
-          if (myServerEntity.lastProcessedTick !== undefined) {
-            const rtt = this.reconciler.reconcile(
-              myServerEntity.lastProcessedTick,
-              myServerEntity,
-              this.localEntityId,
-              this.sim.world,
-              this.movementSystem,
-            );
-            if (rtt > 0) this.lastRtt = rtt;
-          }
-        }
-      };
-    }
-  
-    public start() {
-      if (this.running) return;
-      this.running = true;
-      this.lastFrameTime = performance.now();
-      requestAnimationFrame(this.loop);
-    }
-  
-    public stop() {
-      this.running = false;
-    }
-  
-    private loop = (now: number) => {
-      if (!this.running) return;
-      requestAnimationFrame(this.loop);
-  
-      const dt = (now - this.lastFrameTime) / 1000;
-      this.lastFrameTime = now;
-      if (dt > 0) this.currentFps = Math.round(1 / dt);
-  
-      // Per-frame input + sim + movement
-      const cmd = updateGameFrame(
-        dt,
-        this.currentTick,
-        this.localEntityId,
-        this.sim.world,
-        this.input,
-        this.movementSystem,
-      );
-  
-      // Prediction history
-      if (this.localEntityId >= 0 && cmd) {
-        this.reconciler.pushHistory(
-          this.currentTick,
-          cmd,
-          Transform.x[this.localEntityId],
-          Transform.y[this.localEntityId],
-          Transform.z[this.localEntityId],
-        );
-      }
-  
-      // Throttled input send
-      this.sendAccumulator += dt;
-      while (this.sendAccumulator >= this.SEND_INTERVAL) {
-        if (cmd) {
-          this.net.send(cmd);
-        }
-        this.sendAccumulator -= this.SEND_INTERVAL;
-      }
-  
-      // Weapons + interpolation
-      this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
-      this.currentTick++;
-      this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
-  
-      this.updateRenderAndUI();
-    };
-  
-    private updateRenderAndUI() {
-      this.ui.updateStats(this.currentFps, this.lastRtt);
-      if (this.localEntityId >= 0) {
-        this.ui.updateHealth(Health.current[this.localEntityId]);
-      }
-  
-      // Render Players
-      const players = this.playerQuery(this.sim.world);
-      for (const eid of players) {
-        const isMe = eid === this.localEntityId;
-        const state = {
-          type: 'player' as const,
-          pos: {
-            x: Transform.x[eid],
-            y: Transform.y[eid],
-            z: Transform.z[eid],
-          },
-          rot: Transform.rotation[eid],
-          pitch: isMe ? InputState.viewY[eid] : 0,
-          team: Team.id[eid],
-        };
-        this.renderer.updateEntity(eid, state, isMe);
-      }
-  
-      // Render ECS capture points (if still used)
-      const flags = this.flagQuery(this.sim.world);
-      for (const eid of flags) {
-        const state = {
-          type: 'flag' as const,
-          pos: {
-            x: Transform.x[eid],
-            y: Transform.y[eid],
-            z: Transform.z[eid],
-          },
-          rot: 0,
-          team: CapturePoint.team[eid],
-          progress: CapturePoint.progress[eid],
-        };
-        this.renderer.updateEntity(eid, state, false);
-      }
-  
-      this.renderer.render();
-    }
+  private renderer: Renderer;
+  private net: NetworkManager;
+  private input: InputManager;
+  private ui: UIManager;
+  private weaponSystem: WeaponSystem;
+  private reconciler: Reconciler;
+
+  private localEntityId: number = -1;
+  private running = false;
+  private lastFrameTime = 0;
+  private currentTick = 0;
+  private currentFps = 0;
+  private lastRtt = 0;
+
+  private sendAccumulator = 0;
+  private readonly SEND_INTERVAL = 1 / 30;
+  private readonly INTERPOLATION_DELAY_MS = 100;
+
+  private playerQuery = defineQuery([Transform, Soldier]);
+  private flagQuery = defineQuery([CapturePoint, Transform]);
+
+  constructor() {
+    this.renderer = new Renderer();
+    this.net = new NetworkManager();
+    this.input = new InputManager();
+    this.reconciler = new Reconciler();
+
+    // Conquest flag renderer (uses the main THREE.Scene from Renderer)
+    this.flagRenderer = new FlagRenderer(this.renderer.getScene());
+
+    // UI + class selection wiring
+    this.input.setInteraction(false);
+    this.weaponSystem = new WeaponSystem(this.renderer, this.net);
+    this.ui = new UIManager((classId: number) => {
+      console.log(`Spawn requested with Class ID: ${classId}`);
+      this.net.sendSpawnRequest(classId);
+      this.weaponSystem.setClass(classId);
+    });
+    this.input.setInteraction(true);
+
+    this.initNetworkCallbacks();
+    this.net.connect('ws://localhost:8080');
+
+    this.createLocalPlayer();
   }
-  
+
+  private createLocalPlayer() {
+    this.localEntityId = addEntity(this.sim.world);
+
+    addComponent(this.sim.world, Transform, this.localEntityId);
+    addComponent(this.sim.world, Velocity, this.localEntityId);
+    addComponent(this.sim.world, InputState, this.localEntityId);
+    addComponent(this.sim.world, Me, this.localEntityId);
+
+    addComponent(this.sim.world, Health, this.localEntityId);
+    addComponent(this.sim.world, Ammo, this.localEntityId);
+    addComponent(this.sim.world, Soldier, this.localEntityId);
+    addComponent(this.sim.world, Team, this.localEntityId);
+    addComponent(this.sim.world, Loadout, this.localEntityId);
+  }
+
+  private initNetworkCallbacks() {
+    this.net.onConnected = () => {
+      console.log('Connected to server');
+    };
+
+    this.net.onDisconnected = () => {
+      console.log('Disconnected from server');
+    };
+
+    this.net.onSnapshot = (msg: Snapshot) => {
+      // Centralized snapshot handling: entities, tickets, game over, etc.
+      handleSnapshot(msg, this.sim.world, this.renderer, this.net, this.ui);
+
+      // --- Conquest flags (normalized FlagSnapshot from NetworkManager) ---
+      this.flags = msg.flags ?? [];
+      this.flagRenderer.updateFromSnapshot(this.flags);
+
+      // --- Local player sync ---
+      const myServerEntity = msg.entities?.find(
+        (e: any) => this.net.getLocalId(e.id) === this.localEntityId,
+      );
+
+      if (myServerEntity) {
+        const wasDead = Health.isDead[this.localEntityId] === 1;
+        const isNowDead = !!myServerEntity.isDead;
+
+        // Teleport on respawn to avoid smoothing artifacts
+        if (wasDead && !isNowDead && myServerEntity.pos) {
+          this.reconciler.clearHistory();
+          Transform.x[this.localEntityId] = myServerEntity.pos.x;
+          Transform.y[this.localEntityId] = myServerEntity.pos.y;
+          Transform.z[this.localEntityId] = myServerEntity.pos.z;
+        }
+
+        // Health + death state (protocol now sends health as a number)
+        const hp =
+          typeof myServerEntity.health === 'number'
+            ? myServerEntity.health
+            : 100;
+
+        Health.current[this.localEntityId] = hp;
+        Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
+        this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+
+        // Team
+        if (myServerEntity.team) {
+          Team.id[this.localEntityId] =
+            myServerEntity.team.id === 'TeamA' ? 1 : 2;
+        }
+
+        // Loadout / class
+        if (myServerEntity.loadout) {
+          Loadout.classId[this.localEntityId] =
+            myServerEntity.loadout.classId ?? 0;
+        }
+
+        // Ammo + weapon UI
+        const WEAPON_NAMES = {
+          0: 'THOMPSON',
+          1: 'MP40',
+          2: 'KAR98K',
+        } as const;
+        const myClassId = Loadout.classId[this.localEntityId] || 0;
+        const name =
+          WEAPON_NAMES[myClassId as keyof typeof WEAPON_NAMES] ?? 'THOMPSON';
+
+        if (myServerEntity.ammo) {
+          this.ui.updateAmmo(
+            myServerEntity.ammo.current,
+            myServerEntity.ammo.reserve,
+            name,
+          );
+        }
+
+        // Reconciliation (movement correction)
+        if (myServerEntity.lastProcessedTick !== undefined) {
+          const rtt = this.reconciler.reconcile(
+            myServerEntity.lastProcessedTick,
+            myServerEntity,
+            this.localEntityId,
+            this.sim.world,
+            this.movementSystem,
+          );
+          if (rtt > 0) this.lastRtt = rtt;
+        }
+      }
+    };
+  }
+
+  public start() {
+    if (this.running) return;
+    this.running = true;
+    this.lastFrameTime = performance.now();
+    requestAnimationFrame(this.loop);
+  }
+
+  public stop() {
+    this.running = false;
+  }
+
+  private loop = (now: number) => {
+    if (!this.running) return;
+    requestAnimationFrame(this.loop);
+
+    const dt = (now - this.lastFrameTime) / 1000;
+    this.lastFrameTime = now;
+    if (dt > 0) this.currentFps = Math.round(1 / dt);
+
+    // Per-frame input + sim + movement
+    const cmd = updateGameFrame(
+      dt,
+      this.currentTick,
+      this.localEntityId,
+      this.sim.world,
+      this.input,
+      this.movementSystem,
+    );
+
+    // Prediction history
+    if (this.localEntityId >= 0 && cmd) {
+      this.reconciler.pushHistory(
+        this.currentTick,
+        cmd,
+        Transform.x[this.localEntityId],
+        Transform.y[this.localEntityId],
+        Transform.z[this.localEntityId],
+      );
+    }
+
+    // Throttled input send
+    this.sendAccumulator += dt;
+    while (this.sendAccumulator >= this.SEND_INTERVAL) {
+      if (cmd) {
+        this.net.send(cmd);
+      }
+      this.sendAccumulator -= this.SEND_INTERVAL;
+    }
+
+    // Weapons + interpolation
+    this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
+    this.currentTick++;
+    this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
+
+    this.updateRenderAndUI();
+  };
+
+  private updateRenderAndUI() {
+    this.ui.updateStats(this.currentFps, this.lastRtt);
+    if (this.localEntityId >= 0) {
+      this.ui.updateHealth(Health.current[this.localEntityId]);
+    }
+
+    // Render Players
+    const players = this.playerQuery(this.sim.world);
+    for (const eid of players) {
+      const isMe = eid === this.localEntityId;
+      const state = {
+        type: 'player' as const,
+        pos: {
+          x: Transform.x[eid],
+          y: Transform.y[eid],
+          z: Transform.z[eid],
+        },
+        rot: Transform.rotation[eid],
+        pitch: isMe ? InputState.viewY[eid] : 0,
+        team: Team.id[eid],
+      };
+      this.renderer.updateEntity(eid, state, isMe);
+    }
+
+    // Render ECS capture points (ring + disc)
+    const flags = this.flagQuery(this.sim.world);
+    for (const eid of flags) {
+      const state = {
+        type: 'flag' as const,
+        pos: {
+          x: Transform.x[eid],
+          y: Transform.y[eid],
+          z: Transform.z[eid],
+        },
+        rot: 0,
+        team: CapturePoint.team[eid],
+        progress: CapturePoint.progress[eid],
+      };
+      this.renderer.updateEntity(eid, state, false);
+    }
+
+    this.renderer.render();
+  }
+}
+
 
 ## FILE: apps\client-tauri\src\core\FlagRenderer.ts
 ---------------------------
@@ -359,7 +362,8 @@ export class FlagRenderer {
 
       this.updateFlagTransform(group, f);
       this.updateFlagOwner(group, f.owner);
-      this.setCaptureProgress(group, this.captureTo01(f.capture));
+      // Capture progress is now visualized by the ground circle (Renderer),
+      // so we do not display a bar here anymore.
       seen.add(f.id);
     }
 
@@ -387,29 +391,13 @@ export class FlagRenderer {
     const group = new THREE.Group();
     group.name = `flag-${flag.id}`;
 
-    // Flag pole
+    // Flag pole (only visual element here; color shows owner)
     const poleGeom = new THREE.BoxGeometry(0.2, 4.0, 0.2);
     const poleMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
     const pole = new THREE.Mesh(poleGeom, poleMat);
     pole.position.set(0, 2.0, 0);
     pole.name = 'pole';
     group.add(pole);
-
-    // Flag plate (ownership color)
-    const plateGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-    const plateMat = new THREE.MeshBasicMaterial({ color: 0xcccccc });
-    const plate = new THREE.Mesh(plateGeom, plateMat);
-    plate.position.set(0.7, 3.0, 0);
-    plate.name = 'plate';
-    group.add(plate);
-
-    // Capture bar (under the plate)
-    const barGeom = new THREE.BoxGeometry(1.0, 0.15, 0.1);
-    const barMat = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-    const bar = new THREE.Mesh(barGeom, barMat);
-    bar.position.set(-0.5, 1.0, 0); // left edge at -0.5 when scale.x = 1
-    bar.name = 'captureBar';
-    group.add(bar);
 
     // World position
     group.position.set(flag.x, flag.y, flag.z);
@@ -422,42 +410,26 @@ export class FlagRenderer {
   }
 
   /**
-   * Interpret the owner value (number or string) and set plate color.
-   * We support both numeric (0/1/2) and string ('TeamA'/'TeamB') encodings.
+   * Keep pole always neutral; color feedback is handled by banner + circle.
    */
-  private updateFlagOwner(group: THREE.Object3D, owner: FlagSnapshot['owner']): void {
-    const plate = group.getObjectByName('plate') as THREE.Mesh | null;
-    if (!plate) return;
+  private updateFlagOwner(group: THREE.Object3D, _owner: FlagSnapshot['owner']): void {
+    const pole = group.getObjectByName('pole') as THREE.Mesh | null;
+    if (!pole) return;
 
-    const mat = plate.material as THREE.MeshBasicMaterial;
-
-    const o = owner as any;
-
-    const isTeamA = o === 1 || o === 'TeamA' || o === 'A';
-    const isTeamB = o === 2 || o === 'TeamB' || o === 'B';
-
-    if (isTeamA) {
-      mat.color.set(0x0080ff); // blue
-    } else if (isTeamB) {
-      mat.color.set(0xff4040); // red
-    } else {
-      mat.color.set(0xcccccc); // neutral
-    }
+    const mat = pole.material as THREE.MeshBasicMaterial;
+    // Always neutral grey for the pole
+    mat.color.set(0x888888);
   }
 
+
   /**
-   * Set capture bar fill (0..1).
+   * Legacy capture bar API â€” now unused (no bar is created),
+   * kept only so old calls do not crash.
    */
   private setCaptureProgress(group: THREE.Object3D, capture: number): void {
     const bar = group.getObjectByName('captureBar') as THREE.Mesh | null;
     if (!bar) return;
-
-    // Clamp 0..1
-    const c = Math.max(0, Math.min(1, capture));
-
-    bar.scale.x = c;
-    // Keep left edge fixed, grow to the right
-    bar.position.x = (c - 1) * 0.5;
+    // No-op; bar is no longer used.
   }
 }
 
@@ -659,8 +631,8 @@ export class Renderer {
             ring.position.y = 0.1;
             group.add(ring);
 
-            // D. Progress Disc
-            const progGeom = new THREE.CircleGeometry(radius - 0.4, 64);
+            // D. Progress Disc â€“ fills same radius as ring at 100%
+            const progGeom = new THREE.CircleGeometry(radius, 64);
             const progMat = new THREE.MeshBasicMaterial({ 
                 color: 0xcccccc, 
                 side: THREE.DoubleSide, 
@@ -673,7 +645,6 @@ export class Renderer {
             progress.scale.set(0, 0, 0);
             progress.name = 'progress';
             group.add(progress);
-
             object = group;
         } else {
             // Standard Soldier (Capsule)
@@ -694,48 +665,75 @@ export class Renderer {
     // === FLAG LOGIC ===
     if (state.type === 'flag') {
         const group = object as THREE.Group;
-        
-        // Hot Reload Safety: Ensure banner exists
+
+        // Ensure banner exists
         let banner = group.getObjectByName('banner') as THREE.Mesh;
         if (!banner) {
-             const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-             const bannerMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
-             banner = new THREE.Mesh(bannerGeom, bannerMat);
-             banner.position.set(0.6, 5.5, 0);
-             banner.castShadow = true;
-             banner.name = 'banner';
-             group.add(banner);
+            const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
+            const bannerMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                side: THREE.DoubleSide,
+            });
+            banner = new THREE.Mesh(bannerGeom, bannerMat);
+            banner.position.set(0.6, 5.5, 0);
+            banner.castShadow = true;
+            banner.name = 'banner';
+            group.add(banner);
         }
 
         const pole = group.getObjectByName('pole') as THREE.Mesh;
         const progressDisc = group.getObjectByName('progress') as THREE.Mesh;
-        
+
+        if (!pole || !progressDisc) return;
+
         const poleMat = pole.material as THREE.MeshStandardMaterial;
         const bannerMat = banner.material as THREE.MeshStandardMaterial;
         const progMat = progressDisc.material as THREE.MeshBasicMaterial;
 
-        // 1. Color Logic (Ownership)
-        // 1=Axis(Red), 2=Allies(Blue), 0=Neutral(Grey)
-        let color = 0xcccccc;
-        if (state.team === 1) color = 0xff0000;
-        else if (state.team === 2) color = 0x0000ff;
+        // 1) Pole stays neutral at all times
+        poleMat.color.setHex(0xcccccc);
 
-        poleMat.color.setHex(color);
-        bannerMat.color.setHex(color);
+        // 2) Base ownership color (used when there is no active capture)
+        let baseColor = 0xcccccc;
+        if (state.team === 1) baseColor = 0xff0000; // Axis owns
+        else if (state.team === 2) baseColor = 0x0000ff; // Allies own
 
-        // 2. Progress Disc (Animation)
+        // 3) Capture progress drives BOTH banner + circle colours
+        //
+        // state.progress in [-1, 1]:
+        //   > 0  => Team 1 (Axis) capturing
+        //   < 0  => Team 2 (Allies) capturing
+        //   = 0  => no active capture
         const rawProgress = state.progress || 0;
-        const scale = Math.abs(rawProgress);
-        progressDisc.scale.set(scale, scale, scale);
+        const clamped = Math.max(-1, Math.min(1, rawProgress));
+        const t = Math.abs(clamped); // 0..1 capture amount
 
-        if (rawProgress > 0) {
-            progMat.color.setHex(0xff0000);
-        } else if (rawProgress < 0) {
-            progMat.color.setHex(0x0000ff);
-        } else {
-            progMat.color.setHex(0xffffff);
+        // Scale disc 0% â†’ 100% based on |progress|
+        progressDisc.scale.set(t, t, t);
+
+        // Target team colour based on sign
+        let teamColor = 0xffffff; // no capture
+        if (clamped > 0) {
+            teamColor = 0xff0000; // Axis capturing
+        } else if (clamped < 0) {
+            teamColor = 0x0000ff; // Allies capturing
         }
-        
+
+        // Smoothly blend from white â†’ teamColour using t
+        const white = new THREE.Color(0xffffff);
+        const teamCol = new THREE.Color(teamColor);
+        white.lerp(teamCol, t); // t=0 â†’ white, t=1 â†’ team colour
+
+        if (clamped === 0) {
+            // No active capture: circle white, banner shows owner/neutral
+            progMat.color.setHex(0xffffff);
+            bannerMat.color.setHex(baseColor);
+        } else {
+            // Active capture: banner + circle share blended colour
+            bannerMat.color.copy(white);
+            progMat.color.copy(white);
+        }
+
         return;
     }
 
@@ -918,6 +916,37 @@ interface InterpolationBuffer {
   snapshots: InterpolationSnapshot[];
 }
 
+/**
+ * Normalize flag snapshots coming from Rust/host into a uniform object form.
+ * Supports both:
+ *   - Array layout: [id, x, y, z, radius, ownerStr, capture]
+ *   - Object layout: { id, pos: {x,y,z}, radius, owner, capture }
+ */
+function normalizeFlags(raw: any[] | undefined | null): any[] {
+  const src = raw ?? [];
+  return src.map((f: any) => {
+    if (Array.isArray(f)) {
+      const id = f[0];
+      const x = f[1];
+      const y = f[2];
+      const z = f[3];
+      const radius = f[4] ?? 0;
+      const owner = f[5] ?? null;
+      const capture = typeof f[6] === 'number' ? f[6] : 0;
+      return { id, x, y, z, radius, owner, capture };
+    } else {
+      const pos = f.pos ?? {};
+      const x = f.x ?? pos.x ?? 0;
+      const y = f.y ?? pos.y ?? 0;
+      const z = f.z ?? pos.z ?? 0;
+      const radius = f.radius ?? f.r ?? 0;
+      const owner = f.owner ?? null;
+      const capture = typeof f.capture === 'number' ? f.capture : 0;
+      return { id: f.id, x, y, z, radius, owner, capture };
+    }
+  });
+}
+
 export class NetworkManager {
   private net: NetworkAdapter;
 
@@ -968,7 +997,7 @@ export class NetworkManager {
           payload,
         );
 
-        // kindId === 1 â‡’ snapshot
+        // kindId === 1 => snapshot
         if (kindId === 1 && Array.isArray(payload)) {
           const [entitiesRaw, flagsRaw, gameStateRaw] = payload as [
             any[],
@@ -976,11 +1005,13 @@ export class NetworkManager {
             any,
           ];
 
+          const flags = normalizeFlags(flagsRaw);
+
           const snap = {
             type: 'snapshot' as const,
             tick: ++this.snapshotTick,
             entities: entitiesRaw ?? [],
-            flags: flagsRaw ?? [],
+            flags,
             game_state: Array.isArray(gameStateRaw)
               ? {
                   team_a_tickets: gameStateRaw[0] ?? 0,
@@ -1043,11 +1074,14 @@ export class NetworkManager {
           this.hasLoggedSnapshot = true;
         }
 
+        const rawFlags = msg.snapshot.flags || msg.snapshot.flag_snapshots || [];
+        const flags = normalizeFlags(rawFlags);
+
         const snap = {
           type: 'snapshot' as const,
           tick: this.snapshotTick,
           entities: msg.snapshot.entities ?? [],
-          flags: msg.snapshot.flags || msg.snapshot.flag_snapshots || [],
+          flags,
           game_state: msg.snapshot.game_state,
         };
 
@@ -1119,12 +1153,18 @@ export class NetworkManager {
         ownerStr = (f[5] as string) ?? null;
         capture = typeof f[6] === 'number' ? f[6] : 0;
       } else {
-        // Backwards-compatible object layout
+        // Object layout (either raw or normalized)
         id = f.id;
-        x = f.pos?.x ?? 0;
-        y = f.pos?.y ?? 0;
-        z = f.pos?.z ?? 0;
-        ownerStr = f.owner ?? null;
+        if (f.pos) {
+          x = f.pos.x ?? 0;
+          y = f.pos.y ?? 0;
+          z = f.pos.z ?? 0;
+        } else {
+          x = f.x ?? 0;
+          y = f.y ?? 0;
+          z = f.z ?? 0;
+        }
+        ownerStr = (f.owner as string) ?? null;
         capture = typeof f.capture === 'number' ? f.capture : 0;
       }
 
@@ -1295,17 +1335,24 @@ export class UIManager {
         ammoCurr: HTMLElement | null;
         ammoRes: HTMLElement | null;
         weaponName: HTMLElement | null;
+
+        // NEW HUD elements
+        objectiveText: HTMLElement | null;
+        flagStrip: HTMLElement | null;
+        centerStatus: HTMLElement | null;
+        flagList: HTMLElement | null;
+        killFeed: HTMLElement | null;
     };
+
     private selectedSpawnId = -1;
     private hitTimeout: number | null = null;
-    
-    // FIX: Update signature to accept classId
+
     private onSpawnRequest: (classId: number) => void;
     private selectedClassId = 0; // Default to Assault
 
     constructor(onSpawnRequest: (classId: number) => void) {
         this.onSpawnRequest = onSpawnRequest;
-        
+
         this.ui = {
             deployScreen: document.getElementById('deploy-screen'),
             hudLayer: document.getElementById('hud-layer'),
@@ -1321,25 +1368,29 @@ export class UIManager {
             endTitle: document.getElementById('end-title'),
             ammoCurr: document.getElementById('ammo-curr'),
             ammoRes: document.getElementById('ammo-res'),
-            weaponName: document.getElementById('weapon-name')
+            weaponName: document.getElementById('weapon-name'),
+
+            objectiveText: document.getElementById('objective-text'),
+            flagStrip: document.getElementById('flag-strip'),
+            centerStatus: document.getElementById('center-status'),
+            flagList: document.getElementById('flag-list'),
+            killFeed: document.getElementById('kill-feed'),
         };
 
         this.initListeners();
     }
 
     private initListeners() {
-        // 1. Class Selection Listeners (NEW)
+        // 1. Class Selection Listeners
         const classBtns = document.querySelectorAll('.class-btn');
         classBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Update Visuals
                 classBtns.forEach(b => b.classList.remove('selected'));
-                const target = e.target as HTMLElement;
+                const target = e.currentTarget as HTMLElement;
                 target.classList.add('selected');
-                
-                // Update Logic
+
                 const id = target.getAttribute('data-id');
-                if (id) this.selectedClassId = parseInt(id);
+                if (id) this.selectedClassId = parseInt(id, 10) || 0;
             });
         });
 
@@ -1347,45 +1398,48 @@ export class UIManager {
         const mapContainer = document.querySelector('.map-container');
         if (mapContainer) {
             mapContainer.addEventListener('click', (e: Event) => {
-                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement;
+                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement | null;
                 if (!target) return;
-                
+
                 document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
                 target.classList.add('selected');
-                
-                this.selectedSpawnId = parseInt(target.dataset.id || "-1");
+
+                this.selectedSpawnId = parseInt(target.dataset.id || '-1', 10);
             });
         }
 
         // 3. Spawn Button Click Listener
         if (this.ui.spawnBtn) {
             this.ui.spawnBtn.addEventListener('click', () => {
-                // Note: We can relax the spawn point requirement if we are just doing random spawns for now
-                // if (this.selectedSpawnId === -1) { ... } 
-
+                // Spawn point enforcement optional; currently we let server decide
                 this.setDeployMode(false);
-                
-                // Pass the selected class ID to the game loop
                 this.onSpawnRequest(this.selectedClassId);
             });
         }
     }
 
+    // Show / hide deploy vs in-game HUD
     public setDeployMode(isDeploying: boolean) {
         if (isDeploying) {
             this.ui.deployScreen?.classList.remove('hidden');
             this.ui.hudLayer?.classList.add('hidden');
             document.exitPointerLock();
+            if (this.ui.centerStatus) this.ui.centerStatus.innerText = '';
         } else {
             this.ui.deployScreen?.classList.add('hidden');
             this.ui.hudLayer?.classList.remove('hidden');
-            document.body.requestPointerLock();
+
+            const canvas = document.getElementById('game') as HTMLCanvasElement | null;
+            if (canvas && document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock?.();
+            }
         }
     }
 
+    // Debug overlay stats
     public updateStats(fps: number, rtt: number) {
-        if (this.ui.fps) this.ui.fps.innerText = fps.toString();
-        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toString();
+        if (this.ui.fps) this.ui.fps.innerText = fps.toFixed(0);
+        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toFixed(0);
     }
 
     public updateHealth(current: number) {
@@ -1393,19 +1447,139 @@ export class UIManager {
         if (this.ui.healthFill) this.ui.healthFill.style.width = `${current}%`;
     }
 
+    // Tickets + objective text
     public updateTickets(axis: number, allies: number) {
-        if (this.ui.ticketsAxis) this.ui.ticketsAxis.innerText = axis.toString();
-        if (this.ui.ticketsAllies) this.ui.ticketsAllies.innerText = allies.toString();
+        if (this.ui.ticketsAxis) {
+            this.ui.ticketsAxis.innerText = axis.toString();
+            if (axis <= 20) this.ui.ticketsAxis.classList.add('low');
+            else this.ui.ticketsAxis.classList.remove('low');
+        }
+
+        if (this.ui.ticketsAllies) {
+            this.ui.ticketsAllies.innerText = allies.toString();
+            if (allies <= 20) this.ui.ticketsAllies.classList.add('low');
+            else this.ui.ticketsAllies.classList.remove('low');
+        }
+
+        if (this.ui.objectiveText) {
+            if (axis <= 0 && allies > 0) {
+                this.ui.objectiveText.innerText = 'ALLIES ARE WINNING â€“ HOLD YOUR FLAGS';
+            } else if (allies <= 0 && axis > 0) {
+                this.ui.objectiveText.innerText = 'AXIS ARE WINNING â€“ HOLD YOUR FLAGS';
+            } else {
+                this.ui.objectiveText.innerText = 'CAPTURE AND HOLD THE FLAGS';
+            }
+        }
+    }
+
+    // Center status line (respawn / capturing hints)
+    public setCenterStatus(text: string) {
+        if (this.ui.centerStatus) {
+            this.ui.centerStatus.innerText = text;
+        }
+    }
+
+    // Mini flag-strip at top center
+    public updateFlagStrip(flags: { id: number; owner: any }[]) {
+        if (!this.ui.flagStrip) return;
+        const root = this.ui.flagStrip;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const div = document.createElement('div');
+            div.classList.add('flag-mini');
+
+            let cls = 'neutral';
+            if (f.owner === 'TeamA' || f.owner === 1) cls = 'axis';
+            else if (f.owner === 'TeamB' || f.owner === 2) cls = 'allies';
+
+            div.classList.add(cls);
+            root.appendChild(div);
+        });
+    }
+
+    // Detailed flag list bottom-left
+    public updateFlagList(flags: { id: number; owner: any; capture: number }[]) {
+        if (!this.ui.flagList) return;
+        const root = this.ui.flagList;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const row = document.createElement('div');
+            row.classList.add('flag-row');
+
+            const name = document.createElement('span');
+            name.classList.add('flag-name');
+            name.innerText = `Flag ${f.id}`;
+
+            const owner = document.createElement('span');
+            owner.classList.add('flag-owner');
+
+            let ownerCls = 'neutral';
+            let label = 'NEUTRAL';
+
+            if (f.owner === 'TeamA' || f.owner === 1) {
+                ownerCls = 'axis';
+                label = 'AXIS';
+            } else if (f.owner === 'TeamB' || f.owner === 2) {
+                ownerCls = 'allies';
+                label = 'ALLIES';
+            }
+
+            owner.classList.add(ownerCls);
+            owner.innerText = label;
+
+            const bar = document.createElement('div');
+            bar.classList.add('flag-progress');
+
+            const fill = document.createElement('div');
+            fill.classList.add('flag-progress-fill');
+
+            const t = Math.min(1, Math.abs(f.capture || 0));
+            fill.style.width = `${t * 100}%`;
+
+            bar.appendChild(fill);
+            row.appendChild(name);
+            row.appendChild(owner);
+            row.appendChild(bar);
+
+            root.appendChild(row);
+        });
+    }
+
+    // Kill feed on the right side
+    public pushKillFeed(killer: string, victim: string, weapon?: string) {
+        if (!this.ui.killFeed) return;
+
+        const entry = document.createElement('div');
+        entry.classList.add('kill-entry');
+
+        const weaponText = weapon ? ` [${weapon}]` : '';
+        entry.innerText = `${killer} âžœ ${victim}${weaponText}`;
+
+        this.ui.killFeed.prepend(entry);
+
+        while (this.ui.killFeed.children.length > 5) {
+            this.ui.killFeed.removeChild(this.ui.killFeed.lastChild as Node);
+        }
+
+        setTimeout(() => {
+            entry.classList.add('fade-out');
+            setTimeout(() => entry.remove(), 500);
+        }, 3000);
     }
 
     public showHitMarker() {
         if (!this.ui.hitmarker) return;
         this.ui.hitmarker.classList.remove('hit-active');
-        void this.ui.hitmarker.offsetWidth; 
+        void this.ui.hitmarker.offsetWidth;
         this.ui.hitmarker.classList.add('hit-active');
+
         if (this.hitTimeout) clearTimeout(this.hitTimeout);
         this.hitTimeout = window.setTimeout(() => {
-            this.ui.hitmarker?.classList.remove('hit-active');
+            if (this.ui.hitmarker) {
+                this.ui.hitmarker.classList.remove('hit-active');
+            }
         }, 200);
     }
 
@@ -1421,30 +1595,33 @@ export class UIManager {
     }
 
     public updateAmmo(current: number, reserve: number, weaponName?: string) {
-    if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
-    if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
-    if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
-}
+        if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+        if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+        if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
+    }
 
+    // Respawn timer â†’ center status and spawn button text
     public updateRespawn(isDead: boolean, timer: number) {
-        if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
+        if (!this.ui.spawnBtn) return;
 
         if (isDead) {
-            this.ui.deployScreen.style.display = 'flex'; 
-            
             if (timer > 0) {
                 this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
                 this.ui.spawnBtn.setAttribute('disabled', 'true');
                 this.ui.spawnBtn.style.pointerEvents = 'none';
                 this.ui.spawnBtn.style.opacity = '0.5';
+
+                this.setCenterStatus(`Respawning in ${timer.toFixed(1)}s`);
             } else {
-                this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
+                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
                 this.ui.spawnBtn.removeAttribute('disabled');
                 this.ui.spawnBtn.style.pointerEvents = 'auto';
                 this.ui.spawnBtn.style.opacity = '1.0';
+
+                this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
             }
         } else {
-            this.ui.deployScreen.style.display = 'none';
+            this.setCenterStatus('');
         }
     }
 }
@@ -1460,7 +1637,7 @@ import type { NetworkManager } from '../managers/NetworkManager';
 import type { UIManager } from '../managers/UIManager';
 
 // Shape that NetworkManager.onSnapshot() gives us
-interface SnapshotMessage {
+export interface SnapshotMessage {
   type: 'snapshot';
   tick?: number;
   entities?: any[];
@@ -1469,47 +1646,61 @@ interface SnapshotMessage {
     team_a_tickets?: number;
     team_b_tickets?: number;
     match_ended?: boolean;
-  };
+    winner_team?: number | string | null;
+  } | null;
 }
 
+/**
+ * Centralized snapshot handler.
+ * - Feeds entity snapshots into NetworkManager (ECS + interpolation).
+ * - Updates conquest UI (tickets, flags, game over).
+ */
 export function handleSnapshot(
   msg: SnapshotMessage,
-  simWorld: SimWorld,
+  world: SimWorld,
   renderer: Renderer,
   net: NetworkManager,
-  ui: UIManager
-): void {
-  // Critical debug: do we see ANY flags at all?
-  console.log('[SNAPSHOT] Flags in snapshot:', msg.flags);
+  ui: UIManager,
+) {
+  // --- Entities / world sync (delegated to NetworkManager) ---
+  net.processRemoteEntities(msg, world, renderer);
 
-  //
-  // 1. FLAGS â†’ ECS
-  //
-  net.processFlags(msg, simWorld);
-
-  //
-  // 2. REMOTE ENTITIES â†’ ECS + Renderer
-  //
-  net.processRemoteEntities(msg, simWorld, renderer);
-
-  //
-  // 3. TICKETS â†’ UI
-  //
+  // --- Tickets + basic game state ---
   const ticketsAxis = msg.game_state?.team_a_tickets ?? 0;
   const ticketsAllies = msg.game_state?.team_b_tickets ?? 0;
   ui.updateTickets(ticketsAxis, ticketsAllies);
 
-  //
-  // 4. GAME OVER â†’ UI
-  //
-  const isGameOver = msg.game_state?.match_ended === true;
-  if (isGameOver) {
-    let winner = 'DRAW';
+  // --- Flags â†’ HUD (strip + list) ---
+  if (msg.flags && msg.flags.length > 0) {
+    ui.updateFlagStrip(msg.flags as any);
+    ui.updateFlagList(
+      (msg.flags as any[]).map((f) => ({
+        id: f.id,
+        owner: f.owner,
+        capture: typeof f.capture === 'number' ? f.capture : 0,
+      })),
+    );
+  }
 
-    if (ticketsAxis <= 0 && ticketsAllies > 0) winner = 'ALLIES VICTORY';
-    else if (ticketsAllies <= 0 && ticketsAxis > 0) winner = 'AXIS VICTORY';
+  // --- Game over handling ---
+  const gameState = msg.game_state;
+  const isMatchEnded = !!gameState?.match_ended;
 
-    ui.setGameOver(true, winner);
+  if (isMatchEnded) {
+    // Prefer explicit winner if server sends it; otherwise infer from tickets.
+    let winnerTitle = 'DRAW';
+
+    if (gameState?.winner_team !== undefined && gameState?.winner_team !== null) {
+      const w = gameState.winner_team;
+      if (w === 1 || w === 'TeamA') winnerTitle = 'AXIS VICTORY';
+      else if (w === 2 || w === 'TeamB') winnerTitle = 'ALLIES VICTORY';
+    } else if (ticketsAxis > ticketsAllies) {
+      winnerTitle = 'AXIS VICTORY';
+    } else if (ticketsAllies > ticketsAxis) {
+      winnerTitle = 'ALLIES VICTORY';
+    }
+
+    ui.setGameOver(true, winnerTitle);
   } else {
     ui.setGameOver(false, '');
   }

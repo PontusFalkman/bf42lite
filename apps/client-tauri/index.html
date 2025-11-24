@@ -6,208 +6,569 @@
     <title>bf42lite</title>
     <style>
       /* === GLOBAL & RESET === */
-      body { margin: 0; overflow: hidden; background-color: #000; user-select: none; font-family: "Impact", sans-serif; }
-      canvas { display: block; }
-      
-      /* Common BF Colors */
-      :root { --bf-yellow: #ffcc00; --bf-bg: rgba(0, 0, 0, 0.6); }
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: #000;
+        user-select: none;
+        font-family: "Impact", sans-serif;
+      }
+      canvas {
+        display: block;
+      }
 
-      /* === 1. DEBUG INFO (Top Left) === */
+      :root {
+        --bf-yellow: #ffcc00;
+        --bf-bg: rgba(0, 0, 0, 0.6);
+      }
+
+      /* === DEBUG OVERLAY (top-left) === */
       #debug-overlay {
-        position: absolute; top: 10px; left: 10px;
-        color: lime; font-family: monospace; font-size: 12px;
-        pointer-events: none; text-shadow: 1px 1px 0 #000;
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        color: lime;
+        font-family: monospace;
+        font-size: 12px;
+        pointer-events: none;
+        text-shadow: 1px 1px 0 #000;
+        z-index: 20;
       }
 
-      /* === 2. TICKET COUNTER (Top Right) === */
-      #ticket-counter {
-        position: absolute; top: 0; right: 0;
-        display: flex; background: var(--bf-bg);
-        border-bottom-left-radius: 10px; padding: 10px 20px;
-        color: white; font-size: 24px; pointer-events: none;
-      }
-      .team-score { margin: 0 15px; text-align: center; }
-      .team-axis { color: #ff4444; }
-      .team-allies { color: #4488ff; }
-      .score-label { font-size: 12px; opacity: 0.8; display: block; }
-
-      /* === 3. BOTTOM HUD (Health & Ammo) === */
+      /* === HUD LAYER ROOT === */
       #hud-layer {
-        position: absolute; bottom: 20px; left: 0; width: 100%;
-        display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box;
-        pointer-events: none; /* Let clicks pass through to game */
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+        z-index: 10;
       }
-      
-      .hud-panel {
-        display: flex; align-items: center;
-        color: var(--bf-yellow); text-shadow: 2px 2px 0 #000;
+
+      /* --- Top strip: tickets, objective, net stats --- */
+      .hud-top {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
       }
 
-      /* Health Bar Style */
-      .health-icon { font-size: 40px; margin-right: 10px; }
-      .health-val { font-size: 48px; }
-      .bar-container { width: 150px; height: 10px; background: #333; margin-left: 10px; border: 1px solid white; }
-      #health-fill { width: 100%; height: 100%; background: var(--bf-yellow); transition: width 0.2s; }
+      .hud-top-left,
+      .hud-top-center,
+      .hud-top-right {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
 
-      /* Ammo Style */
-      .ammo-val { font-size: 48px; text-align: right; }
-      .weapon-name { font-size: 18px; color: white; display: block; text-align: right; }
+      .tickets-row {
+        display: flex;
+        gap: 12px;
+        align-items: baseline;
+      }
 
-      /* === 4. DEPLOY SCREEN (Overlay) === */
+      .tickets-block {
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        font-size: 14px;
+      }
+
+      .team-label {
+        font-weight: 700;
+        letter-spacing: 1px;
+        font-size: 11px;
+        opacity: 0.85;
+      }
+
+      .team-label.axis {
+        color: #ff5555;
+      }
+
+      .team-label.allies {
+        color: #4aa8ff;
+      }
+
+      #tickets-axis,
+      #tickets-allies {
+        min-width: 30px;
+        text-align: center;
+      }
+
+      #tickets-axis.low,
+      #tickets-allies.low {
+        color: #ff4444;
+      }
+
+      #objective-text {
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+      }
+
+      #flag-strip {
+        margin-top: 4px;
+        display: flex;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .flag-mini {
+        width: 14px;
+        height: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      .flag-mini.axis {
+        background: #7f2020;
+      }
+
+      .flag-mini.allies {
+        background: #20507f;
+      }
+
+      .flag-mini.neutral {
+        background: rgba(0, 0, 0, 0.4);
+      }
+
+      /* --- Center status (under crosshair) --- */
+      .hud-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -10px);
+        pointer-events: none;
+      }
+
+      #center-status {
+        font-size: 14px;
+        text-align: center;
+      }
+
+      /* --- Lower-left flag list --- */
+      .hud-bottom-left {
+        position: absolute;
+        left: 20px;
+        bottom: 80px;
+        pointer-events: none;
+        font-size: 12px;
+      }
+
+      #flag-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .flag-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+
+      .flag-name {
+        min-width: 70px;
+      }
+
+      .flag-owner {
+        font-weight: 600;
+      }
+
+      .flag-owner.axis {
+        color: #ff5555;
+      }
+
+      .flag-owner.allies {
+        color: #4aa8ff;
+      }
+
+      .flag-owner.neutral {
+        color: #cccccc;
+      }
+
+      .flag-progress {
+        flex: 1;
+        height: 3px;
+        background: rgba(255, 255, 255, 0.15);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .flag-progress-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 0%;
+        background: #ffffff;
+      }
+
+      /* --- Lower-right: health + ammo --- */
+      .hud-bottom-right {
+        position: absolute;
+        right: 20px;
+        bottom: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+      }
+
+      #weapon-panel {
+        text-align: right;
+      }
+
+      #weapon-name {
+        font-size: 16px;
+        color: #ffffff;
+      }
+
+      #ammo-display {
+        font-size: 32px;
+      }
+
+      #ammo-display span {
+        display: inline-block;
+        min-width: 28px;
+        text-align: right;
+      }
+
+      #health-bar {
+        position: relative;
+        width: 180px;
+        height: 14px;
+        border: 1px solid #ffffff;
+        background: rgba(0, 0, 0, 0.6);
+      }
+
+      #health-fill {
+        height: 100%;
+        width: 100%;
+        background: var(--bf-yellow);
+        transition: width 0.2s;
+      }
+
+      #health-val {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 11px;
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+      }
+
+      /* --- Kill feed (right side, mid) --- */
+      #kill-feed {
+        position: absolute;
+        right: 20px;
+        top: 140px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 11px;
+        text-align: right;
+        pointer-events: none;
+      }
+
+      .kill-entry {
+        text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+        opacity: 0.9;
+      }
+
+      .kill-entry.fade-out {
+        opacity: 0;
+        transition: opacity 0.5s linear;
+      }
+
+      /* === DEPLOY SCREEN (overlay) === */
       #deploy-screen {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: rgba(0, 0, 0, 0.85);
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        z-index: 10; /* On top of everything */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 30;
         color: var(--bf-yellow);
       }
-      
+
       .map-container {
-        position: relative; width: 500px; height: 500px;
-        background: #2a3b2a; border: 4px solid var(--bf-yellow);
+        position: relative;
+        width: 500px;
+        height: 500px;
+        background: #2a3b2a;
+        border: 4px solid var(--bf-yellow);
         margin-bottom: 20px;
-        /* Grid pattern for "Map" look */
         background-image: radial-gradient(#445544 1px, transparent 1px);
         background-size: 20px 20px;
       }
 
       .spawn-point {
-        position: absolute; width: 24px; height: 24px;
+        position: absolute;
+        width: 24px;
+        height: 24px;
         transform: translate(-50%, -50%);
-        background: white; border: 2px solid black; border-radius: 50%;
-        cursor: pointer; box-shadow: 0 0 5px #000;
+        background: white;
+        border: 2px solid black;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 0 5px #000;
         z-index: 100;
       }
-      /* Default Team Colors */
-      .spawn-point.axis { background: #ff4444; }
-      .spawn-point.allies { background: #4488ff; }
 
-      .spawn-point:hover { transform: translate(-50%, -50%) scale(1.2); background: var(--bf-yellow); }
+      .spawn-point.axis {
+        background: #ff4444;
+      }
 
-      /* Selected Flag Style */
-      .spawn-point.selected { 
-        background: #00ff00 !important; 
-        box-shadow: 0 0 15px #00ff00; 
-        border-color: white; 
+      .spawn-point.allies {
+        background: #4488ff;
+      }
+
+      .spawn-point:hover {
+        transform: translate(-50%, -50%) scale(1.2);
+        background: var(--bf-yellow);
+      }
+
+      .spawn-point.selected {
+        background: #00ff00 !important;
+        box-shadow: 0 0 15px #00ff00;
+        border-color: white;
       }
 
       button.bf-btn {
-        background: transparent; border: 2px solid var(--bf-yellow);
-        color: var(--bf-yellow); font-family: "Impact", sans-serif;
-        font-size: 24px; padding: 10px 40px; cursor: pointer;
-        text-transform: uppercase; transition: 0.1s;
+        background: transparent;
+        border: 2px solid var(--bf-yellow);
+        color: var(--bf-yellow);
+        font-family: "Impact", sans-serif;
+        font-size: 24px;
+        padding: 10px 40px;
+        cursor: pointer;
+        text-transform: uppercase;
+        transition: 0.1s;
       }
-      button.bf-btn:hover { background: var(--bf-yellow); color: black; }
 
-      /* Class Selector Styles */
-      .class-selector { display: flex; gap: 10px; margin: 20px 0; justify-content: center; }
-      .class-btn { padding: 10px 20px; background: #333; color: #fff; border: 1px solid #555; cursor: pointer; font-family: 'Courier New', monospace; font-weight: bold; text-transform: uppercase; }
-      .class-btn:hover { background: #444; }
-      .class-btn.selected { background: #d62828; border-color: #ff0000; box-shadow: 0 0 10px #d62828; }
+      button.bf-btn:hover {
+        background: var(--bf-yellow);
+        color: black;
+      }
 
-      /* === 5. CROSSHAIR & HITMARKER === */
+      .class-selector {
+        display: flex;
+        gap: 10px;
+        margin: 20px 0;
+        justify-content: center;
+      }
+
+      .class-btn {
+        padding: 10px 20px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        cursor: pointer;
+        font-family: "Courier New", monospace;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .class-btn:hover {
+        background: #444;
+      }
+
+      .class-btn.selected {
+        background: #d62828;
+        border-color: #ff0000;
+        box-shadow: 0 0 10px #d62828;
+      }
+
+      /* === CROSSHAIR & HITMARKER === */
       .center-screen {
-        position: absolute; 
-        top: 50%; left: 50%; 
+        position: absolute;
+        top: 50%;
+        left: 50%;
         transform: translate(-50%, -50%);
         pointer-events: none;
         text-align: center;
         display: flex;
         align-items: center;
         justify-content: center;
+        z-index: 15;
       }
 
-      /* The Static Crosshair (+) */
       #crosshair {
-        width: 40px; height: 40px;
-        font-family: monospace; 
-        font-size: 30px; 
+        width: 40px;
+        height: 40px;
+        font-family: monospace;
+        font-size: 30px;
         color: rgba(255, 255, 255, 0.8);
         text-shadow: 1px 1px 0 #000;
       }
 
-      /* The Hit Marker (X) - Hidden by default */
       #hitmarker {
         position: absolute;
-        width: 40px; height: 40px;
+        width: 40px;
+        height: 40px;
         font-family: sans-serif;
         font-size: 35px;
         font-weight: bold;
-        color: #ff3333; /* Red */
-        opacity: 0; /* Invisible start */
+        color: #ff3333;
+        opacity: 0;
         transition: opacity 0.1s;
         text-shadow: 1px 1px 0 #000;
       }
-      /* === 6. GAME OVER SCREEN === */
-      #game-over-screen {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(50, 0, 0, 0.8); /* Dark Red tint */
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        z-index: 20; /* Above deploy screen */
-        color: white;
-        opacity: 0; pointer-events: none; transition: opacity 0.5s;
-      }
-      #game-over-screen.visible { opacity: 1; pointer-events: all; }
-      
-      .end-title { font-size: 80px; text-transform: uppercase; color: var(--bf-yellow); margin-bottom: 20px; }
-      .end-subtitle { font-size: 30px; }
 
-      /* Animation class */
-      .hit-active { opacity: 1 !important; }
-      /* Utility to hide things */
-      .hidden { display: none !important; }
+      .hit-active {
+        opacity: 1 !important;
+      }
+
+      /* === GAME OVER SCREEN === */
+      #game-over-screen {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(50, 0, 0, 0.8);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 40;
+        color: white;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.5s;
+      }
+
+      #game-over-screen.visible {
+        opacity: 1;
+        pointer-events: all;
+      }
+
+      .end-title {
+        font-size: 80px;
+        text-transform: uppercase;
+        color: var(--bf-yellow);
+        margin-bottom: 20px;
+      }
+
+      .end-subtitle {
+        font-size: 30px;
+      }
+
+      /* Utility */
+      .hidden {
+        display: none !important;
+      }
     </style>
   </head>
   <body>
     <canvas id="game"></canvas>
 
-    <div id="debug-overlay">FPS: <span id="fps">0</span> | RTT: <span id="rtt">0</span>ms</div>
-    
-    <div id="ticket-counter">
-      <div class="team-score team-axis"><span class="score-label">AXIS</span><span id="tickets-axis">100</span></div>
-      <div class="team-score team-allies"><span class="score-label">ALLIES</span><span id="tickets-allies">100</span></div>
+    <div id="debug-overlay">
+      FPS: <span id="fps">0</span> | RTT: <span id="rtt">0</span>ms
     </div>
 
+    <!-- Main in-game HUD -->
     <div id="hud-layer" class="hidden">
-      <div class="hud-panel">
-        <div class="health-icon">+</div>
-        <div>
-          <div class="health-val" id="health-val">100</div>
-          <div class="bar-container"><div id="health-fill"></div></div>
+      <div class="hud-top">
+        <div class="hud-top-left">
+          <div class="tickets-row">
+            <div class="tickets-block">
+              <span class="team-label axis">AXIS</span>
+              <span id="tickets-axis">100</span>
+            </div>
+            <div class="tickets-block">
+              <span class="team-label allies">ALLIES</span>
+              <span id="tickets-allies">100</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud-top-center">
+          <div id="objective-text">CAPTURE AND HOLD THE FLAGS</div>
+          <div id="flag-strip"></div>
+        </div>
+
+        <div class="hud-top-right">
+          <!-- reserved for extra info if needed -->
         </div>
       </div>
-      <div class="hud-panel">
-        <div>
-          <div class="weapon-name" id="weapon-name">THOMPSON</div>
-          <div class="ammo-val"><span id="ammo-curr">30</span> | <span id="ammo-res">120</span></div>
+
+      <div class="hud-center">
+        <div id="center-status"></div>
+      </div>
+
+      <div class="hud-bottom-left">
+        <div id="flag-list"></div>
+      </div>
+
+      <div class="hud-bottom-right">
+        <div id="weapon-panel">
+          <div id="weapon-name">THOMPSON</div>
+          <div id="ammo-display">
+            <span id="ammo-curr">30</span>
+            <span>/</span>
+            <span id="ammo-res">120</span>
+          </div>
+        </div>
+
+        <div id="health-bar">
+          <div id="health-fill"></div>
+          <span id="health-val">100</span>
         </div>
       </div>
+
+      <div id="kill-feed"></div>
     </div>
 
+    <!-- Deployment / class + spawn selection -->
     <div id="deploy-screen">
       <h1>DEPLOYMENT</h1>
       <h2 style="font-size: 18px; margin-bottom: 10px;">SELECT CLASS</h2>
-      
+
       <div class="class-selector">
-          <button class="class-btn selected" data-id="0">ASSAULT</button>
-          <button class="class-btn" data-id="1">MEDIC</button>
-          <button class="class-btn" data-id="2">SCOUT</button>
+        <button class="class-btn selected" data-id="0">ASSAULT</button>
+        <button class="class-btn" data-id="1">MEDIC</button>
+        <button class="class-btn" data-id="2">SCOUT</button>
       </div>
 
       <div class="map-container">
-        <div class="spawn-point allies" style="top: 20%; left: 20%;" data-id="1"></div>
-        <div class="spawn-point axis" style="top: 80%; left: 80%;" data-id="2"></div>
-        <div class="spawn-point" style="top: 50%; left: 50%; background: gray;" data-id="0"></div>
+        <div
+          class="spawn-point allies"
+          style="top: 20%; left: 20%;"
+          data-id="1"
+        ></div>
+        <div
+          class="spawn-point axis"
+          style="top: 80%; left: 80%;"
+          data-id="2"
+        ></div>
+        <div
+          class="spawn-point"
+          style="top: 50%; left: 50%; background: gray;"
+          data-id="0"
+        ></div>
       </div>
-      
+
       <button id="btn-spawn" class="bf-btn">ENTER BATTLE</button>
     </div>
 
+    <!-- Crosshair + hitmarker -->
     <div class="center-screen">
       <div id="crosshair">+</div>
       <div id="hitmarker">x</div>
     </div>
 
+    <!-- Game over -->
     <div id="game-over-screen">
       <div class="end-title" id="end-title">GAME OVER</div>
       <div class="end-subtitle">RETURNING TO BATTLE...</div>
@@ -216,3 +577,313 @@
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
+``` :contentReference[oaicite:0]{index=0}
+
+
+Updated `UIManager.ts` (adds flag strip/list, center status, kill feed, and extended tickets logic):
+
+```ts
+export class UIManager {
+    private ui: {
+        deployScreen: HTMLElement | null;
+        hudLayer: HTMLElement | null;
+        healthVal: HTMLElement | null;
+        healthFill: HTMLElement | null;
+        spawnBtn: HTMLElement | null;
+        ticketsAxis: HTMLElement | null;
+        ticketsAllies: HTMLElement | null;
+        fps: HTMLElement | null;
+        rtt: HTMLElement | null;
+        hitmarker: HTMLElement | null;
+        gameOverScreen: HTMLElement | null;
+        endTitle: HTMLElement | null;
+        ammoCurr: HTMLElement | null;
+        ammoRes: HTMLElement | null;
+        weaponName: HTMLElement | null;
+
+        // New conquest + HUD elements
+        objectiveText: HTMLElement | null;
+        flagStrip: HTMLElement | null;
+        centerStatus: HTMLElement | null;
+        flagList: HTMLElement | null;
+        killFeed: HTMLElement | null;
+    };
+    private selectedSpawnId = -1;
+    private hitTimeout: number | null = null;
+    
+    // FIX: Update signature to accept classId
+    private onSpawnRequest: (classId: number) => void;
+    private selectedClassId = 0; // Default to Assault
+
+    constructor(onSpawnRequest: (classId: number) => void) {
+        this.onSpawnRequest = onSpawnRequest;
+        
+        this.ui = {
+            deployScreen: document.getElementById('deploy-screen'),
+            hudLayer: document.getElementById('hud-layer'),
+            healthVal: document.getElementById('health-val'),
+            healthFill: document.getElementById('health-fill'),
+            spawnBtn: document.getElementById('btn-spawn'),
+            ticketsAxis: document.getElementById('tickets-axis'),
+            ticketsAllies: document.getElementById('tickets-allies'),
+            fps: document.getElementById('fps'),
+            rtt: document.getElementById('rtt'),
+            hitmarker: document.getElementById('hitmarker'),
+            gameOverScreen: document.getElementById('game-over-screen'),
+            endTitle: document.getElementById('end-title'),
+            ammoCurr: document.getElementById('ammo-curr'),
+            ammoRes: document.getElementById('ammo-res'),
+            weaponName: document.getElementById('weapon-name'),
+
+            objectiveText: document.getElementById('objective-text'),
+            flagStrip: document.getElementById('flag-strip'),
+            centerStatus: document.getElementById('center-status'),
+            flagList: document.getElementById('flag-list'),
+            killFeed: document.getElementById('kill-feed'),
+        };
+
+        this.initListeners();
+    }
+
+    private initListeners() {
+        // 1. Class Selection Listeners
+        const classButtons = Array.from(
+            document.querySelectorAll<HTMLButtonElement>('.class-btn')
+        );
+        classButtons.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const idStr = btn.getAttribute('data-id') ?? '0';
+                this.selectedClassId = parseInt(idStr, 10) || 0;
+
+                classButtons.forEach((b) => b.classList.remove('selected'));
+                btn.classList.add('selected');
+            });
+        });
+
+        // 2. Spawn point selection
+        const spawnPoints = Array.from(
+            document.querySelectorAll<HTMLDivElement>('.spawn-point')
+        );
+        spawnPoints.forEach((sp) => {
+            sp.addEventListener('click', () => {
+                const idStr = sp.getAttribute('data-id') ?? '0';
+                this.selectedSpawnId = parseInt(idStr, 10) || 0;
+
+                spawnPoints.forEach((s) => s.classList.remove('selected'));
+                sp.classList.add('selected');
+            });
+        });
+
+        // 3. Spawn button
+        if (this.ui.spawnBtn) {
+            this.ui.spawnBtn.addEventListener('click', () => {
+                // For now we ignore selectedSpawnId and rely on server-side spawn logic.
+                // If you later need to block until a flag is selected:
+                // if (this.selectedSpawnId === -1) { ... } 
+
+                this.setDeployMode(false);
+                
+                // Pass the selected class ID to the game loop
+                this.onSpawnRequest(this.selectedClassId);
+            });
+        }
+    }
+
+    public updateStats(fps: number, rtt: number) {
+        if (this.ui.fps) this.ui.fps.innerText = fps.toFixed(0);
+        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toFixed(0);
+    }
+
+    public updateHealth(current: number) {
+        if (this.ui.healthVal) this.ui.healthVal.innerText = current.toString();
+        if (this.ui.healthFill) this.ui.healthFill.style.width = `${current}%`;
+    }
+
+    public updateTickets(axis: number, allies: number) {
+        if (this.ui.ticketsAxis) {
+            this.ui.ticketsAxis.innerText = axis.toString();
+            if (axis <= 20) this.ui.ticketsAxis.classList.add('low');
+            else this.ui.ticketsAxis.classList.remove('low');
+        }
+
+        if (this.ui.ticketsAllies) {
+            this.ui.ticketsAllies.innerText = allies.toString();
+            if (allies <= 20) this.ui.ticketsAllies.classList.add('low');
+            else this.ui.ticketsAllies.classList.remove('low');
+        }
+
+        // Optional: adjust objective text based on ticket balance
+        if (this.ui.objectiveText) {
+            if (axis <= 0 && allies > 0) {
+                this.ui.objectiveText.innerText = 'ALLIES ARE WINNING – HOLD YOUR FLAGS';
+            } else if (allies <= 0 && axis > 0) {
+                this.ui.objectiveText.innerText = 'AXIS ARE WINNING – HOLD YOUR FLAGS';
+            } else {
+                this.ui.objectiveText.innerText = 'CAPTURE AND HOLD THE FLAGS';
+            }
+        }
+    }
+
+    // Center status line (e.g. respawn / flag messages)
+    public setCenterStatus(text: string) {
+        if (this.ui.centerStatus) {
+            this.ui.centerStatus.innerText = text;
+        }
+    }
+
+    // Mini strip of flags at top center
+    public updateFlagStrip(flags: { id: number; owner: any }[]) {
+        if (!this.ui.flagStrip) return;
+        const root = this.ui.flagStrip;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const div = document.createElement('div');
+            div.classList.add('flag-mini');
+
+            let cls = 'neutral';
+            if (f.owner === 'TeamA' || f.owner === 1) cls = 'axis';
+            else if (f.owner === 'TeamB' || f.owner === 2) cls = 'allies';
+
+            div.classList.add(cls);
+            root.appendChild(div);
+        });
+    }
+
+    // Detailed flag list in lower-left
+    public updateFlagList(flags: { id: number; owner: any; capture: number }[]) {
+        if (!this.ui.flagList) return;
+        const root = this.ui.flagList;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const row = document.createElement('div');
+            row.classList.add('flag-row');
+
+            const name = document.createElement('span');
+            name.classList.add('flag-name');
+            name.innerText = `Flag ${f.id}`;
+
+            const owner = document.createElement('span');
+            owner.classList.add('flag-owner');
+
+            let ownerCls = 'neutral';
+            let label = 'NEUTRAL';
+
+            if (f.owner === 'TeamA' || f.owner === 1) {
+                ownerCls = 'axis';
+                label = 'AXIS';
+            } else if (f.owner === 'TeamB' || f.owner === 2) {
+                ownerCls = 'allies';
+                label = 'ALLIES';
+            }
+
+            owner.classList.add(ownerCls);
+            owner.innerText = label;
+
+            const bar = document.createElement('div');
+            bar.classList.add('flag-progress');
+
+            const fill = document.createElement('div');
+            fill.classList.add('flag-progress-fill');
+
+            const t = Math.min(1, Math.abs(f.capture || 0));
+            fill.style.width = `${t * 100}%`;
+
+            bar.appendChild(fill);
+            row.appendChild(name);
+            row.appendChild(owner);
+            row.appendChild(bar);
+
+            root.appendChild(row);
+        });
+    }
+
+    // Kill feed on the right side
+    public pushKillFeed(killer: string, victim: string, weapon?: string) {
+        if (!this.ui.killFeed) return;
+
+        const entry = document.createElement('div');
+        entry.classList.add('kill-entry');
+
+        const weaponText = weapon ? ` [${weapon}]` : '';
+        entry.innerText = `${killer} ➜ ${victim}${weaponText}`;
+
+        this.ui.killFeed.prepend(entry);
+
+        // Keep last 5 entries
+        while (this.ui.killFeed.children.length > 5) {
+            this.ui.killFeed.removeChild(this.ui.killFeed.lastChild as Node);
+        }
+
+        // Auto fade-out
+        setTimeout(() => {
+            entry.classList.add('fade-out');
+            setTimeout(() => entry.remove(), 500);
+        }, 3000);
+    }
+
+    public showHitMarker() {
+        if (!this.ui.hitmarker) return;
+        this.ui.hitmarker.classList.remove('hit-active');
+        void this.ui.hitmarker.offsetWidth; 
+        this.ui.hitmarker.classList.add('hit-active');
+        if (this.hitTimeout) clearTimeout(this.hitTimeout);
+        this.hitTimeout = window.setTimeout(() => {
+            if (this.ui.hitmarker) {
+                this.ui.hitmarker.classList.remove('hit-active');
+            }
+        }, 150);
+    }
+
+    public setGameOver(isGameOver: boolean, winningTeam: string) {
+        if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
+        if (isGameOver) {
+            this.ui.gameOverScreen.classList.add('visible');
+            this.ui.endTitle.innerText = winningTeam;
+            document.exitPointerLock();
+        } else {
+            this.ui.gameOverScreen.classList.remove('visible');
+        }
+    }
+
+    public updateAmmo(current: number, reserve: number, weaponName?: string) {
+        if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+        if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+        if (weaponName && this.ui.weaponName) {
+            this.ui.weaponName.innerText = weaponName.toUpperCase();
+        }
+    }
+
+    public updateRespawn(isDead: boolean, respawnTimer: number | null) {
+        if (!this.ui.centerStatus) return;
+
+        if (isDead) {
+            if (respawnTimer !== null && respawnTimer > 0) {
+                this.ui.centerStatus.innerText = `YOU ARE DEAD – RESPAWN IN ${respawnTimer.toFixed(1)}s`;
+            } else {
+                this.ui.centerStatus.innerText = 'YOU ARE DEAD – AWAITING RESPAWN';
+            }
+        } else {
+            this.ui.centerStatus.innerText = '';
+        }
+    }
+
+    public setDeployMode(isDeploying: boolean) {
+        if (isDeploying) {
+            this.ui.deployScreen?.classList.remove('hidden');
+            this.ui.hudLayer?.classList.add('hidden');
+            document.exitPointerLock();
+            if (this.ui.centerStatus) this.ui.centerStatus.innerText = '';
+        } else {
+            this.ui.deployScreen?.classList.add('hidden');
+            this.ui.hudLayer?.classList.remove('hidden');
+
+            // Try to re-acquire pointer lock for the game canvas
+            const canvas = document.getElementById('game') as HTMLCanvasElement | null;
+            if (canvas && document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock?.();
+            }
+        }
+    }
+}

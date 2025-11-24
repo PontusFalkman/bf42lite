@@ -15,17 +15,24 @@ export class UIManager {
         ammoCurr: HTMLElement | null;
         ammoRes: HTMLElement | null;
         weaponName: HTMLElement | null;
+
+        // NEW HUD elements
+        objectiveText: HTMLElement | null;
+        flagStrip: HTMLElement | null;
+        centerStatus: HTMLElement | null;
+        flagList: HTMLElement | null;
+        killFeed: HTMLElement | null;
     };
+
     private selectedSpawnId = -1;
     private hitTimeout: number | null = null;
-    
-    // FIX: Update signature to accept classId
+
     private onSpawnRequest: (classId: number) => void;
     private selectedClassId = 0; // Default to Assault
 
     constructor(onSpawnRequest: (classId: number) => void) {
         this.onSpawnRequest = onSpawnRequest;
-        
+
         this.ui = {
             deployScreen: document.getElementById('deploy-screen'),
             hudLayer: document.getElementById('hud-layer'),
@@ -41,25 +48,29 @@ export class UIManager {
             endTitle: document.getElementById('end-title'),
             ammoCurr: document.getElementById('ammo-curr'),
             ammoRes: document.getElementById('ammo-res'),
-            weaponName: document.getElementById('weapon-name')
+            weaponName: document.getElementById('weapon-name'),
+
+            objectiveText: document.getElementById('objective-text'),
+            flagStrip: document.getElementById('flag-strip'),
+            centerStatus: document.getElementById('center-status'),
+            flagList: document.getElementById('flag-list'),
+            killFeed: document.getElementById('kill-feed'),
         };
 
         this.initListeners();
     }
 
     private initListeners() {
-        // 1. Class Selection Listeners (NEW)
+        // 1. Class Selection Listeners
         const classBtns = document.querySelectorAll('.class-btn');
         classBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Update Visuals
                 classBtns.forEach(b => b.classList.remove('selected'));
-                const target = e.target as HTMLElement;
+                const target = e.currentTarget as HTMLElement;
                 target.classList.add('selected');
-                
-                // Update Logic
+
                 const id = target.getAttribute('data-id');
-                if (id) this.selectedClassId = parseInt(id);
+                if (id) this.selectedClassId = parseInt(id, 10) || 0;
             });
         });
 
@@ -67,45 +78,48 @@ export class UIManager {
         const mapContainer = document.querySelector('.map-container');
         if (mapContainer) {
             mapContainer.addEventListener('click', (e: Event) => {
-                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement;
+                const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement | null;
                 if (!target) return;
-                
+
                 document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
                 target.classList.add('selected');
-                
-                this.selectedSpawnId = parseInt(target.dataset.id || "-1");
+
+                this.selectedSpawnId = parseInt(target.dataset.id || '-1', 10);
             });
         }
 
         // 3. Spawn Button Click Listener
         if (this.ui.spawnBtn) {
             this.ui.spawnBtn.addEventListener('click', () => {
-                // Note: We can relax the spawn point requirement if we are just doing random spawns for now
-                // if (this.selectedSpawnId === -1) { ... } 
-
+                // Spawn point enforcement optional; currently we let server decide
                 this.setDeployMode(false);
-                
-                // Pass the selected class ID to the game loop
                 this.onSpawnRequest(this.selectedClassId);
             });
         }
     }
 
+    // Show / hide deploy vs in-game HUD
     public setDeployMode(isDeploying: boolean) {
         if (isDeploying) {
             this.ui.deployScreen?.classList.remove('hidden');
             this.ui.hudLayer?.classList.add('hidden');
             document.exitPointerLock();
+            if (this.ui.centerStatus) this.ui.centerStatus.innerText = '';
         } else {
             this.ui.deployScreen?.classList.add('hidden');
             this.ui.hudLayer?.classList.remove('hidden');
-            document.body.requestPointerLock();
+
+            const canvas = document.getElementById('game') as HTMLCanvasElement | null;
+            if (canvas && document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock?.();
+            }
         }
     }
 
+    // Debug overlay stats
     public updateStats(fps: number, rtt: number) {
-        if (this.ui.fps) this.ui.fps.innerText = fps.toString();
-        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toString();
+        if (this.ui.fps) this.ui.fps.innerText = fps.toFixed(0);
+        if (this.ui.rtt) this.ui.rtt.innerText = rtt.toFixed(0);
     }
 
     public updateHealth(current: number) {
@@ -113,19 +127,139 @@ export class UIManager {
         if (this.ui.healthFill) this.ui.healthFill.style.width = `${current}%`;
     }
 
+    // Tickets + objective text
     public updateTickets(axis: number, allies: number) {
-        if (this.ui.ticketsAxis) this.ui.ticketsAxis.innerText = axis.toString();
-        if (this.ui.ticketsAllies) this.ui.ticketsAllies.innerText = allies.toString();
+        if (this.ui.ticketsAxis) {
+            this.ui.ticketsAxis.innerText = axis.toString();
+            if (axis <= 20) this.ui.ticketsAxis.classList.add('low');
+            else this.ui.ticketsAxis.classList.remove('low');
+        }
+
+        if (this.ui.ticketsAllies) {
+            this.ui.ticketsAllies.innerText = allies.toString();
+            if (allies <= 20) this.ui.ticketsAllies.classList.add('low');
+            else this.ui.ticketsAllies.classList.remove('low');
+        }
+
+        if (this.ui.objectiveText) {
+            if (axis <= 0 && allies > 0) {
+                this.ui.objectiveText.innerText = 'ALLIES ARE WINNING – HOLD YOUR FLAGS';
+            } else if (allies <= 0 && axis > 0) {
+                this.ui.objectiveText.innerText = 'AXIS ARE WINNING – HOLD YOUR FLAGS';
+            } else {
+                this.ui.objectiveText.innerText = 'CAPTURE AND HOLD THE FLAGS';
+            }
+        }
+    }
+
+    // Center status line (respawn / capturing hints)
+    public setCenterStatus(text: string) {
+        if (this.ui.centerStatus) {
+            this.ui.centerStatus.innerText = text;
+        }
+    }
+
+    // Mini flag-strip at top center
+    public updateFlagStrip(flags: { id: number; owner: any }[]) {
+        if (!this.ui.flagStrip) return;
+        const root = this.ui.flagStrip;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const div = document.createElement('div');
+            div.classList.add('flag-mini');
+
+            let cls = 'neutral';
+            if (f.owner === 'TeamA' || f.owner === 1) cls = 'axis';
+            else if (f.owner === 'TeamB' || f.owner === 2) cls = 'allies';
+
+            div.classList.add(cls);
+            root.appendChild(div);
+        });
+    }
+
+    // Detailed flag list bottom-left
+    public updateFlagList(flags: { id: number; owner: any; capture: number }[]) {
+        if (!this.ui.flagList) return;
+        const root = this.ui.flagList;
+        root.innerHTML = '';
+
+        flags.forEach((f) => {
+            const row = document.createElement('div');
+            row.classList.add('flag-row');
+
+            const name = document.createElement('span');
+            name.classList.add('flag-name');
+            name.innerText = `Flag ${f.id}`;
+
+            const owner = document.createElement('span');
+            owner.classList.add('flag-owner');
+
+            let ownerCls = 'neutral';
+            let label = 'NEUTRAL';
+
+            if (f.owner === 'TeamA' || f.owner === 1) {
+                ownerCls = 'axis';
+                label = 'AXIS';
+            } else if (f.owner === 'TeamB' || f.owner === 2) {
+                ownerCls = 'allies';
+                label = 'ALLIES';
+            }
+
+            owner.classList.add(ownerCls);
+            owner.innerText = label;
+
+            const bar = document.createElement('div');
+            bar.classList.add('flag-progress');
+
+            const fill = document.createElement('div');
+            fill.classList.add('flag-progress-fill');
+
+            const t = Math.min(1, Math.abs(f.capture || 0));
+            fill.style.width = `${t * 100}%`;
+
+            bar.appendChild(fill);
+            row.appendChild(name);
+            row.appendChild(owner);
+            row.appendChild(bar);
+
+            root.appendChild(row);
+        });
+    }
+
+    // Kill feed on the right side
+    public pushKillFeed(killer: string, victim: string, weapon?: string) {
+        if (!this.ui.killFeed) return;
+
+        const entry = document.createElement('div');
+        entry.classList.add('kill-entry');
+
+        const weaponText = weapon ? ` [${weapon}]` : '';
+        entry.innerText = `${killer} ➜ ${victim}${weaponText}`;
+
+        this.ui.killFeed.prepend(entry);
+
+        while (this.ui.killFeed.children.length > 5) {
+            this.ui.killFeed.removeChild(this.ui.killFeed.lastChild as Node);
+        }
+
+        setTimeout(() => {
+            entry.classList.add('fade-out');
+            setTimeout(() => entry.remove(), 500);
+        }, 3000);
     }
 
     public showHitMarker() {
         if (!this.ui.hitmarker) return;
         this.ui.hitmarker.classList.remove('hit-active');
-        void this.ui.hitmarker.offsetWidth; 
+        void this.ui.hitmarker.offsetWidth;
         this.ui.hitmarker.classList.add('hit-active');
+
         if (this.hitTimeout) clearTimeout(this.hitTimeout);
         this.hitTimeout = window.setTimeout(() => {
-            this.ui.hitmarker?.classList.remove('hit-active');
+            if (this.ui.hitmarker) {
+                this.ui.hitmarker.classList.remove('hit-active');
+            }
         }, 200);
     }
 
@@ -141,30 +275,33 @@ export class UIManager {
     }
 
     public updateAmmo(current: number, reserve: number, weaponName?: string) {
-    if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
-    if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
-    if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
-}
+        if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
+        if (this.ui.ammoRes) this.ui.ammoRes.innerText = reserve.toString();
+        if (this.ui.weaponName && weaponName) this.ui.weaponName.innerText = weaponName;
+    }
 
+    // Respawn timer → center status and spawn button text
     public updateRespawn(isDead: boolean, timer: number) {
-        if (!this.ui.deployScreen || !this.ui.spawnBtn) return;
+        if (!this.ui.spawnBtn) return;
 
         if (isDead) {
-            this.ui.deployScreen.style.display = 'flex'; 
-            
             if (timer > 0) {
                 this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
                 this.ui.spawnBtn.setAttribute('disabled', 'true');
                 this.ui.spawnBtn.style.pointerEvents = 'none';
                 this.ui.spawnBtn.style.opacity = '0.5';
+
+                this.setCenterStatus(`Respawning in ${timer.toFixed(1)}s`);
             } else {
-                this.ui.spawnBtn.innerText = "DEPLOY (Press SPACE)";
+                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
                 this.ui.spawnBtn.removeAttribute('disabled');
                 this.ui.spawnBtn.style.pointerEvents = 'auto';
                 this.ui.spawnBtn.style.opacity = '1.0';
+
+                this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
             }
         } else {
-            this.ui.deployScreen.style.display = 'none';
+            this.setCenterStatus('');
         }
     }
 }

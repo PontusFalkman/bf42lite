@@ -105,8 +105,8 @@ export class Renderer {
             ring.position.y = 0.1;
             group.add(ring);
 
-            // D. Progress Disc
-            const progGeom = new THREE.CircleGeometry(radius - 0.4, 64);
+            // D. Progress Disc – fills same radius as ring at 100%
+            const progGeom = new THREE.CircleGeometry(radius, 64);
             const progMat = new THREE.MeshBasicMaterial({ 
                 color: 0xcccccc, 
                 side: THREE.DoubleSide, 
@@ -119,7 +119,6 @@ export class Renderer {
             progress.scale.set(0, 0, 0);
             progress.name = 'progress';
             group.add(progress);
-
             object = group;
         } else {
             // Standard Soldier (Capsule)
@@ -140,48 +139,75 @@ export class Renderer {
     // === FLAG LOGIC ===
     if (state.type === 'flag') {
         const group = object as THREE.Group;
-        
-        // Hot Reload Safety: Ensure banner exists
+
+        // Ensure banner exists
         let banner = group.getObjectByName('banner') as THREE.Mesh;
         if (!banner) {
-             const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-             const bannerMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
-             banner = new THREE.Mesh(bannerGeom, bannerMat);
-             banner.position.set(0.6, 5.5, 0);
-             banner.castShadow = true;
-             banner.name = 'banner';
-             group.add(banner);
+            const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
+            const bannerMat = new THREE.MeshStandardMaterial({
+                color: 0xcccccc,
+                side: THREE.DoubleSide,
+            });
+            banner = new THREE.Mesh(bannerGeom, bannerMat);
+            banner.position.set(0.6, 5.5, 0);
+            banner.castShadow = true;
+            banner.name = 'banner';
+            group.add(banner);
         }
 
         const pole = group.getObjectByName('pole') as THREE.Mesh;
         const progressDisc = group.getObjectByName('progress') as THREE.Mesh;
-        
+
+        if (!pole || !progressDisc) return;
+
         const poleMat = pole.material as THREE.MeshStandardMaterial;
         const bannerMat = banner.material as THREE.MeshStandardMaterial;
         const progMat = progressDisc.material as THREE.MeshBasicMaterial;
 
-        // 1. Color Logic (Ownership)
-        // 1=Axis(Red), 2=Allies(Blue), 0=Neutral(Grey)
-        let color = 0xcccccc;
-        if (state.team === 1) color = 0xff0000;
-        else if (state.team === 2) color = 0x0000ff;
+        // 1) Pole stays neutral at all times
+        poleMat.color.setHex(0xcccccc);
 
-        poleMat.color.setHex(color);
-        bannerMat.color.setHex(color);
+        // 2) Base ownership color (used when there is no active capture)
+        let baseColor = 0xcccccc;
+        if (state.team === 1) baseColor = 0xff0000; // Axis owns
+        else if (state.team === 2) baseColor = 0x0000ff; // Allies own
 
-        // 2. Progress Disc (Animation)
+        // 3) Capture progress drives BOTH banner + circle colours
+        //
+        // state.progress in [-1, 1]:
+        //   > 0  => Team 1 (Axis) capturing
+        //   < 0  => Team 2 (Allies) capturing
+        //   = 0  => no active capture
         const rawProgress = state.progress || 0;
-        const scale = Math.abs(rawProgress);
-        progressDisc.scale.set(scale, scale, scale);
+        const clamped = Math.max(-1, Math.min(1, rawProgress));
+        const t = Math.abs(clamped); // 0..1 capture amount
 
-        if (rawProgress > 0) {
-            progMat.color.setHex(0xff0000);
-        } else if (rawProgress < 0) {
-            progMat.color.setHex(0x0000ff);
-        } else {
-            progMat.color.setHex(0xffffff);
+        // Scale disc 0% → 100% based on |progress|
+        progressDisc.scale.set(t, t, t);
+
+        // Target team colour based on sign
+        let teamColor = 0xffffff; // no capture
+        if (clamped > 0) {
+            teamColor = 0xff0000; // Axis capturing
+        } else if (clamped < 0) {
+            teamColor = 0x0000ff; // Allies capturing
         }
-        
+
+        // Smoothly blend from white → teamColour using t
+        const white = new THREE.Color(0xffffff);
+        const teamCol = new THREE.Color(teamColor);
+        white.lerp(teamCol, t); // t=0 → white, t=1 → team colour
+
+        if (clamped === 0) {
+            // No active capture: circle white, banner shows owner/neutral
+            progMat.color.setHex(0xffffff);
+            bannerMat.color.setHex(baseColor);
+        } else {
+            // Active capture: banner + circle share blended colour
+            bannerMat.color.copy(white);
+            progMat.color.copy(white);
+        }
+
         return;
     }
 

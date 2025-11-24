@@ -29,6 +29,37 @@ interface InterpolationBuffer {
   snapshots: InterpolationSnapshot[];
 }
 
+/**
+ * Normalize flag snapshots coming from Rust/host into a uniform object form.
+ * Supports both:
+ *   - Array layout: [id, x, y, z, radius, ownerStr, capture]
+ *   - Object layout: { id, pos: {x,y,z}, radius, owner, capture }
+ */
+function normalizeFlags(raw: any[] | undefined | null): any[] {
+  const src = raw ?? [];
+  return src.map((f: any) => {
+    if (Array.isArray(f)) {
+      const id = f[0];
+      const x = f[1];
+      const y = f[2];
+      const z = f[3];
+      const radius = f[4] ?? 0;
+      const owner = f[5] ?? null;
+      const capture = typeof f[6] === 'number' ? f[6] : 0;
+      return { id, x, y, z, radius, owner, capture };
+    } else {
+      const pos = f.pos ?? {};
+      const x = f.x ?? pos.x ?? 0;
+      const y = f.y ?? pos.y ?? 0;
+      const z = f.z ?? pos.z ?? 0;
+      const radius = f.radius ?? f.r ?? 0;
+      const owner = f.owner ?? null;
+      const capture = typeof f.capture === 'number' ? f.capture : 0;
+      return { id: f.id, x, y, z, radius, owner, capture };
+    }
+  });
+}
+
 export class NetworkManager {
   private net: NetworkAdapter;
 
@@ -79,7 +110,7 @@ export class NetworkManager {
           payload,
         );
 
-        // kindId === 1 ⇒ snapshot
+        // kindId === 1 => snapshot
         if (kindId === 1 && Array.isArray(payload)) {
           const [entitiesRaw, flagsRaw, gameStateRaw] = payload as [
             any[],
@@ -87,11 +118,13 @@ export class NetworkManager {
             any,
           ];
 
+          const flags = normalizeFlags(flagsRaw);
+
           const snap = {
             type: 'snapshot' as const,
             tick: ++this.snapshotTick,
             entities: entitiesRaw ?? [],
-            flags: flagsRaw ?? [],
+            flags,
             game_state: Array.isArray(gameStateRaw)
               ? {
                   team_a_tickets: gameStateRaw[0] ?? 0,
@@ -154,11 +187,14 @@ export class NetworkManager {
           this.hasLoggedSnapshot = true;
         }
 
+        const rawFlags = msg.snapshot.flags || msg.snapshot.flag_snapshots || [];
+        const flags = normalizeFlags(rawFlags);
+
         const snap = {
           type: 'snapshot' as const,
           tick: this.snapshotTick,
           entities: msg.snapshot.entities ?? [],
-          flags: msg.snapshot.flags || msg.snapshot.flag_snapshots || [],
+          flags,
           game_state: msg.snapshot.game_state,
         };
 
@@ -230,12 +266,18 @@ export class NetworkManager {
         ownerStr = (f[5] as string) ?? null;
         capture = typeof f[6] === 'number' ? f[6] : 0;
       } else {
-        // Backwards-compatible object layout
+        // Object layout (either raw or normalized)
         id = f.id;
-        x = f.pos?.x ?? 0;
-        y = f.pos?.y ?? 0;
-        z = f.pos?.z ?? 0;
-        ownerStr = f.owner ?? null;
+        if (f.pos) {
+          x = f.pos.x ?? 0;
+          y = f.pos.y ?? 0;
+          z = f.pos.z ?? 0;
+        } else {
+          x = f.x ?? 0;
+          y = f.y ?? 0;
+          z = f.z ?? 0;
+        }
+        ownerStr = (f.owner as string) ?? null;
         capture = typeof f.capture === 'number' ? f.capture : 0;
       }
 
