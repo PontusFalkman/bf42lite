@@ -1,3 +1,5 @@
+// apps/client-tauri/src/managers/UIManager.ts
+
 export class UIManager {
     private ui: {
         deployScreen: HTMLElement | null;
@@ -16,7 +18,7 @@ export class UIManager {
         ammoRes: HTMLElement | null;
         weaponName: HTMLElement | null;
 
-        // NEW HUD elements
+        // New HUD elements
         objectiveText: HTMLElement | null;
         flagStrip: HTMLElement | null;
         centerStatus: HTMLElement | null;
@@ -81,7 +83,9 @@ export class UIManager {
                 const target = (e.target as HTMLElement).closest('.spawn-point') as HTMLElement | null;
                 if (!target) return;
 
-                document.querySelectorAll('.spawn-point').forEach(el => el.classList.remove('selected'));
+                document
+                    .querySelectorAll('.spawn-point')
+                    .forEach(el => el.classList.remove('selected'));
                 target.classList.add('selected');
 
                 this.selectedSpawnId = parseInt(target.dataset.id || '-1', 10);
@@ -132,23 +136,23 @@ export class UIManager {
         // Round for display but keep logic using original floats
         const axisRounded = Math.max(0, Math.round(axis));
         const alliesRounded = Math.max(0, Math.round(allies));
-    
+
         // AXIS
         if (this.ui.ticketsAxis) {
             this.ui.ticketsAxis.innerText = axisRounded.toString();
-    
+
             if (axisRounded <= 20) this.ui.ticketsAxis.classList.add('low');
             else this.ui.ticketsAxis.classList.remove('low');
         }
-    
+
         // ALLIES
         if (this.ui.ticketsAllies) {
             this.ui.ticketsAllies.innerText = alliesRounded.toString();
-    
+
             if (alliesRounded <= 20) this.ui.ticketsAllies.classList.add('low');
             else this.ui.ticketsAllies.classList.remove('low');
         }
-    
+
         // OBJECTIVE TEXT (still uses float logic, works fine)
         if (this.ui.objectiveText) {
             if (axis <= 0 && allies > 0) {
@@ -160,13 +164,46 @@ export class UIManager {
             }
         }
     }
-    
 
     // Center status line (respawn / capturing hints)
     public setCenterStatus(text: string) {
         if (this.ui.centerStatus) {
             this.ui.centerStatus.innerText = text;
         }
+    }
+
+    /**
+     * High-level entry point for all flag HUD elements.
+     *
+     * - Clears both strip + list if there are no flags.
+     * - Uses raw snapshot objects for the mini strip.
+     * - Normalizes data for the detailed list.
+     */
+    public updateFlagsHUD(rawFlags: any[] | undefined | null) {
+        const flags = rawFlags ?? [];
+
+        // No flags: clear both HUD elements and bail.
+        if (!flags.length) {
+            if (this.ui.flagStrip) {
+                this.ui.flagStrip.innerHTML = '';
+            }
+            if (this.ui.flagList) {
+                this.ui.flagList.innerHTML = '';
+            }
+            return;
+        }
+
+        // Mini strip uses the raw snapshot objects (id + owner).
+        this.updateFlagStrip(flags as { id: number; owner: any }[]);
+
+        // Detailed list uses a small normalized DTO.
+        this.updateFlagList(
+            flags.map((f: any) => ({
+                id: f.id,
+                owner: f.owner,
+                capture: typeof f.capture === 'number' ? f.capture : 0,
+            })),
+        );
     }
 
     // Mini flag-strip at top center
@@ -259,7 +296,7 @@ export class UIManager {
         }, 3000);
     }
 
-    public showHitMarker() {
+    public showHitMarker(_damage?: number) {
         if (!this.ui.hitmarker) return;
         this.ui.hitmarker.classList.remove('hit-active');
         void this.ui.hitmarker.offsetWidth;

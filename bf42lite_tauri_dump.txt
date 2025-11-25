@@ -7091,9 +7091,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-0v9nc1rh4o7qj
-    ª       ª   ª   s-hd9s2htu2v-1yxosv6.lock
+    ª       ª   ª   s-hdafu44o8j-1k8o8ji.lock
     ª       ª   ª   
-    ª       ª   +---s-hd9s2htu2v-1yxosv6-6glffe5jf2wnm30ryofn2ykv7
+    ª       ª   +---s-hdafu44o8j-1k8o8ji-6bv0yxvlpblksp2o67rlqturt
     ª       ª           00xwkerak1w3hnd8igsztr9ys.o
     ª       ª           02gm1rpnimm44qx03w5wg7z3y.o
     ª       ª           03dd5ei645h7u48cry68kg5n2.o
@@ -7115,6 +7115,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           0wb8z3gw0luy7uwcllj5xa52d.o
     ª       ª           0wim3jra4h9ymwyhx57lmaxl1.o
     ª       ª           0yr1igaetbjl8bt916qcyhfvd.o
+    ª       ª           160ddwlqvud9cm3ecpq6xd1b8.o
     ª       ª           17ht2olx1bu2gt3ayfptetbt8.o
     ª       ª           18cf5d1t8wiexis3ak8mgsrdt.o
     ª       ª           1dpe0e7uecxiq0n1ejv4tvtct.o
@@ -7134,6 +7135,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           21r3eauozw86wvnf9rag5p7rm.o
     ª       ª           23n0la7fb0ird829djntj1hz8.o
     ª       ª           27z6erobupmq15nugm08w2k73.o
+    ª       ª           2aauhrodi3sbof9k2yep2mnet.o
     ª       ª           2hg0e3ra4g1pciihbtc82ksup.o
     ª       ª           2hlqc6jaqce3w4zhwrv9r437g.o
     ª       ª           2ibwt0ul9cww7clofktrx6jin.o
@@ -7144,25 +7146,22 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           2wq2nbcxy8f1w9zyvwlgb5fi2.o
     ª       ª           2xpzyj1o5lyo6pmx0meb1ec06.o
     ª       ª           2ymsos9uwse0bcjywh6vjjemn.o
+    ª       ª           3064x269o7g80cu0gvqo73fun.o
     ª       ª           30c9rzrhozz6u1fc19sy6tkgl.o
     ª       ª           30w7am03xidyv0voxt9szpijm.o
     ª       ª           32ex6pxgoospmqck7xlxcayzp.o
     ª       ª           3a7bazdfy954cnngpihxsb5h0.o
-    ª       ª           3ab4zj6ehcyecez4x209ygic5.o
     ª       ª           3igyo3hv5cu1f2iia8lugbgu1.o
-    ª       ª           3jcs62xd8zvnw1jz0rubcjagq.o
+    ª       ª           3ij5uvkhy2bm5io788zkhteyw.o
     ª       ª           3ko7o8mhv3tqcu3vwwk74vm83.o
     ª       ª           3kwwakdnnnhw2kty8on342ylr.o
     ª       ª           3rk7xyf507bt752w24c2hxm8i.o
-    ª       ª           3rphigstvsz55tqv4b8z2hvit.o
     ª       ª           3rpnabemqij72jqq9f9dzh81j.o
     ª       ª           3rqxb0t8ms70i9gh164ytzlac.o
     ª       ª           3v7wztdtpinkeydlb7glvb0h1.o
     ª       ª           3vmg54yxvwx63xvk5jgkoyo00.o
-    ª       ª           4220bf4x932eo4anctj2trgtn.o
     ª       ª           43baijach37w64ya86l4z9l4n.o
     ª       ª           44cfcang0ib21i1c6nspzf1b6.o
-    ª       ª           47dump0junzcla24yt66lo9y0.o
     ª       ª           49fr2eqyk8nzr81soww0mhyjf.o
     ª       ª           4c6o2317notcgggniob59m01l.o
     ª       ª           4cwnbgdop9f6z676onglvi14e.o
@@ -7173,7 +7172,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           4s18yslr2tt50cc6jpu05za9h.o
     ª       ª           4s7rs1hmr8lkg1l0b9vwqc0pv.o
     ª       ª           4xfchveomj4yhbvte8mp0ldce.o
-    ª       ª           50ntcarf7cvgmpqma9k2047rj.o
     ª       ª           553ihhcs5jxx9ag9yo9g45f6b.o
     ª       ª           55mffzve81zfh7zpcd7b4o7ib.o
     ª       ª           55zgstby3099l5017kyzwfpr3.o
@@ -7183,6 +7181,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           5cnrx90uwnzxx0f1qae1yxr8f.o
     ª       ª           5d3t7psq02qwmc7ra0mz66mte.o
     ª       ª           5d9h0jqobj4cydqtajugxo6al.o
+    ª       ª           5fe7vz846nxp975ik75w96smr.o
+    ª       ª           5gmjjvxwexcoysipehjffjrdj.o
     ª       ª           5igpcry6q2yc3iy9hkyl2k35z.o
     ª       ª           5ix2wdm2gljug3x77gor4oucy.o
     ª       ª           5jn74u45wc8lylbqm8v8l8pvm.o
@@ -7200,13 +7200,11 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           68pla62ax40eopkri92748n5q.o
     ª       ª           6bayyeiofyx26jfx7afttyvb6.o
     ª       ª           6dav6762fw6g3d9dc81494aho.o
-    ª       ª           6g3l4orldkel6357ps2pzejqz.o
     ª       ª           6miw1rvzv7bsewpwxud0xwlhv.o
+    ª       ª           6usm658e7h99gy9ed2mhkyat7.o
     ª       ª           6vkegj0e9zs7larravjgqnjjp.o
     ª       ª           6vyx1y5ev4bm2qkpgyzarzvvg.o
-    ª       ª           6wiv3ttgiz4bbbk5yacrt8i62.o
     ª       ª           6yo2q3sr0wrwcvpur2wi8dhnn.o
-    ª       ª           702ua6ibky0c04w0ar1uqqwjo.o
     ª       ª           723gn2wvofyxd1szk5o66ie43.o
     ª       ª           72s6uwfvhep214eemh2m09sn8.o
     ª       ª           73n5nh5uwsdu74q6ud0na60p6.o
@@ -7223,6 +7221,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           7ws7h6orb530f4s5emlbut1ls.o
     ª       ª           7zl4oyihom2wjs2jdjbhwi71n.o
     ª       ª           82otzmgrrpihlgpwau0zxst8z.o
+    ª       ª           846j3gqbvvfvsprtel467p41l.o
     ª       ª           849q7v8cb20r0kvm1k0546gw8.o
     ª       ª           88z1jmhpy9dx839rppkuay14f.o
     ª       ª           8bd46welrhiaczt3cej1byrnx.o
@@ -7255,21 +7254,23 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           9n8g291g6b7pb068z2tqtmf6h.o
     ª       ª           9oj8nl81utq4w2ax34qb4rmkj.o
     ª       ª           9oldcc2tvlvactx5da5zlxr1f.o
+    ª       ª           9qsfpdbcqn1xaavxkbhxmrb3y.o
     ª       ª           9tzutiwggzp8yc12xq2wbim6e.o
     ª       ª           9xbfom8rcx85penom0ypqf0mq.o
-    ª       ª           9y37y4b25yv9mrc1wtwx8scdm.o
     ª       ª           9yfedjm7vyzbu9fdp0fitadxa.o
     ª       ª           9zemm8hacsrtgtuiwng2x4i95.o
+    ª       ª           a0fwlt3o8cwn8qzwvb0x9vwzr.o
     ª       ª           a2gvblmsaify9jwrhtyc964pt.o
     ª       ª           a4jdwei8vpypnryuwl3dn61g1.o
     ª       ª           a6yw0vof5h86diqbdq3a0dqjq.o
-    ª       ª           a9yh8rzjn0y095lh95zv6hvy8.o
     ª       ª           aaa909r5yk2bcreu6i0src0hs.o
     ª       ª           ab1a606adz6z5h74bt0x7gb47.o
     ª       ª           aego3egwsy4q43it8empp9cmm.o
     ª       ª           ag44j415wjagmeg5jpzo66lhs.o
     ª       ª           al3xpbyqaxzznirhv5n1z3vxo.o
     ª       ª           alp5wsb6nh67q1ju5lwomnvwr.o
+    ª       ª           alu3aam2bwq8o17yx83baw9ht.o
+    ª       ª           amq38brds1pfasd5p4abmcpg4.o
     ª       ª           ao3vlyj1u0dh7u7310vu8x30i.o
     ª       ª           ap64kp7dt3g0d4f00l9reerf5.o
     ª       ª           aqst4w33tzbmf9tmmbfbszqhj.o
@@ -7281,7 +7282,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           b2ssged5wnm6rzvunblcndzsw.o
     ª       ª           b64omorht1dhb8frd0eleefwi.o
     ª       ª           b9szkfxsifj5ysn1p9jrt4upy.o
+    ª       ª           bj3to3qv5vxn7q1pdpr9fj7b2.o
     ª       ª           bl6j9mtvqdcf32raizq3671a7.o
+    ª       ª           blv3qyngkkphebafi7ck88hei.o
     ª       ª           bm4c0xz2cgoofxrhb3zp0ym0m.o
     ª       ª           bnrv7gyvval79ncwqw941f344.o
     ª       ª           bou711zoujm2i3871jfdpx2ub.o
@@ -7309,14 +7312,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           d0u21e8bj2qtdys3dv9z06ov1.o
     ª       ª           d0xsmx70wnyyr7x6tto68u77j.o
     ª       ª           d1wig90z1tkvjy1s7ycgih813.o
-    ª       ª           d6rp813mi89wroowwxf0xugyl.o
     ª       ª           d8gju6q5qo8j64y4jf6rdwu0j.o
     ª       ª           dep-graph.bin
     ª       ª           dfbmfzhyvqihftcsjh3m6lagi.o
     ª       ª           dfwd13nt5kprlysoorqctor9n.o
     ª       ª           dgqdzposrh4g185sxax04nw8f.o
     ª       ª           dl4xltjzueud64fdomy81rn2j.o
-    ª       ª           dntec33q85p7f4sbx5udwcasy.o
     ª       ª           dphzbj2qneq2nau1mbxw2oy33.o
     ª       ª           dvc2bct4wszli2cssyeq5ptmg.o
     ª       ª           dvf961zl2z2d2t25cmkudib7r.o
@@ -7343,7 +7344,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           eunhiq0z769fqs5inkfu3sg2l.o
     ª       ª           euy9h47ak85txok48wmqkn487.o
     ª       ª           ewc19wtt0tg698ovaonflsp1y.o
-    ª       ª           ewxgidnivi4z1ki9wrffd475w.o
     ª       ª           exfy9m01u0opa5jbl5nutgek3.o
     ª       ª           eyjvq164v9l7k018nw3qjigwd.o
     ª       ª           f0im4wjj3hhubebey874iw2p0.o
@@ -7647,9 +7647,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-2mymaheqdfn5t
-    ª       ª   ª   s-hd9s2o9jc7-0rxf991.lock
+    ª       ª   ª   s-hdafuaw8l3-0dubxyd.lock
     ª       ª   ª   
-    ª       ª   +---s-hd9s2o9jc7-0rxf991-6gqn884u9avv1x0tzwt98s4dw
+    ª       ª   +---s-hdafuaw8l3-0dubxyd-1jbjzcgnutemvc8slubb35y5x
     ª       ª           4z0qgg0f1ypwezdbew4l6nkf1.o
     ª       ª           6o9c1rgvmamux9lza4uo26rlx.o
     ª       ª           d5gr80n1vjrzp5m2lowaxb2h2.o
@@ -12077,28 +12077,59 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       ª       
         ª   ª       +---tauri-codegen-assets
         ª   ª               0367117b0330c375b1ba3fae3a127641f1cf82e8359f1a6443c9469f51d5687c.js
+        ª   ª               05cd060d35efbecf64a56ce0ecccf27beb6d46146acf139a5e0c30da0523a0b4.js
         ª   ª               083465b7f4e51b607280f958ba4a129fd7c9e068cabe9c0f1b6ed9affb6c6953.js
         ª   ª               09e71698437e4712ae7a50513108ba6d2ed89225f61291854068d445a08c9cbd.html
         ª   ª               0ad901a1f96c55e34630b9b3ae0386336daf129f2b4d518a1fb7d54d6ab741e2.js
+        ª   ª               176b4871baad22756efe57935cf0c7dec05cd0889d5fac78364a5a0b62f9dbab.html
+        ª   ª               23e48ddec16b70834018cf05a65af3eebeee34330e232929f38b78c27c403410.js
         ª   ª               265c039968be1d5c441c0db404cba23fccd99d49b290a9b816bc46855fe69021.js
+        ª   ª               288e1db2ecf624332ee976fc6e2e55efe289cd0f913142b03c34d1fc62fc3a42.html
+        ª   ª               2ab0c711242ab737548deca09b3c51ce6a869708683e07d3b62a266857b5f8be.html
+        ª   ª               32445ce4a391b1551f0ea623f25d9cca42ba6db160df0ba02ea3b458d7d62f93.html
+        ª   ª               3493d721a6d78f918dfbcd7687a282ec8ddecaf5ff5460d74d5ac0fd294a9164.html
+        ª   ª               4fdb937a2eeb865cf6ac67bf5d9978de16c94e24997e2edff9abe03d2f559532.html
+        ª   ª               50bae39f64782671b4b22b4195ea0b02aede62d49ce8e701f6896604cffd497f.html
         ª   ª               51c1d76e4c14b7edd04bdb02a2dacb82342ae7ba32168060e0176fb84de3be45.html
+        ª   ª               53560b4217e3d759b3c9e566d743b8722fed5a8ecbbe20fbb2a074ceea2463e6.html
+        ª   ª               53e7308ac51120ad06014b80e4d26f1fd07d45e03d3f2b00fcb0f3aa2fbaf940.js
         ª   ª               5631b6a8cfd9f4360c6c5e1e1660d52e3d5b02a78c6cac375bbb41f117924723.js
         ª   ª               567f59998d29df1912509767ea730409a5b956e47b280eec498ce0a2c62ac88e.html
         ª   ª               5b9b99d842b5346b00259bcb73d7fe1abd58494411ecac3669875c77b1da1c06.html
         ª   ª               5c21f90b8027888e4d3833e58f9c1713ed2308caa48f0f0223f6842988727498.glb
         ª   ª               65bb6c19477aba8d1d54a093b0329241022df57df1de39e372c162c9bdff4e42.html
         ª   ª               67e61923f77b438d21246cea73ff04414f707276de45fddf664139e6c01778cd.html
+        ª   ª               692c46595812d15f82e00af434bb93494bd374370730b9d671303b503511b038.js
         ª   ª               69a30d66cfa107421bf49e0b12e07f13cbce76f7de25196fab131a491e84283b.html
+        ª   ª               69d843acd87b7686c12294b1b209083d74db59a59e94edb3c23b3c3b331a6ca5.js
         ª   ª               6b4431c4d8c0608b1c4eaf543c43423269ca1bec06c557e73e3e4976b598bb14.html
+        ª   ª               6ffc75e080900ef5d528144375669bf27375f3d9547dde10c137a1af318cb833.js
         ª   ª               718387293e895980ee4b0fa858caa89cb9acf9b0266b56f2d56bc7beee8a1eaa.js
+        ª   ª               73fcdf92367aff22fa7ef250d832c16f2bafc99179a66aabe8a182ec24d891d5.html
+        ª   ª               754495e9b88d062b6def0736d97c830d7edbfb476610af3f6cbfe76a5db36bb4.js
+        ª   ª               7a5715b3f2aa76bb4902fcb1fd884eecc139fd9812bd36aa1bd1ff94c476a4a0.html
         ª   ª               7b0c353edf9bcf175354a6bc6c781b455a2e4f8d365a3f8521c6fcc35f0adbb0.js
+        ª   ª               7c678c5eedde0cbdcb60d05be40096ad513ade472aedc6892cdb6f48764735c2.html
         ª   ª               7d2c06f08e13e453cd04b80289270f2b5a530802d648c485a32f813e33b0af29.js
         ª   ª               7db0acec4406aa718f27333555eb748cc6ce1a80112d7007be80e2bd5099dd98.html
+        ª   ª               824ce7b5450d37cffef819663b27580b96df16975a4d48d67d68792ce515db7e.js
+        ª   ª               9c68a5f46749ff6c28a43c77d6d88962e4a159e2512101247757ac5a9fe4e789.js
         ª   ª               a00585fa33dc4dbfe8af8ffd75573362203451cc47c9d98e2b853f0e12e9fa1c.html
         ª   ª               a65380463cda47f47f23b78f9e0d394384d24728f89d1728490cea6c7aaa197a.js
+        ª   ª               a9a5f01f454363ef2bab09f91e5599cf931e82b1c7534d60b424bfaa4fea2bd9.html
         ª   ª               af67d612cbab81e741f55fbf7271fa4a5c54b15ded3d5d57c1b5b8652632fb7c.js
+        ª   ª               afd0d4e45199323d99c47335fdf0f2ec8462d7985a4daf28fac2f04b85deeb58.js
+        ª   ª               ba8ded93c8b3723dfcfbd073a8cdcbc61e22fd936109fb1a85f739cee8a7bdb7.html
+        ª   ª               cf76ca9828f8844cefe013c618aed9c9d772c21bdb11569d704c96bae02c0100.html
+        ª   ª               d04bcc54f6cb8142b0c70d2ab0289f8eaaddbf81db16f1a6f6da984c542cc584.js
         ª   ª               d09fe9c70f0fcb644ecbbb2967e00ae87be010df1364a7a9af0640b645b6ec36.js
+        ª   ª               d183e7ccc3f8a33c5f1abb369632d35d5c40ef2be5d8db2f3694ac3f88f160ae.html
+        ª   ª               dbd5380b915bf1c47ac47d95db987dfe072e0d5d153ede602c4fb8b428a92f14.html
         ª   ª               e85e8e5883a6c15ae30c5304d845c862ac81b8403983819b5f78a91555621f71.html
+        ª   ª               f10cd8577b45e6728004b1af86aeb646e1621ac80a8c6666be5fac6a3289bc97.js
+        ª   ª               f407531702cfa3211fb9915b852e25a47f308baf5e76a8f6ac1e8a1bbcadb423.js
+        ª   ª               f886823dbef494d26e28de8c1251fc1f1f5e86bce09066cbeeda5b6eab74012d.js
+        ª   ª               fcd045682f76fd25d84b12e8e6459903f6579ba1d9b45c9060012f2a8f01f5b1.js
         ª   ª               
         ª   +---camino-89b063881902b2f1
         ª   ª   ª   invoked.timestamp
@@ -28162,8 +28193,8 @@ use crate::player::Player;
 
 pub struct SimState {
     pub players: HashMap<u32, Player>,
-    pub tickets_a: i32,
-    pub tickets_b: i32,
+    pub tickets_a: f32,
+    pub tickets_b: f32,
     pub frame_count: u64,
     pub flags: Vec<FlagZone>,
 }
@@ -28188,11 +28219,9 @@ impl SimState {
     pub fn new() -> Self {
         Self {
             players: HashMap::new(),
-            tickets_a: 100,
-            tickets_b: 100,
+            tickets_a: 100.0,
+            tickets_b: 100.0,
             frame_count: 0,
-
-            // Flags now come from the Warehouse map module.
             flags: crate::maps::warehouse::create_flags(),
         }
     }
@@ -28242,13 +28271,13 @@ impl SimState {
         );
 
         // 3. Game Mode Logic (winner)
-        let winner = if self.tickets_a <= 0 {
-            TeamId::TeamB
-        } else if self.tickets_b <= 0 {
-            TeamId::TeamA
-        } else {
-            TeamId::None
-        };
+let winner = if self.tickets_a <= 0.0 {
+    TeamId::TeamB
+} else if self.tickets_b <= 0.0 {
+    TeamId::TeamA
+} else {
+    TeamId::None
+};
 
         // 4. Snapshot Generation: entities
         let mut entities = Vec::new();
@@ -28290,12 +28319,12 @@ impl SimState {
             entities,
             flags,
             game_state: GameModeState {
-                team_a_tickets: self.tickets_a,
-                team_b_tickets: self.tickets_b,
+                team_a_tickets: self.tickets_a.round() as i32,
+                team_b_tickets: self.tickets_b.round() as i32,                
                 match_ended: winner != TeamId::None,
                 winner,
             },
-        }
+        }        
     }
 }
 
@@ -28491,8 +28520,8 @@ use crate::sim::FlagZone;
 pub fn update_conquest(
     flags: &mut Vec<FlagZone>,
     players: &HashMap<u32, Player>,
-    tickets_a: &mut i32,
-    tickets_b: &mut i32,
+    tickets_a: &mut f32,
+    tickets_b: &mut f32,
     dt: f32,
 ) {
     if dt <= 0.0 {
@@ -28609,9 +28638,10 @@ pub fn update_conquest(
         }
     }
 
-    // === 2) Ticket bleed based on majority flags ===
+    // === 2) Ticket bleed based on majority control ===
     let mut owned_a = 0u32;
     let mut owned_b = 0u32;
+
     for flag in flags.iter() {
         match flag.owner {
             TeamId::TeamA => owned_a += 1,
@@ -28621,21 +28651,19 @@ pub fn update_conquest(
     }
 
     if owned_a > owned_b {
-        // Team A has more flags -> bleed Team B.
-        let bleed = ((owned_a - owned_b) as f32) * TICKET_BLEED_PER_FLAG * dt;
-        *tickets_b -= bleed as i32;
+        let advantage = (owned_a - owned_b) as f32;
+        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        *tickets_b -= bleed;
+        if *tickets_b < 0.0 {
+            *tickets_b = 0.0;
+        }
     } else if owned_b > owned_a {
-        // Team B has more flags -> bleed Team A.
-        let bleed = ((owned_b - owned_a) as f32) * TICKET_BLEED_PER_FLAG * dt;
-        *tickets_a -= bleed as i32;
-    }
-
-    // Clamp tickets to non-negative.
-    if *tickets_a < 0 {
-        *tickets_a = 0;
-    }
-    if *tickets_b < 0 {
-        *tickets_b = 0;
+        let advantage = (owned_b - owned_a) as f32;
+        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        *tickets_a -= bleed;
+        if *tickets_a < 0.0 {
+            *tickets_a = 0.0;
+        }
     }
 }
 

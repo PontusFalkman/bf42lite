@@ -1,6 +1,8 @@
-// src/core/FlagRenderer.ts
+// apps/client-tauri/src/core/FlagRenderer.ts
+
 import * as THREE from 'three';
 import { FlagSnapshot } from '@bf42lite/protocol';
+import { TEAM_COLORS } from './constants';
 
 export class FlagRenderer {
   private scene: THREE.Scene;
@@ -10,9 +12,6 @@ export class FlagRenderer {
     this.scene = scene;
   }
 
-  /**
-   * Update or create flag meshes from the latest snapshot.
-   */
   updateFromSnapshot(flags: FlagSnapshot[]): void {
     const seen = new Set<number>();
 
@@ -29,7 +28,6 @@ export class FlagRenderer {
       seen.add(f.id);
     }
 
-    // Remove any flags that are no longer present.
     for (const [id, obj] of this.flags) {
       if (!seen.has(id)) {
         this.scene.remove(obj);
@@ -38,38 +36,24 @@ export class FlagRenderer {
     }
   }
 
-  /**
-   * Convert capture value (-1..1) to 0..1.
-   *  0.0 => full Team B
-   *  0.5 => neutral
-   *  1.0 => full Team A
-   */
-  private captureTo01(capture: number): number {
-    const c = Math.max(-1, Math.min(1, capture));
-    return (c + 1) * 0.5;
-  }
-
   private createFlagMesh(flag: FlagSnapshot): THREE.Object3D {
     const group = new THREE.Group();
     group.name = `flag-${flag.id}`;
 
-    // Use radius from snapshot, with a sensible default
     const radius = flag.radius && flag.radius > 0 ? flag.radius : 8.0;
 
-    // A. The Pole
     const poleGeom = new THREE.BoxGeometry(0.4, 6, 0.4);
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    const poleMat = new THREE.MeshStandardMaterial({ color: TEAM_COLORS.NEUTRAL });
     const pole = new THREE.Mesh(poleGeom, poleMat);
-    pole.position.y = 3; // Sit on ground
+    pole.position.y = 3;
     pole.castShadow = true;
     pole.receiveShadow = true;
     pole.name = 'pole';
     group.add(pole);
 
-    // B. The Banner (Rectangular flag)
     const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
     const bannerMat = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
+      color: TEAM_COLORS.NEUTRAL,
       side: THREE.DoubleSide,
     });
     const banner = new THREE.Mesh(bannerGeom, bannerMat);
@@ -78,7 +62,6 @@ export class FlagRenderer {
     banner.name = 'banner';
     group.add(banner);
 
-    // C. The Zone Boundary (Ring)
     const ringGeom = new THREE.RingGeometry(radius - 0.3, radius, 64);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -92,10 +75,9 @@ export class FlagRenderer {
     ring.name = 'ring';
     group.add(ring);
 
-    // D. Progress Disc – fills same radius as ring at 100%
     const progGeom = new THREE.CircleGeometry(radius, 64);
     const progMat = new THREE.MeshBasicMaterial({
-      color: 0xcccccc,
+      color: TEAM_COLORS.NEUTRAL,
       side: THREE.DoubleSide,
       transparent: true,
       opacity: 0.4,
@@ -103,12 +85,10 @@ export class FlagRenderer {
     const progress = new THREE.Mesh(progGeom, progMat);
     progress.rotation.x = -Math.PI / 2;
     progress.position.y = 0.15;
-    // Start at 0 scale (no capture)
     progress.scale.set(0, 0, 0);
     progress.name = 'progress';
     group.add(progress);
 
-    // World position
     group.position.set(flag.x, flag.y, flag.z);
 
     return group;
@@ -118,73 +98,47 @@ export class FlagRenderer {
     group.position.set(flag.x, flag.y, flag.z);
   }
 
-  /**
-   * Update colours + capture circle from owner/capture.
-   */
   private updateFlagVisual(group: THREE.Object3D, flag: FlagSnapshot): void {
-    // Ensure children exist (in case of future changes)
-    let banner = group.getObjectByName('banner') as THREE.Mesh | null;
-    let pole = group.getObjectByName('pole') as THREE.Mesh | null;
-    let progressDisc = group.getObjectByName('progress') as THREE.Mesh | null;
+    const banner = group.getObjectByName('banner') as THREE.Mesh | null;
+    const pole = group.getObjectByName('pole') as THREE.Mesh | null;
+    const progressDisc = group.getObjectByName('progress') as THREE.Mesh | null;
 
-    if (!banner || !pole || !progressDisc) {
-      return;
-    }
+    if (!banner || !pole || !progressDisc) return;
 
     const poleMat = pole.material as THREE.MeshStandardMaterial;
     const bannerMat = banner.material as THREE.MeshStandardMaterial;
     const progMat = progressDisc.material as THREE.MeshBasicMaterial;
 
-    // 1) Pole stays neutral at all times
-    poleMat.color.setHex(0xcccccc);
+    poleMat.color.setHex(TEAM_COLORS.NEUTRAL);
 
-    // 2) Base ownership colour (when no active capture)
-    let baseColor = 0xcccccc;
-    if (flag.owner === 'TeamA') baseColor = 0xff0000; // Axis
-    else if (flag.owner === 'TeamB') baseColor = 0x0000ff; // Allies
+    let baseColor = TEAM_COLORS.NEUTRAL;
+    if (flag.owner === 'TeamA') baseColor = TEAM_COLORS.AXIS;
+    else if (flag.owner === 'TeamB') baseColor = TEAM_COLORS.ALLIES;
 
-    // 3) Capture progress drives BOTH banner + circle colours
-    //
-    // flag.capture in [-1, 1]:
-    //   > 0  => TeamA capturing
-    //   < 0  => TeamB capturing
-    //   = 0  => no active capture
     const rawProgress =
       typeof flag.capture === 'number' ? flag.capture : 0;
     const clamped = Math.max(-1, Math.min(1, rawProgress));
-    const t = Math.abs(clamped); // 0..1 capture amount
+    const t = Math.abs(clamped);
 
-    // Scale disc 0% → 100% based on |progress|
     progressDisc.scale.set(t, t, t);
 
-    // Target team colour based on sign
-    let teamColor = 0xffffff; // no capture
+    let teamColor = 0xffffff;
     if (clamped > 0) {
-      teamColor = 0xff0000; // TeamA capturing
+      teamColor = TEAM_COLORS.AXIS;
     } else if (clamped < 0) {
-      teamColor = 0x0000ff; // TeamB capturing
+      teamColor = TEAM_COLORS.ALLIES;
     }
 
-    // Smoothly blend from white → teamColour using t
     const white = new THREE.Color(0xffffff);
     const teamCol = new THREE.Color(teamColor);
-    white.lerp(teamCol, t); // t=0 → white, t=1 → team colour
+    white.lerp(teamCol, t);
 
     if (clamped === 0) {
-      // No active capture: circle white, banner shows owner/neutral
       progMat.color.setHex(0xffffff);
       bannerMat.color.setHex(baseColor);
     } else {
-      // Active capture: banner + circle share blended colour
       bannerMat.color.copy(white);
       progMat.color.copy(white);
     }
-  }
-
-  /**
-   * Legacy capture bar API — still a no-op; kept for compatibility.
-   */
-  private setCaptureProgress(_group: THREE.Object3D, _capture: number): void {
-    // No-op
   }
 }
