@@ -66,7 +66,7 @@ export class HUDUpdater {
     this.ui.updateFlagsHUD(msg.flags);
 
     // --- Game over state ---
-    const st = msg.game_state;
+    const st: any = msg.game_state;
     const ended = !!st?.match_ended;
 
     if (ended) {

@@ -95,8 +95,9 @@ export function syncLocalPlayerFromSnapshot(
   }
 
   // RTT (if provided by snapshot/game_state)
-  if (typeof msg.game_state?.rtt_ms === 'number') {
-    lastRtt = msg.game_state.rtt_ms;
+  const gs: any = msg.game_state;
+  if (typeof gs?.rtt_ms === 'number') {
+    lastRtt = gs.rtt_ms;
   }
 
   return lastRtt;

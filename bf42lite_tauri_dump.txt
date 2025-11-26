@@ -12076,6 +12076,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       ª       __app__-permission-files
         ª   ª       ª       
         ª   ª       +---tauri-codegen-assets
+        ª   ª               013ac15b9fa36a87b78e9946cb0a0a06cca780e0638ec8caebeaa4286b58766c.js
+        ª   ª               026e586b653a1095a204c63d1c89aef940f25dc97448baa2c5c41bbe096cd936.html
         ª   ª               0367117b0330c375b1ba3fae3a127641f1cf82e8359f1a6443c9469f51d5687c.js
         ª   ª               05cd060d35efbecf64a56ce0ecccf27beb6d46146acf139a5e0c30da0523a0b4.js
         ª   ª               083465b7f4e51b607280f958ba4a129fd7c9e068cabe9c0f1b6ed9affb6c6953.js

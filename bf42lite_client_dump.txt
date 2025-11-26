@@ -40,7 +40,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       
 +---systems
 ª       FlagSystem.ts
-ª       handleSnapshot.ts
 ª       InterpolationSystem.ts
 ª       MovementSystem.ts
 ª       PredictionSystem.ts
@@ -144,13 +143,8 @@ export class ClientGame {
 
     this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-    // Snapshot handler (HUD / flags â€“ still uses UIManager internally for tickets/game-over)
-    this.snapshotHandler = new SnapshotHandler(
-      world,
-      this.renderer,
-      this.net,
-      this.ui,
-    );
+// Snapshot handler (HUD / flags routed through HUDUpdater)
+this.snapshotHandler = new SnapshotHandler(this.hud);
 
     // Pointer lock + UI interaction toggles
     this.input.setInteraction(true);
@@ -2466,64 +2460,6 @@ export class FlagSystem {
 }
 
 
-## FILE: apps\client-tauri\src\systems\handleSnapshot.ts
----------------------------
-// src/systems/handleSnapshot.ts
-
-import type { SimWorld } from '@bf42lite/engine-core';
-import type { Renderer } from '../core/Renderer';
-import type { NetworkManager } from '../managers/NetworkManager';
-import type { UIManager } from '../managers/UIManager';
-
-export interface SnapshotMessage {
-  type: 'snapshot';
-  tick?: number;
-  flags?: any[];
-  game_state?: {
-    team_a_tickets?: number;
-    team_b_tickets?: number;
-    match_ended?: boolean;
-    winner_team?: number | string | null;
-  } | null;
-}
-
-/**
- * HUD-only snapshot handler.
- * All ECS + entity sync is done in NetworkManager â†’ RemoteEntitySync.
- */
-export function handleSnapshot(
-  msg: SnapshotMessage,
-  _world: SimWorld,
-  _renderer: Renderer,
-  _net: NetworkManager,
-  ui: UIManager,
-) {
-  // Tickets
-  const axis = msg.game_state?.team_a_tickets ?? 0;
-  const allies = msg.game_state?.team_b_tickets ?? 0;
-  ui.updateTickets(axis, allies);
-
-  // Flag HUD
-  ui.updateFlagsHUD(msg.flags);
-
-  // Game over
-  const st = msg.game_state;
-  const ended = !!st?.match_ended;
-
-  if (ended) {
-    let title = 'DRAW';
-    const winner = st?.winner_team;
-
-    if (winner === 1 || winner === 'TeamA') title = 'AXIS VICTORY';
-    else if (winner === 2 || winner === 'TeamB') title = 'ALLIES VICTORY';
-
-    ui.setGameOver(true, title);
-  } else {
-    ui.setGameOver(false, '');
-  }
-}
-
-
 ## FILE: apps\client-tauri\src\systems\InterpolationSystem.ts
 ---------------------------
 // apps/client-tauri/src/systems/InterpolationSystem.ts
@@ -2911,16 +2847,11 @@ export class Reconciler {
 // apps/client-tauri/src/systems/SnapshotHandler.ts
 //
 // Unified handler for processing server snapshots.
-// This wraps handleSnapshot(...) and returns structured results
-// so ClientGame remains thin and easy to maintain.
+// This now delegates HUD updates to HUDUpdater so that
+// ClientGame and snapshot flow do not touch UIManager directly.
 
-import type { SimWorld } from '@bf42lite/engine-core';
 import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
-
-import { handleSnapshot } from './handleSnapshot';
-import type { Renderer } from '../core/Renderer';
-import type { NetworkManager } from '../managers/NetworkManager';
-import type { UIManager } from '../managers/UIManager';
+import type { HUDUpdater } from '../ui/HUDUpdater';
 
 export interface SnapshotResult {
   flags: FlagSnapshot[];
@@ -2929,27 +2860,16 @@ export interface SnapshotResult {
 
 /**
  * SnapshotHandler centralizes â€œglobalâ€ snapshot effects:
- * - Tickets / game-over HUD via handleSnapshot(...)
+ * - Tickets / flags / game-over HUD via HUDUpdater.applySnapshotHUD(...)
  * - Flag list for HUD / debug
  *
  * Entity ECS sync is still handled by NetworkManager â†’ RemoteEntitySync.
  */
 export class SnapshotHandler {
-  private world: SimWorld;
-  private renderer: Renderer;
-  private net: NetworkManager;
-  private ui: UIManager;
+  private hud: HUDUpdater;
 
-  constructor(
-    world: SimWorld,
-    renderer: Renderer,
-    net: NetworkManager,
-    ui: UIManager,
-  ) {
-    this.world = world;
-    this.renderer = renderer;
-    this.net = net;
-    this.ui = ui;
+  constructor(hud: HUDUpdater) {
+    this.hud = hud;
   }
 
   /**
@@ -2957,8 +2877,8 @@ export class SnapshotHandler {
    * a small result object for ClientGame.
    */
   public process(msg: Snapshot): SnapshotResult {
-    // HUD (tickets, flags list, game-over) is handled here.
-    handleSnapshot(msg, this.world, this.renderer, this.net, this.ui);
+    // HUD (tickets, flags list, game-over) is handled via HUDUpdater.
+    this.hud.applySnapshotHUD(msg);
 
     const flags = (msg.flags ?? []) as FlagSnapshot[];
     const lastServerTick = msg.tick ?? 0;
@@ -3185,13 +3105,35 @@ export class HUDUpdater {
   }
 
   /**
-   * Snapshot-driven HUD hook (tickets / game over / flags).
-   * NOTE: Currently not wired; keep as a place to consolidate
-   * handleSnapshot logic once the protocol shape is stable.
+   * Snapshot-driven HUD hook (tickets / flags / game-over).
+   *
+   * Called once per server snapshot from SnapshotHandler.
+   * This keeps snapshot â†’ HUD wiring in a single place.
    */
-  public applySnapshotHUD(_msg: Snapshot): void {
-    // Intentionally left as a placeholder for the future.
-    // For now, handleSnapshot.ts still drives tickets/flags/game-over HUD.
+  public applySnapshotHUD(msg: Snapshot): void {
+    // --- Tickets ---
+    const axis = msg.game_state?.team_a_tickets ?? 0;
+    const allies = msg.game_state?.team_b_tickets ?? 0;
+    this.ui.updateTickets(axis, allies);
+
+    // --- Flags HUD (mini strip + list) ---
+    this.ui.updateFlagsHUD(msg.flags);
+
+    // --- Game over state ---
+    const st = msg.game_state;
+    const ended = !!st?.match_ended;
+
+    if (ended) {
+      let title = 'DRAW';
+      const winner = st?.winner_team as number | string | null | undefined;
+
+      if (winner === 1 || winner === 'TeamA') title = 'AXIS VICTORY';
+      else if (winner === 2 || winner === 'TeamB') title = 'ALLIES VICTORY';
+
+      this.ui.setGameOver(true, title);
+    } else {
+      this.ui.setGameOver(false, '');
+    }
   }
 }
 
