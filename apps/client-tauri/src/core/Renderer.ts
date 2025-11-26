@@ -252,8 +252,19 @@ export class Renderer {
       flagState.pos.z,
     );
 
+    // Normalize progress from [-1,1] or [0,1] into [0,1]
+    const raw = flagState.progress ?? 0;
+    const normalized = THREE.MathUtils.clamp((raw + 1) / 2, 0, 1);
+
+    if (Math.abs(raw) > 0.01) {
+      log.debug(
+        'RENDER',
+        `Flag progress raw=${raw.toFixed(2)} norm=${normalized.toFixed(2)}`,
+      );
+    }
+
     // Delegate all visual details (colors, pulses, arrow) to FlagVisual
-    FlagVisual.applyState(group, flagState.team, flagState.progress);
+    FlagVisual.applyState(group, flagState.team, normalized);
   }
 
   private getTeamColor(team: number): number {

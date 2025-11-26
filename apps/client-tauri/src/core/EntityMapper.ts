@@ -29,7 +29,7 @@ export type RenderStateFlag = {
   pos: { x: number; y: number; z: number };
   rot: number;
   team: number;
-  progress: number;
+  progress: number; // normalized -1..1 (sign = which team is capturing)
 };
 
 export type RenderState = RenderStatePlayer | RenderStateFlag;
@@ -55,11 +55,34 @@ export class EntityMapper {
 
   /**
    * Convert a flag ECS entity into a RenderStateFlag.
+   *
+   * CapturePoint schema (client ECS):
+   * - radius: f32
+   * - owner:  0 = none, 1 = TeamA, 2 = TeamB
+   * - capture: f32 (server-side value, usually in [-1, 1])
    */
   public static mapFlag(eid: number, world: any): RenderStateFlag {
-    const raw = CapturePoint.progress[eid] || 0;
-    const progress = Math.min(1, Math.abs(raw / 100)); // progress is i16 in old schema
-  
+    // Raw capture from ECS (comes from Snapshot.flags[].capture)
+    const raw =
+      (CapturePoint as any).capture
+        ? (CapturePoint as any).capture[eid] ?? 0
+        : 0;
+
+    // Normalize to -1..1, preserving sign.
+    // If the server ever sends -100..100 again, this still works.
+    let progress: number;
+    if (Math.abs(raw) <= 1.001) {
+      progress = raw;
+    } else {
+      progress = Math.max(-1, Math.min(1, raw / 100));
+    }
+
+    // Owner numeric team id (0/1/2)
+    const team =
+      (CapturePoint as any).owner
+        ? (CapturePoint as any).owner[eid] ?? 0
+        : 0;
+
     return {
       type: 'flag',
       id: eid,
@@ -69,8 +92,8 @@ export class EntityMapper {
         z: Transform.z[eid],
       },
       rot: 0,
-      team: CapturePoint.team[eid],  // existing schema
+      team,
       progress,
     };
-  }  
+  }
 }

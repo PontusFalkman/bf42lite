@@ -83,39 +83,30 @@ game.start();
 import {
   createSimulation,
   Transform,
-  Velocity,
-  InputState,
-  Me,
-  addComponent,
-  addEntity,
   createMovementSystem,
+  type SimWorld,
 } from '@bf42lite/engine-core';
-import {
-  Health,
-  Ammo,
-  Soldier,
-  Team,
-  Loadout,
-} from '@bf42lite/games-bf42';
 
 import type { Snapshot } from '@bf42lite/protocol';
-import { TEAM_IDS, WEAPON_NAMES } from './constants';
 
 import { Renderer } from './Renderer';
 import { InputManager } from './InputManager';
 import { WeaponSystem } from './WeaponSystem';
+import { GameLoop } from './GameLoop';
+import { createLocalPlayer } from './local-player';
 
 import { NetworkManager } from '../managers/NetworkManager';
 import { UIManager } from '../managers/UIManager';
 import { Reconciler } from '../systems/Reconciler';
-import { handleSnapshot } from '../systems/handleSnapshot';
 import { updateGameFrame } from '../systems/updateGameFrame';
 import { updateWorldRender } from '../world/worldRender';
 import { CommandSender } from '../net/CommandSender';
+import { SnapshotHandler } from '../systems/SnapshotHandler';
+import { syncLocalPlayerFromSnapshot } from '../systems/syncLocalPlayer';
 
 export class ClientGame {
   private movementSystem = createMovementSystem();
-  public sim = createSimulation(); // keep public so other modules can peek if needed
+  public sim = createSimulation(); // public so other modules can inspect if needed
 
   public renderer: Renderer;
   public net: NetworkManager;
@@ -125,55 +116,53 @@ export class ClientGame {
   public reconciler: Reconciler;
   private weaponSystem: WeaponSystem;
   private commandSender: CommandSender;
+  private snapshotHandler: SnapshotHandler;
 
   private localEntityId: number = -1;
-  private running = false;
-  private lastFrameTime = 0;
-  private currentTick = 0;
-  private currentFps = 0;
   private lastRtt = 0;
 
   private readonly SEND_INTERVAL = 1 / 30; // 30 Hz input send
   private readonly INTERPOLATION_DELAY_MS = 100;
 
+  private loop: GameLoop;
+
   constructor() {
+    const world: SimWorld = this.sim.world;
+
     this.renderer = new Renderer();
     this.reconciler = new Reconciler();
-    this.net = new NetworkManager(this.sim.world, this.renderer, this.reconciler);
+    this.net = new NetworkManager(world, this.renderer, this.reconciler);
     this.commandSender = new CommandSender(this.net, this.SEND_INTERVAL);
     this.input = new InputManager();
-
-    // UI + class selection wiring
-    this.input.setInteraction(false);
-    this.weaponSystem = new WeaponSystem(this.renderer, this.net);
     this.ui = new UIManager((classId: number) => {
       console.log(`Spawn requested with Class ID: ${classId}`);
       this.net.sendSpawnRequest(classId);
       this.weaponSystem.setClass(classId);
     });
+
+    this.weaponSystem = new WeaponSystem(this.renderer, this.net);
+
+    // Snapshot handler (HUD / flags)
+    this.snapshotHandler = new SnapshotHandler(
+      world,
+      this.renderer,
+      this.net,
+      this.ui,
+    );
+
+    // Pointer lock + UI interaction toggles
     this.input.setInteraction(true);
 
     this.initNetworkCallbacks();
     this.net.connect('ws://localhost:8080');
 
-    this.createLocalPlayer();
-  }
+    // Local player ECS entity (all components are set up in one place)
+    this.localEntityId = createLocalPlayer(world);
 
-  private createLocalPlayer() {
-    this.localEntityId = addEntity(this.sim.world);
-
-    // Core ECS components
-    addComponent(this.sim.world, Transform, this.localEntityId);
-    addComponent(this.sim.world, Velocity, this.localEntityId);
-    addComponent(this.sim.world, InputState, this.localEntityId);
-    addComponent(this.sim.world, Me, this.localEntityId);
-
-    // Gameplay components
-    addComponent(this.sim.world, Health, this.localEntityId);
-    addComponent(this.sim.world, Ammo, this.localEntityId);
-    addComponent(this.sim.world, Soldier, this.localEntityId);
-    addComponent(this.sim.world, Team, this.localEntityId);
-    addComponent(this.sim.world, Loadout, this.localEntityId);
+    // Game loop wrapper
+    this.loop = new GameLoop({
+      onFrame: (dt, tick, now) => this.onFrame(dt, tick, now),
+    });
   }
 
   private initNetworkCallbacks() {
@@ -190,114 +179,52 @@ export class ClientGame {
     };
 
     this.net.onSnapshot = (msg: Snapshot) => {
-      // Centralized snapshot handling: entities, tickets, game over, HUD flags, killfeed, etc.
-      handleSnapshot(msg, this.sim.world, this.renderer, this.net, this.ui);
+      // 1) Global snapshot handling (tickets, flags HUD, game over, etc.)
+      this.snapshotHandler.process(msg);
 
-      // --- Local player sync ---
-      const myServerEntity = msg.entities?.find(
-        (e: any) => this.net.getLocalId(e.id) === this.localEntityId,
+      // 2) Local player sync + reconciliation
+      this.lastRtt = syncLocalPlayerFromSnapshot(
+        msg,
+        this.sim.world,
+        this.localEntityId,
+        this.net,
+        this.ui,
+        this.reconciler,
+        this.movementSystem,
+        this.lastRtt,
       );
-
-      if (myServerEntity) {
-        const wasDead = Health.isDead[this.localEntityId] === 1;
-        const isNowDead = !!myServerEntity.isDead;
-
-        // Teleport on respawn to avoid smoothing artifacts
-        if (wasDead && !isNowDead && myServerEntity.pos) {
-          this.reconciler.clearHistory();
-          Transform.x[this.localEntityId] = myServerEntity.pos.x;
-          Transform.y[this.localEntityId] = myServerEntity.pos.y;
-          Transform.z[this.localEntityId] = myServerEntity.pos.z;
-        }
-
-        // Health + death state (protocol now sends health as a number)
-        const hp =
-          typeof myServerEntity.health === 'number'
-            ? myServerEntity.health
-            : 100;
-
-        Health.current[this.localEntityId] = hp;
-        Health.isDead[this.localEntityId] = isNowDead ? 1 : 0;
-        this.ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
-
-        // Team mapping (Rust TeamId â†’ numeric ECS team)
-        if (myServerEntity.team) {
-          const protoId = myServerEntity.team.id;
-          if (protoId === 'TeamA') {
-            Team.id[this.localEntityId] = TEAM_IDS.AXIS;
-          } else if (protoId === 'TeamB') {
-            Team.id[this.localEntityId] = TEAM_IDS.ALLIES;
-          } else {
-            Team.id[this.localEntityId] = TEAM_IDS.NONE;
-          }
-        }
-
-        // Loadout / class
-        if (myServerEntity.loadout) {
-          Loadout.classId[this.localEntityId] =
-            myServerEntity.loadout.classId ?? 0;
-        }
-
-        // Ammo + weapon UI
-        const myClassId = Loadout.classId[this.localEntityId] || 0;
-        const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
-
-        if (myServerEntity.ammo) {
-          this.ui.updateAmmo(
-            myServerEntity.ammo.current,
-            myServerEntity.ammo.reserve,
-            weaponName,
-          );
-        }
-
-        // Reconciliation (movement correction)
-        if (myServerEntity.lastProcessedTick !== undefined) {
-          const rtt = this.reconciler.reconcile(
-            myServerEntity.lastProcessedTick,
-            myServerEntity,
-            this.localEntityId,
-            this.sim.world,
-            this.movementSystem,
-          );
-          if (rtt > 0) this.lastRtt = rtt;
-        }
-      }
     };
   }
 
+  // Public lifecycle
+
   public start() {
-    if (this.running) return;
-    this.running = true;
-    this.lastFrameTime = performance.now();
-    requestAnimationFrame(this.loop);
+    this.loop.start();
   }
 
   public stop() {
-    this.running = false;
+    this.loop.stop();
   }
 
-  private loop = (now: number) => {
-    if (!this.running) return;
-    requestAnimationFrame(this.loop);
+  // Per-frame hook driven by GameLoop
 
-    const dt = (now - this.lastFrameTime) / 1000;
-    this.lastFrameTime = now;
-    if (dt > 0) this.currentFps = Math.round(1 / dt);
+  private onFrame(dt: number, tick: number, now: number) {
+    const world = this.sim.world;
 
     // Per-frame input + sim + movement
     const cmd = updateGameFrame(
       dt,
-      this.currentTick,
+      tick,
       this.localEntityId,
-      this.sim.world,
+      world,
       this.input,
       this.movementSystem,
     );
 
-    // Prediction history
+    // Prediction history (for reconciliation)
     if (this.localEntityId >= 0 && cmd) {
       this.reconciler.pushHistory(
-        this.currentTick,
+        tick,
         cmd,
         Transform.x[this.localEntityId],
         Transform.y[this.localEntityId],
@@ -308,24 +235,24 @@ export class ClientGame {
     // Throttled input send (via CommandSender)
     this.commandSender.update(dt, cmd || null);
 
-    // Weapons + interpolation
-    this.weaponSystem.update(dt, this.localEntityId, this.currentTick);
-    this.currentTick++;
+    // Weapons + fire logic
+    this.weaponSystem.update(dt, this.localEntityId, tick);
 
     // Interpolate remote players using buffered snapshots
     this.net.interpolateRemotePlayers(now - this.INTERPOLATION_DELAY_MS);
 
     // Render + HUD
-    this.updateRenderAndUI();
-  };
+    const fps = this.loop.getCurrentFps();
+    this.updateRenderAndUI(fps);
+  }
 
-  private updateRenderAndUI() {
+  private updateRenderAndUI(fps: number) {
     updateWorldRender(
       this.sim.world,
       this.renderer,
       this.ui,
       this.localEntityId,
-      this.currentFps,
+      fps,
       this.lastRtt,
     );
   }
@@ -408,7 +335,7 @@ export type RenderStateFlag = {
   pos: { x: number; y: number; z: number };
   rot: number;
   team: number;
-  progress: number;
+  progress: number; // normalized -1..1 (sign = which team is capturing)
 };
 
 export type RenderState = RenderStatePlayer | RenderStateFlag;
@@ -434,11 +361,34 @@ export class EntityMapper {
 
   /**
    * Convert a flag ECS entity into a RenderStateFlag.
+   *
+   * CapturePoint schema (client ECS):
+   * - radius: f32
+   * - owner:  0 = none, 1 = TeamA, 2 = TeamB
+   * - capture: f32 (server-side value)
    */
   public static mapFlag(eid: number, world: any): RenderStateFlag {
-    const raw = CapturePoint.progress[eid] || 0;
-    const progress = Math.min(1, Math.abs(raw / 100)); // progress is i16 in old schema
-  
+    // Raw capture from ECS (comes from Snapshot.flags[].capture)
+    const raw =
+      (CapturePoint as any).capture
+        ? (CapturePoint as any).capture[eid] ?? 0
+        : 0;
+
+    // Normalize to -1..1, preserving sign.
+    // If server ever sends -100..100 again, this still works.
+    let progress: number;
+    if (Math.abs(raw) <= 1.001) {
+      progress = raw;
+    } else {
+      progress = Math.max(-1, Math.min(1, raw / 100));
+    }
+
+    // Owner numeric team id (0/1/2)
+    const team =
+      (CapturePoint as any).owner
+        ? (CapturePoint as any).owner[eid] ?? 0
+        : 0;
+
     return {
       type: 'flag',
       id: eid,
@@ -448,10 +398,10 @@ export class EntityMapper {
         z: Transform.z[eid],
       },
       rot: 0,
-      team: CapturePoint.team[eid],  // existing schema
+      team,
       progress,
     };
-  }  
+  }
 }
 
 
@@ -3144,6 +3094,7 @@ export class Reconciler {
 // This wraps handleSnapshot(...) and returns structured results
 // so ClientGame remains thin and easy to maintain.
 
+import type { SimWorld } from '@bf42lite/engine-core';
 import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
 
 import { handleSnapshot } from './handleSnapshot';
@@ -3153,23 +3104,27 @@ import type { UIManager } from '../managers/UIManager';
 
 export interface SnapshotResult {
   flags: FlagSnapshot[];
-  ticketsAxis: number;
-  ticketsAllies: number;
-  gameOver: boolean;
-  winner?: string;
+  lastServerTick: number;
 }
 
+/**
+ * SnapshotHandler centralizes â€œglobalâ€ snapshot effects:
+ * - Tickets / game-over HUD via handleSnapshot(...)
+ * - Flag list for HUD / debug
+ *
+ * Entity ECS sync is still handled by NetworkManager â†’ RemoteEntitySync.
+ */
 export class SnapshotHandler {
-  private world: any;
+  private world: SimWorld;
   private renderer: Renderer;
   private net: NetworkManager;
   private ui: UIManager;
 
   constructor(
-    world: any,
+    world: SimWorld,
     renderer: Renderer,
     net: NetworkManager,
-    ui: UIManager
+    ui: UIManager,
   ) {
     this.world = world;
     this.renderer = renderer;
@@ -3178,29 +3133,19 @@ export class SnapshotHandler {
   }
 
   /**
-   * Process the snapshot sent by the server.
-   *
-   * Returns a result object used by ClientGame.
+   * Process the snapshot sent by the server and return
+   * a small result object for ClientGame.
    */
   public process(msg: Snapshot): SnapshotResult {
-    // This function applies:
-    // - Entity updates
-    // - Health updates
-    // - Team changes
-    // - Flag capture state
-    // - Killfeed / hit markers
-    // - Ticket counts
-    // - GameOver state
+    // HUD (tickets, flags list, game-over) is handled here.
     handleSnapshot(msg, this.world, this.renderer, this.net, this.ui);
 
     const flags = (msg.flags ?? []) as FlagSnapshot[];
+    const lastServerTick = msg.tick ?? 0;
 
     return {
       flags,
-      ticketsAxis: msg.tickets?.axis ?? 0,
-      ticketsAllies: msg.tickets?.allies ?? 0,
-      gameOver: msg.gameOver?.active ?? false,
-      winner: msg.gameOver?.winner ?? undefined,
+      lastServerTick,
     };
   }
 }
@@ -3210,113 +3155,115 @@ export class SnapshotHandler {
 ---------------------------
 // apps/client-tauri/src/systems/syncLocalPlayer.ts
 
+import { Transform, type SimWorld } from '@bf42lite/engine-core';
 import {
-    Transform,
-  } from '@bf42lite/engine-core';
-  import {
-    Health,
-    Team,
-    Loadout,
-  } from '@bf42lite/games-bf42';
-  
-  import type { Snapshot } from '@bf42lite/protocol';
-  import type { NetworkManager } from '../managers/NetworkManager';
-  import type { UIManager } from '../managers/UIManager';
-  import type { Reconciler } from './Reconciler';
-  
-  import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
-  
-  /**
-   * Synchronize the local player ECS state + UI from a server Snapshot.
-   *
-   * Returns the updated last RTT (or the previous one if unchanged).
-   */
-  export function syncLocalPlayerFromSnapshot(
-    msg: Snapshot,
-    simWorld: any,
-    localEntityId: number,
-    net: NetworkManager,
-    ui: UIManager,
-    reconciler: Reconciler,
-    movementSystem: any,
-    lastRtt: number,
-  ): number {
-    // Find the server entity that corresponds to our local ECS entity
-    const myServerEntity = msg.entities?.find(
-      (e: any) => net.getLocalId(e.id) === localEntityId,
-    );
-  
-    if (!myServerEntity) {
-      return lastRtt;
-    }
-  
-    const wasDead = Health.isDead[localEntityId] === 1;
-    const isNowDead = !!myServerEntity.isDead;
-  
-    // Teleport on respawn to avoid smoothing artifacts
-    if (wasDead && !isNowDead && myServerEntity.pos) {
-      reconciler.clearHistory();
-      Transform.x[localEntityId] = myServerEntity.pos.x;
-      Transform.y[localEntityId] = myServerEntity.pos.y;
-      Transform.z[localEntityId] = myServerEntity.pos.z;
-    }
-  
-    // Health + death state (protocol sends health as a number)
-    const hp =
-      typeof myServerEntity.health === 'number'
-        ? myServerEntity.health
-        : 100;
-  
-    Health.current[localEntityId] = hp;
-    Health.isDead[localEntityId] = isNowDead ? 1 : 0;
-    ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
-  
-    // Team mapping (Rust TeamId â†’ numeric ECS team)
-    if (myServerEntity.team) {
-      const protoId = myServerEntity.team.id;
-      if (protoId === 'TeamA') {
-        Team.id[localEntityId] = TEAM_IDS.AXIS;
-      } else if (protoId === 'TeamB') {
-        Team.id[localEntityId] = TEAM_IDS.ALLIES;
-      } else {
-        Team.id[localEntityId] = TEAM_IDS.NONE;
-      }
-    }
-  
-    // Loadout / class
-    if (myServerEntity.loadout) {
-      Loadout.classId[localEntityId] =
-        myServerEntity.loadout.classId ?? 0;
-    }
-  
-    // Ammo + weapon UI
-    const myClassId = Loadout.classId[localEntityId] || 0;
-    const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
-  
-    if (myServerEntity.ammo) {
-      ui.updateAmmo(
-        myServerEntity.ammo.current,
-        myServerEntity.ammo.reserve,
-        weaponName,
-      );
-    }
-  
-    // Reconciliation (movement correction)
-    let newLastRtt = lastRtt;
-    if (myServerEntity.lastProcessedTick !== undefined) {
-      const rtt = reconciler.reconcile(
-        myServerEntity.lastProcessedTick,
-        myServerEntity,
-        localEntityId,
-        simWorld,
-        movementSystem,
-      );
-      if (rtt > 0) newLastRtt = rtt;
-    }
-  
-    return newLastRtt;
+  Health,
+  Team,
+  Loadout,
+} from '@bf42lite/games-bf42';
+
+import type { Snapshot } from '@bf42lite/protocol';
+import type { NetworkManager } from '../managers/NetworkManager';
+import type { UIManager } from '../managers/UIManager';
+import type { Reconciler } from './Reconciler';
+
+import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
+
+/**
+ * Synchronize the local player ECS state + UI from a server Snapshot.
+ *
+ * Returns the updated last RTT (or the previous one if unchanged).
+ */
+export function syncLocalPlayerFromSnapshot(
+  msg: Snapshot,
+  world: SimWorld,
+  localEntityId: number,
+  net: NetworkManager,
+  ui: UIManager,
+  reconciler: Reconciler,
+  movementSystem: (world: SimWorld) => void,
+  lastRtt: number,
+): number {
+  if (localEntityId < 0) {
+    return lastRtt;
   }
-  
+
+  const myServerEntity = msg.entities?.find(
+    (e: any) => net.getLocalId(e.id) === localEntityId,
+  );
+
+  if (!myServerEntity) {
+    return lastRtt;
+  }
+
+  const wasDead = Health.isDead[localEntityId] === 1;
+  const isNowDead = !!myServerEntity.isDead;
+
+  // Teleport on respawn to avoid smoothing artifacts
+  if (wasDead && !isNowDead && myServerEntity.pos) {
+    reconciler.clearHistory();
+    Transform.x[localEntityId] = myServerEntity.pos.x;
+    Transform.y[localEntityId] = myServerEntity.pos.y;
+    Transform.z[localEntityId] = myServerEntity.pos.z;
+  }
+
+  // Health + death state (protocol sends health as a number)
+  const hp =
+    typeof myServerEntity.health === 'number'
+      ? myServerEntity.health
+      : 100;
+
+  Health.current[localEntityId] = hp;
+  Health.isDead[localEntityId] = isNowDead ? 1 : 0;
+  ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+
+  // Team mapping (Rust TeamId â†’ numeric ECS team)
+  if (myServerEntity.team) {
+    const protoId = myServerEntity.team.id;
+    if (protoId === 'TeamA') {
+      Team.id[localEntityId] = TEAM_IDS.AXIS;
+    } else if (protoId === 'TeamB') {
+      Team.id[localEntityId] = TEAM_IDS.ALLIES;
+    } else {
+      Team.id[localEntityId] = TEAM_IDS.NONE;
+    }
+  }
+
+  // Loadout / class
+  if (myServerEntity.loadout) {
+    Loadout.classId[localEntityId] =
+      myServerEntity.loadout.classId ?? 0;
+  }
+
+  // Ammo + weapon UI
+  const myClassId = Loadout.classId[localEntityId] || 0;
+  const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
+
+  if (myServerEntity.ammo) {
+    ui.updateAmmo(
+      myServerEntity.ammo.current,
+      myServerEntity.ammo.reserve,
+      weaponName,
+    );
+  }
+
+  // Reconciliation (movement correction)
+  if (myServerEntity.lastProcessedTick !== undefined) {
+    const rtt = reconciler.reconcile(
+      myServerEntity.lastProcessedTick,
+      myServerEntity,
+      localEntityId,
+      world,
+      movementSystem,
+    );
+    if (rtt > 0) {
+      lastRtt = rtt;
+    }
+  }
+
+  return lastRtt;
+}
+
 
 ## FILE: apps\client-tauri\src\systems\updateGameFrame.ts
 ---------------------------
@@ -3520,82 +3467,71 @@ export const log = {
 ---------------------------
 // apps/client-tauri/src/world/worldRender.ts
 
-import {
-    defineQuery,
-    Transform,
-    InputState,
-  } from '@bf42lite/engine-core';
-  import { Soldier, CapturePoint, Team, Health } from '@bf42lite/games-bf42';
-  
-  import type { Renderer } from '../core/Renderer';
-  import type { UIManager } from '../managers/UIManager';
-  
-  // ECS queries for players and flags
-  const playerQuery = defineQuery([Transform, Soldier]);
-  const flagQuery = defineQuery([CapturePoint, Transform]);
-  
-  /**
-   * Single place responsible for:
-   * - Updating HUD stats from ECS
-   * - Rendering players and flags via Renderer
-   */
-  export function updateWorldRender(
-    world: any,
-    renderer: Renderer,
-    ui: UIManager,
-    localEntityId: number,
-    currentFps: number,
-    lastRtt: number,
-  ) {
-    // UI stats + health
-    ui.updateStats(currentFps, lastRtt);
-    if (localEntityId >= 0) {
-      ui.updateHealth(Health.current[localEntityId]);
-    }
-  
-    // Render players
-    const players = playerQuery(world);
-    for (const eid of players) {
-      const isMe = eid === localEntityId;
-  
-      const state = {
-        type: 'player' as const,
-        pos: {
-          x: Transform.x[eid],
-          y: Transform.y[eid],
-          z: Transform.z[eid],
-        },
-        rot: Transform.rotation[eid],
-        pitch: isMe ? InputState.viewY[eid] : 0,
-        team: Team.id[eid],
-      };
-  
-      renderer.updateEntity(eid, state, isMe);
-    }
-  
-    // Render flags (capture points)
-    const flags = flagQuery(world);
-    for (const eid of flags) {
-        const raw = CapturePoint.progress[eid] || 0;
-        const progress = Math.min(1, Math.abs(raw / 100));
-        
-        const state = {
-          type: 'flag' as const,
-          pos: {
-            x: Transform.x[eid],
-            y: Transform.y[eid],
-            z: Transform.z[eid],
-          },
-          team: CapturePoint.team[eid],    // existing schema
-          progress,
-        };
-        
-  
-      renderer.updateEntity(eid, state, false);
-    }
-  
-    // Final frame
-    renderer.render();
+import { defineQuery, Transform, InputState } from '@bf42lite/engine-core';
+import { Soldier, CapturePoint, Team, Health } from '@bf42lite/games-bf42';
+
+import { EntityMapper } from '../core/EntityMapper';
+import type { Renderer } from '../core/Renderer';
+import type { UIManager } from '../managers/UIManager';
+
+// ECS queries for players and flags
+const playerQuery = defineQuery([Transform, Soldier]);
+const flagQuery = defineQuery([CapturePoint, Transform]);
+
+/**
+ * Build and send all render + HUD state for this frame.
+ *
+ * - Renders all players (local + remote).
+ * - Renders all flags (Conquest points).
+ * - Updates basic HUD stats (FPS / RTT / Health).
+ */
+export function updateWorldRender(
+  world: any,
+  renderer: Renderer,
+  ui: UIManager,
+  localEntityId: number,
+  fps: number,
+  rttMs: number,
+): void {
+  // Basic HUD stats
+  ui.updateStats(fps, rttMs);
+
+  if (localEntityId >= 0) {
+    const hp = Health.current[localEntityId] ?? 0;
+    ui.updateHealth(hp);
   }
-  
+
+  // === PLAYERS ===
+  const players = playerQuery(world);
+
+  for (const eid of players) {
+    const isLocal = eid === localEntityId;
+
+    const state = {
+      type: 'player' as const,
+      pos: {
+        x: Transform.x[eid],
+        y: Transform.y[eid],
+        z: Transform.z[eid],
+      },
+      // Yaw comes from Transform; pitch from input state (if present)
+      rot: Transform.rotation[eid] ?? 0,
+      pitch: InputState.viewY ? InputState.viewY[eid] ?? 0 : 0,
+      team: Team.id ? Team.id[eid] ?? 0 : 0,
+    };
+
+    renderer.updateEntity(eid, state, isLocal);
+  }
+
+  // === FLAGS (CONQUEST POINTS) ===
+  const flags = flagQuery(world);
+  for (const eid of flags) {
+    const state = EntityMapper.mapFlag(eid, world);
+    renderer.updateEntity(eid, state, false);
+  }
+
+  // Final frame
+  renderer.render();
+}
+
 
