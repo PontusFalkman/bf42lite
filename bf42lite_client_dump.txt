@@ -13,13 +13,10 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       ClientGame.ts
 ª       constants.ts
 ª       EntityMapper.ts
-ª       FlagRenderer.ts
 ª       GameLoop.ts
 ª       InputManager.ts
 ª       local-player.ts
-ª       render-update.ts
 ª       Renderer.ts
-ª       snapshot-handler.ts
 ª       WeaponSystem.ts
 ª       
 +---managers
@@ -103,6 +100,7 @@ import { updateWorldRender } from '../world/worldRender';
 import { CommandSender } from '../net/CommandSender';
 import { SnapshotHandler } from '../systems/SnapshotHandler';
 import { syncLocalPlayerFromSnapshot } from '../systems/syncLocalPlayer';
+import { HUDUpdater } from '../ui/HUDUpdater';
 
 export class ClientGame {
   private movementSystem = createMovementSystem();
@@ -113,6 +111,7 @@ export class ClientGame {
 
   private input: InputManager;
   private ui: UIManager;
+  private hud: HUDUpdater;
   public reconciler: Reconciler;
   private weaponSystem: WeaponSystem;
   private commandSender: CommandSender;
@@ -140,9 +139,12 @@ export class ClientGame {
       this.weaponSystem.setClass(classId);
     });
 
+    // New HUD faÃ§ade
+    this.hud = new HUDUpdater(this.ui);
+
     this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-    // Snapshot handler (HUD / flags)
+    // Snapshot handler (HUD / flags â€“ still uses UIManager internally for tickets/game-over)
     this.snapshotHandler = new SnapshotHandler(
       world,
       this.renderer,
@@ -174,21 +176,22 @@ export class ClientGame {
       console.log('Disconnected from server');
     };
 
+    // Hit marker now goes through HUD faÃ§ade
     this.net.onHitConfirmed = (damage: number) => {
-      this.ui.showHitMarker(damage);
+      this.hud.showHitMarker(damage);
     };
 
     this.net.onSnapshot = (msg: Snapshot) => {
       // 1) Global snapshot handling (tickets, flags HUD, game over, etc.)
       this.snapshotHandler.process(msg);
 
-      // 2) Local player sync + reconciliation
+      // 2) Local player sync + reconciliation + per-player HUD
       this.lastRtt = syncLocalPlayerFromSnapshot(
         msg,
         this.sim.world,
         this.localEntityId,
         this.net,
-        this.ui,
+        this.hud,
         this.reconciler,
         this.movementSystem,
         this.lastRtt,
@@ -250,7 +253,7 @@ export class ClientGame {
     updateWorldRender(
       this.sim.world,
       this.renderer,
-      this.ui,
+      this.hud,
       this.localEntityId,
       fps,
       this.lastRtt,
@@ -401,154 +404,6 @@ export class EntityMapper {
       team,
       progress,
     };
-  }
-}
-
-
-## FILE: apps\client-tauri\src\core\FlagRenderer.ts
----------------------------
-// apps/client-tauri/src/core/FlagRenderer.ts
-
-import * as THREE from 'three';
-import { FlagSnapshot } from '@bf42lite/protocol';
-import { TEAM_COLORS } from './constants';
-
-export class FlagRenderer {
-  private scene: THREE.Scene;
-  private flags = new Map<number, THREE.Object3D>();
-
-  constructor(scene: THREE.Scene) {
-    this.scene = scene;
-  }
-
-  updateFromSnapshot(flags: FlagSnapshot[]): void {
-    const seen = new Set<number>();
-
-    for (const f of flags) {
-      let group = this.flags.get(f.id);
-      if (!group) {
-        group = this.createFlagMesh(f);
-        this.scene.add(group);
-        this.flags.set(f.id, group);
-      }
-
-      this.updateFlagTransform(group, f);
-      this.updateFlagVisual(group, f);
-      seen.add(f.id);
-    }
-
-    for (const [id, obj] of this.flags) {
-      if (!seen.has(id)) {
-        this.scene.remove(obj);
-        this.flags.delete(id);
-      }
-    }
-  }
-
-  private createFlagMesh(flag: FlagSnapshot): THREE.Object3D {
-    const group = new THREE.Group();
-    group.name = `flag-${flag.id}`;
-
-    const radius = flag.radius && flag.radius > 0 ? flag.radius : 8.0;
-
-    const poleGeom = new THREE.BoxGeometry(0.4, 6, 0.4);
-    const poleMat = new THREE.MeshStandardMaterial({ color: TEAM_COLORS.NEUTRAL });
-    const pole = new THREE.Mesh(poleGeom, poleMat);
-    pole.position.y = 3;
-    pole.castShadow = true;
-    pole.receiveShadow = true;
-    pole.name = 'pole';
-    group.add(pole);
-
-    const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-    const bannerMat = new THREE.MeshStandardMaterial({
-      color: TEAM_COLORS.NEUTRAL,
-      side: THREE.DoubleSide,
-    });
-    const banner = new THREE.Mesh(bannerGeom, bannerMat);
-    banner.position.set(0.6, 5.5, 0);
-    banner.castShadow = true;
-    banner.name = 'banner';
-    group.add(banner);
-
-    const ringGeom = new THREE.RingGeometry(radius - 0.3, radius, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const ring = new THREE.Mesh(ringGeom, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.1;
-    ring.name = 'ring';
-    group.add(ring);
-
-    const progGeom = new THREE.CircleGeometry(radius, 64);
-    const progMat = new THREE.MeshBasicMaterial({
-      color: TEAM_COLORS.NEUTRAL,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.4,
-    });
-    const progress = new THREE.Mesh(progGeom, progMat);
-    progress.rotation.x = -Math.PI / 2;
-    progress.position.y = 0.15;
-    progress.scale.set(0, 0, 0);
-    progress.name = 'progress';
-    group.add(progress);
-
-    group.position.set(flag.x, flag.y, flag.z);
-
-    return group;
-  }
-
-  private updateFlagTransform(group: THREE.Object3D, flag: FlagSnapshot): void {
-    group.position.set(flag.x, flag.y, flag.z);
-  }
-
-  private updateFlagVisual(group: THREE.Object3D, flag: FlagSnapshot): void {
-    const banner = group.getObjectByName('banner') as THREE.Mesh | null;
-    const pole = group.getObjectByName('pole') as THREE.Mesh | null;
-    const progressDisc = group.getObjectByName('progress') as THREE.Mesh | null;
-
-    if (!banner || !pole || !progressDisc) return;
-
-    const poleMat = pole.material as THREE.MeshStandardMaterial;
-    const bannerMat = banner.material as THREE.MeshStandardMaterial;
-    const progMat = progressDisc.material as THREE.MeshBasicMaterial;
-
-    poleMat.color.setHex(TEAM_COLORS.NEUTRAL);
-
-    let baseColor = TEAM_COLORS.NEUTRAL;
-    if (flag.owner === 'TeamA') baseColor = TEAM_COLORS.AXIS;
-    else if (flag.owner === 'TeamB') baseColor = TEAM_COLORS.ALLIES;
-
-    const rawProgress =
-      typeof flag.capture === 'number' ? flag.capture : 0;
-    const clamped = Math.max(-1, Math.min(1, rawProgress));
-    const t = Math.abs(clamped);
-
-    progressDisc.scale.set(t, t, t);
-
-    let teamColor = 0xffffff;
-    if (clamped > 0) {
-      teamColor = TEAM_COLORS.AXIS;
-    } else if (clamped < 0) {
-      teamColor = TEAM_COLORS.ALLIES;
-    }
-
-    const white = new THREE.Color(0xffffff);
-    const teamCol = new THREE.Color(teamColor);
-    white.lerp(teamCol, t);
-
-    if (clamped === 0) {
-      progMat.color.setHex(0xffffff);
-      bannerMat.color.setHex(baseColor);
-    } else {
-      bannerMat.color.copy(white);
-      progMat.color.copy(white);
-    }
   }
 }
 
@@ -804,24 +659,6 @@ import {
     return id;
   }
   
-
-## FILE: apps\client-tauri\src\core\render-update.ts
----------------------------
-// apps/client-tauri/src/core/render-update.ts
-import { updateGameFrame } from '../systems/updateGameFrame';
-import type { Renderer } from './Renderer';
-import type { InputManager } from './InputManager';
-import type { WeaponSystem } from './WeaponSystem';
-
-export function updateRenderFrame(
-  dt: number,
-  renderer: Renderer,
-  input: InputManager,
-  weapon: WeaponSystem
-) {
-  updateGameFrame(dt, renderer, input, weapon);
-}
-
 
 ## FILE: apps\client-tauri\src\core\Renderer.ts
 ---------------------------
@@ -1099,34 +936,6 @@ export class Renderer {
     if (team === TEAM_IDS.ALLIES) return TEAM_COLORS.ALLIES as number;
     return TEAM_COLORS.NEUTRAL as number;
   }
-}
-
-
-## FILE: apps\client-tauri\src\core\snapshot-handler.ts
----------------------------
-// apps/client-tauri/src/core/snapshot-handler.ts
-import { handleSnapshot, SnapshotMessage } from '../systems/handleSnapshot';
-import type { FlagSnapshot } from '@bf42lite/protocol';
-import type { Renderer } from './Renderer';
-import type { NetworkManager } from '../managers/NetworkManager';
-import type { UIManager } from '../managers/UIManager';
-
-export interface SnapshotResult {
-  flags: FlagSnapshot[];
-}
-
-export function processSnapshot(
-  msg: SnapshotMessage,
-  world: any,
-  renderer: Renderer,
-  net: NetworkManager,
-  ui: UIManager
-): SnapshotResult {
-  handleSnapshot(msg, world, renderer, net, ui);
-
-  return {
-    flags: (msg.flags ?? []) as FlagSnapshot[],
-  };
 }
 
 
@@ -3175,7 +2984,7 @@ import {
 
 import type { Snapshot } from '@bf42lite/protocol';
 import type { NetworkManager } from '../managers/NetworkManager';
-import type { UIManager } from '../managers/UIManager';
+import type { HUDUpdater } from '../ui/HUDUpdater';
 import type { Reconciler } from './Reconciler';
 
 import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
@@ -3190,7 +2999,7 @@ export function syncLocalPlayerFromSnapshot(
   world: SimWorld,
   localEntityId: number,
   net: NetworkManager,
-  ui: UIManager,
+  hud: HUDUpdater,
   reconciler: Reconciler,
   movementSystem: (world: SimWorld) => void,
   lastRtt: number,
@@ -3226,7 +3035,9 @@ export function syncLocalPlayerFromSnapshot(
 
   Health.current[localEntityId] = hp;
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
-  ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+
+  // HUD: respawn timer
+  hud.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
 
   // Team mapping (Rust TeamId â†’ numeric ECS team)
   if (myServerEntity.team) {
@@ -3251,25 +3062,16 @@ export function syncLocalPlayerFromSnapshot(
   const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
 
   if (myServerEntity.ammo) {
-    ui.updateAmmo(
+    hud.updateAmmo(
       myServerEntity.ammo.current,
       myServerEntity.ammo.reserve,
       weaponName,
     );
   }
 
-  // Reconciliation (movement correction)
-  if (myServerEntity.lastProcessedTick !== undefined) {
-    const rtt = reconciler.reconcile(
-      myServerEntity.lastProcessedTick,
-      myServerEntity,
-      localEntityId,
-      world,
-      movementSystem,
-    );
-    if (rtt > 0) {
-      lastRtt = rtt;
-    }
+  // RTT (if provided by snapshot/game_state)
+  if (typeof msg.game_state?.rtt_ms === 'number') {
+    lastRtt = msg.game_state.rtt_ms;
   }
 
   return lastRtt;
@@ -3383,27 +3185,13 @@ export class HUDUpdater {
   }
 
   /**
-   * Apply HUD-related parts of a snapshot (tickets, game over, flag HUD, etc.).
-   * This is a faÃ§ade over the more detailed logic currently inside handleSnapshot.
+   * Snapshot-driven HUD hook (tickets / game over / flags).
+   * NOTE: Currently not wired; keep as a place to consolidate
+   * handleSnapshot logic once the protocol shape is stable.
    */
-  public applySnapshotHUD(msg: Snapshot): void {
-    // Tickets (if present)
-    if (msg.game_state && msg.game_state.tickets) {
-      const tickets = msg.game_state.tickets;
-      this.ui.updateTickets(tickets.axis ?? 0, tickets.allies ?? 0);
-    }
-
-    // Game over state (if present)
-    if (msg.game_state && msg.game_state.game_over) {
-      const over = msg.game_state.game_over;
-      this.ui.showGameOver(over.winnerTeamId ?? null, over.reason ?? '');
-    }
-
-    // Flag HUD (if you expose it in UIManager)
-    if (msg.flags && msg.flags.length > 0 && this.ui.updateFlagHud) {
-      // Minimal example: pass raw flags; UIManager remains responsible
-      this.ui.updateFlagHud(msg.flags);
-    }
+  public applySnapshotHUD(_msg: Snapshot): void {
+    // Intentionally left as a placeholder for the future.
+    // For now, handleSnapshot.ts still drives tickets/flags/game-over HUD.
   }
 }
 
@@ -3478,16 +3266,16 @@ export const log = {
 ---------------------------
 // apps/client-tauri/src/world/worldRender.ts
 
-import { defineQuery, Transform, InputState } from '@bf42lite/engine-core';
-import { Soldier, CapturePoint, Team, Health } from '@bf42lite/games-bf42';
+import { defineQuery } from '@bf42lite/engine-core';
+import { Soldier, CapturePoint, Health } from '@bf42lite/games-bf42';
 
 import { EntityMapper } from '../core/EntityMapper';
 import type { Renderer } from '../core/Renderer';
-import type { UIManager } from '../managers/UIManager';
+import type { HUDUpdater } from '../ui/HUDUpdater';
 
 // ECS queries for players and flags
-const playerQuery = defineQuery([Transform, Soldier]);
-const flagQuery = defineQuery([CapturePoint, Transform]);
+const playerQuery = defineQuery([Soldier]);
+const flagQuery = defineQuery([CapturePoint]);
 
 /**
  * Build and send all render + HUD state for this frame.
@@ -3499,46 +3287,33 @@ const flagQuery = defineQuery([CapturePoint, Transform]);
 export function updateWorldRender(
   world: any,
   renderer: Renderer,
-  ui: UIManager,
+  hud: HUDUpdater,
   localEntityId: number,
   fps: number,
   rttMs: number,
 ): void {
   // Basic HUD stats
-  ui.updateStats(fps, rttMs);
+  hud.updateStats(fps, rttMs);
 
   if (localEntityId >= 0) {
     const hp = Health.current[localEntityId] ?? 0;
-    ui.updateHealth(hp);
+    hud.updateHealth(hp);
   }
 
   // === PLAYERS ===
   const players = playerQuery(world);
-
   for (const eid of players) {
-    const isLocal = eid === localEntityId;
-
-    const state = {
-      type: 'player' as const,
-      pos: {
-        x: Transform.x[eid],
-        y: Transform.y[eid],
-        z: Transform.z[eid],
-      },
-      // Yaw comes from Transform; pitch from input state (if present)
-      rot: Transform.rotation[eid] ?? 0,
-      pitch: InputState.viewY ? InputState.viewY[eid] ?? 0 : 0,
-      team: Team.id ? Team.id[eid] ?? 0 : 0,
-    };
-
-    renderer.updateEntity(eid, state, isLocal);
+    const state = EntityMapper.mapPlayer(eid, world, eid === localEntityId);
+    renderer.updateEntity(eid, state, eid === localEntityId);
   }
 
   // === FLAGS (CONQUEST POINTS) ===
   const flags = flagQuery(world);
   for (const eid of flags) {
     const state = EntityMapper.mapFlag(eid, world);
-console.log('[FLAG-RENDER]', eid, state.team, state.progress);
+
+    // Optional debug:
+    // console.log('[FLAG-RENDER]', eid, state.team, state.progress);
 
     renderer.updateEntity(eid, state, false);
   }

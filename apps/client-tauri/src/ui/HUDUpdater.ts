@@ -51,12 +51,34 @@ export class HUDUpdater {
   }
 
   /**
-   * Snapshot-driven HUD hook (tickets / game over / flags).
-   * NOTE: Currently not wired; keep as a place to consolidate
-   * handleSnapshot logic once the protocol shape is stable.
+   * Snapshot-driven HUD hook (tickets / flags / game-over).
+   *
+   * Called once per server snapshot from SnapshotHandler.
+   * This keeps snapshot → HUD wiring in a single place.
    */
-  public applySnapshotHUD(_msg: Snapshot): void {
-    // Intentionally left as a placeholder for the future.
-    // For now, handleSnapshot.ts still drives tickets/flags/game-over HUD.
+  public applySnapshotHUD(msg: Snapshot): void {
+    // --- Tickets ---
+    const axis = msg.game_state?.team_a_tickets ?? 0;
+    const allies = msg.game_state?.team_b_tickets ?? 0;
+    this.ui.updateTickets(axis, allies);
+
+    // --- Flags HUD (mini strip + list) ---
+    this.ui.updateFlagsHUD(msg.flags);
+
+    // --- Game over state ---
+    const st = msg.game_state;
+    const ended = !!st?.match_ended;
+
+    if (ended) {
+      let title = 'DRAW';
+      const winner = st?.winner_team as number | string | null | undefined;
+
+      if (winner === 1 || winner === 'TeamA') title = 'AXIS VICTORY';
+      else if (winner === 2 || winner === 'TeamB') title = 'ALLIES VICTORY';
+
+      this.ui.setGameOver(true, title);
+    } else {
+      this.ui.setGameOver(false, '');
+    }
   }
 }

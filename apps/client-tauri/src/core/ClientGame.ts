@@ -67,13 +67,8 @@ export class ClientGame {
 
     this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-    // Snapshot handler (HUD / flags – still uses UIManager internally for tickets/game-over)
-    this.snapshotHandler = new SnapshotHandler(
-      world,
-      this.renderer,
-      this.net,
-      this.ui,
-    );
+// Snapshot handler (HUD / flags routed through HUDUpdater)
+this.snapshotHandler = new SnapshotHandler(this.hud);
 
     // Pointer lock + UI interaction toggles
     this.input.setInteraction(true);
