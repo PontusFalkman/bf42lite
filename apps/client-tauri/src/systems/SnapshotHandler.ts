@@ -4,6 +4,7 @@
 // This wraps handleSnapshot(...) and returns structured results
 // so ClientGame remains thin and easy to maintain.
 
+import type { SimWorld } from '@bf42lite/engine-core';
 import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
 
 import { handleSnapshot } from './handleSnapshot';
@@ -13,23 +14,27 @@ import type { UIManager } from '../managers/UIManager';
 
 export interface SnapshotResult {
   flags: FlagSnapshot[];
-  ticketsAxis: number;
-  ticketsAllies: number;
-  gameOver: boolean;
-  winner?: string;
+  lastServerTick: number;
 }
 
+/**
+ * SnapshotHandler centralizes “global” snapshot effects:
+ * - Tickets / game-over HUD via handleSnapshot(...)
+ * - Flag list for HUD / debug
+ *
+ * Entity ECS sync is still handled by NetworkManager → RemoteEntitySync.
+ */
 export class SnapshotHandler {
-  private world: any;
+  private world: SimWorld;
   private renderer: Renderer;
   private net: NetworkManager;
   private ui: UIManager;
 
   constructor(
-    world: any,
+    world: SimWorld,
     renderer: Renderer,
     net: NetworkManager,
-    ui: UIManager
+    ui: UIManager,
   ) {
     this.world = world;
     this.renderer = renderer;
@@ -38,29 +43,19 @@ export class SnapshotHandler {
   }
 
   /**
-   * Process the snapshot sent by the server.
-   *
-   * Returns a result object used by ClientGame.
+   * Process the snapshot sent by the server and return
+   * a small result object for ClientGame.
    */
   public process(msg: Snapshot): SnapshotResult {
-    // This function applies:
-    // - Entity updates
-    // - Health updates
-    // - Team changes
-    // - Flag capture state
-    // - Killfeed / hit markers
-    // - Ticket counts
-    // - GameOver state
+    // HUD (tickets, flags list, game-over) is handled here.
     handleSnapshot(msg, this.world, this.renderer, this.net, this.ui);
 
     const flags = (msg.flags ?? []) as FlagSnapshot[];
+    const lastServerTick = msg.tick ?? 0;
 
     return {
       flags,
-      ticketsAxis: msg.tickets?.axis ?? 0,
-      ticketsAllies: msg.tickets?.allies ?? 0,
-      gameOver: msg.gameOver?.active ?? false,
-      winner: msg.gameOver?.winner ?? undefined,
+      lastServerTick,
     };
   }
 }

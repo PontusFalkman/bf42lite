@@ -436,6 +436,9 @@ export class EntityMapper {
    * Convert a flag ECS entity into a RenderStateFlag.
    */
   public static mapFlag(eid: number, world: any): RenderStateFlag {
+    const raw = CapturePoint.progress[eid] || 0;
+    const progress = Math.min(1, Math.abs(raw / 100)); // progress is i16 in old schema
+  
     return {
       type: 'flag',
       id: eid,
@@ -445,10 +448,10 @@ export class EntityMapper {
         z: Transform.z[eid],
       },
       rot: 0,
-      team: CapturePoint.team[eid],
-      progress: CapturePoint.progress[eid],
+      team: CapturePoint.team[eid],  // existing schema
+      progress,
     };
-  }
+  }  
 }
 
 
@@ -877,6 +880,8 @@ export function updateRenderFrame(
 import * as THREE from 'three';
 import { TEAM_COLORS, TEAM_IDS } from './constants';
 import { log } from '../utils/log';
+import { ModelFactory } from '../render/ModelFactory';
+import { FlagVisual } from '../render/FlagVisual';
 
 type RenderStatePlayer = {
   type: 'player';
@@ -926,7 +931,7 @@ export class Renderer {
     // --- Ground plane (simple arena) ---
     const plane = new THREE.Mesh(
       new THREE.PlaneGeometry(200, 200),
-      new THREE.MeshPhongMaterial({ color: 0x558855 })
+      new THREE.MeshPhongMaterial({ color: 0x558855 }),
     );
     plane.rotation.x = -Math.PI / 2;
     plane.receiveShadow = true;
@@ -999,7 +1004,7 @@ export class Renderer {
   public updateEntity(
     id: number,
     state: RenderState,
-    isLocalPlayer: boolean
+    isLocalPlayer: boolean,
   ): void {
     let object = this.entities.get(id);
 
@@ -1050,114 +1055,14 @@ export class Renderer {
 
   private createObjectForState(
     state: RenderState,
-    isLocalPlayer: boolean
+    _isLocalPlayer: boolean,
   ): THREE.Object3D {
     if (state.type === 'player') {
-      return this.createPlayerObject(state, isLocalPlayer);
+      return ModelFactory.createPlayer();
     } else {
-      return this.createFlagObject(state);
+      // Flags currently use a fixed radius (8m) on the client side.
+      return ModelFactory.createFlag(8.0);
     }
-  }
-
-  private createPlayerObject(
-    state: RenderStatePlayer,
-    isLocalPlayer: boolean
-  ): THREE.Object3D {
-    // Simple capsule-ish soldier: box + head sphere
-    const group = new THREE.Group();
-    group.name = 'player';
-
-    const bodyGeom = new THREE.BoxGeometry(0.6, 1.6, 0.4);
-    const baseColor = this.getTeamColor(state.team);
-    const bodyMat = new THREE.MeshPhongMaterial({ color: baseColor });
-    const body = new THREE.Mesh(bodyGeom, bodyMat);
-    body.castShadow = true;
-    body.receiveShadow = false;
-    group.add(body);
-
-    const headGeom = new THREE.SphereGeometry(0.3, 16, 16);
-    const headMat = new THREE.MeshPhongMaterial({ color: 0xffe0bd });
-    const head = new THREE.Mesh(headGeom, headMat);
-    head.position.y = 1.1;
-    head.castShadow = true;
-    group.add(head);
-
-    if (isLocalPlayer) {
-      group.userData.isLocal = true;
-    }
-
-    group.position.set(state.pos.x, state.pos.y, state.pos.z);
-    group.rotation.y = state.rot;
-
-    return group;
-  }
-
-  private createFlagObject(state: RenderStateFlag): THREE.Object3D {
-    const group = new THREE.Group();
-    group.name = 'flag';
-
-    const radius = 8.0;
-
-    // Base
-    const baseGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
-    const baseMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
-    const base = new THREE.Mesh(baseGeom, baseMat);
-    base.castShadow = true;
-    base.receiveShadow = true;
-    group.add(base);
-
-    // Pole
-    const poleGeom = new THREE.CylinderGeometry(0.1, 0.1, 4, 8);
-    const poleMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
-    const pole = new THREE.Mesh(poleGeom, poleMat);
-    pole.position.y = 2.2;
-    pole.castShadow = true;
-    pole.name = 'pole';
-    group.add(pole);
-
-    // Banner (the â€œrectangleâ€)
-    const bannerGeom = new THREE.PlaneGeometry(1.8, 1.2);
-    const bannerMat = new THREE.MeshBasicMaterial({
-      color: this.getTeamColor(state.team),
-      side: THREE.DoubleSide,
-    });
-    const banner = new THREE.Mesh(bannerGeom, bannerMat);
-    banner.position.set(0.9, 2.8, 0);
-    banner.rotation.y = Math.PI / 2;
-    banner.name = 'banner';
-    group.add(banner);
-
-    // Capture radius ring
-    const ringGeom = new THREE.RingGeometry(radius - 0.3, radius, 64);
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.6,
-    });
-    const ring = new THREE.Mesh(ringGeom, ringMat);
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.01;
-    ring.name = 'ring';
-    group.add(ring);
-
-    // Progress disc (fills as the point is being captured)
-    const progGeom = new THREE.CircleGeometry(radius, 64);
-    const progMat = new THREE.MeshBasicMaterial({
-      color: TEAM_COLORS.NEUTRAL,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.4,
-    });
-    const progress = new THREE.Mesh(progGeom, progMat);
-    progress.rotation.x = -Math.PI / 2;
-    progress.position.y = 0.02;
-    progress.scale.set(0, 0, 0); // no capture at start
-    progress.name = 'progress';
-    group.add(progress);
-
-    group.position.set(state.pos.x, state.pos.y, state.pos.z);
-    return group;
   }
 
   // ---------------------------------------------------------------------------
@@ -1167,39 +1072,47 @@ export class Renderer {
   private applyStateToObject(
     object: THREE.Object3D,
     state: RenderState,
-    isLocalPlayer: boolean
+    isLocalPlayer: boolean,
   ): void {
     if (state.type === 'player') {
       const playerState = state as RenderStatePlayer;
+      const group = object as THREE.Group;
 
       // Position + rotation for the soldier mesh
-      object.position.set(
+      group.position.set(
         playerState.pos.x,
         playerState.pos.y,
-        playerState.pos.z
+        playerState.pos.z,
       );
-      object.rotation.y = playerState.rot;
-      object.userData.team = playerState.team;
+      group.rotation.y = playerState.rot;
+      group.userData.team = playerState.team;
+
+      // Team tint on body, if present
+      const body = group.getObjectByName('body') as THREE.Mesh | null;
+      if (body) {
+        const bodyMat = body.material as THREE.MeshPhongMaterial;
+        bodyMat.color.setHex(this.getTeamColor(playerState.team));
+      }
 
       if (isLocalPlayer) {
         // First-person camera placement
         this.camera.position.set(
           playerState.pos.x,
           playerState.pos.y + 1.6, // eye height
-          playerState.pos.z
+          playerState.pos.z,
         );
 
         this.camera.rotation.set(
           playerState.pitch || 0,
           playerState.rot,
           0,
-          'YXZ'
+          'YXZ',
         );
 
         // Hide own body in first person
-        object.visible = false;
+        group.visible = false;
       } else {
-        object.visible = true;
+        group.visible = true;
       }
 
       return;
@@ -1207,65 +1120,20 @@ export class Renderer {
 
     // === FLAG LOGIC ===
     const flagState = state as RenderStateFlag;
-    object.position.set(
+    const group = object as THREE.Group;
+
+    // Position
+    group.position.set(
       flagState.pos.x,
       flagState.pos.y,
-      flagState.pos.z
+      flagState.pos.z,
     );
 
-    const group = object as THREE.Group;
-    const banner = group.getObjectByName('banner') as THREE.Mesh | null;
-    const ring = group.getObjectByName('ring') as THREE.Mesh | null;
-    const progressDisc = group.getObjectByName('progress') as THREE.Mesh | null;
-
-    const baseColor = this.getTeamColor(flagState.team);
-
-    if (!banner || !ring || !progressDisc) {
-      return;
-    }
-
-    const bannerMat = banner.material as THREE.MeshBasicMaterial;
-    const ringMat = ring.material as THREE.MeshBasicMaterial;
-    const progMat = progressDisc.material as THREE.MeshBasicMaterial;
-
-    // --- Capture progress: -1 .. 1 (sign = team capturing) ---
-    const rawProgress =
-      typeof flagState.progress === 'number' ? flagState.progress : 0;
-    const clamped = Math.max(-1, Math.min(1, rawProgress));
-    const t = Math.abs(clamped); // 0..1
-
-    // Scale progress disc
-    progressDisc.scale.set(t, t, t);
-
-    // Which team is currently capturing?
-    let capturingColor = 0xffffff;
-    if (clamped > 0) {
-      capturingColor = TEAM_COLORS.AXIS as number;
-    } else if (clamped < 0) {
-      capturingColor = TEAM_COLORS.ALLIES as number;
-    }
-
-    const white = new THREE.Color(0xffffff);
-    const teamCol = new THREE.Color(capturingColor);
-    white.lerp(teamCol, t); // â€œwhitishâ€ when low, pure team color when full
-
-    // Base owner color for banner when idle
-    if (clamped === 0) {
-      bannerMat.color.setHex(baseColor as number);
-      progMat.color.setHex(0xffffff);
-      ringMat.opacity = 0.4;
-    } else {
-      // Actively being captured
-      bannerMat.color.copy(white);
-      progMat.color.copy(white);
-
-      // Make ring more visible when contested
-      ringMat.opacity = 0.4 + 0.4 * t;
-    }
+    // Delegate all visual details (colors, pulses, arrow) to FlagVisual
+    FlagVisual.applyState(group, flagState.team, flagState.progress);
   }
 
   private getTeamColor(team: number): number {
-    // Return plain numbers to avoid narrow literal type issues.
     if (team === TEAM_IDS.AXIS) return TEAM_COLORS.AXIS as number;
     if (team === TEAM_IDS.ALLIES) return TEAM_COLORS.ALLIES as number;
     return TEAM_COLORS.NEUTRAL as number;
@@ -2506,8 +2374,8 @@ export class FlagVisual {
   /**
    * Apply ECS flag state to a THREE.Group flag instance.
    *
-   * @param group THREE.Group created by ModelFactory.createFlag()
-   * @param team  current owning team (numeric ECS ID)
+   * @param group    THREE.Group created by ModelFactory.createFlag()
+   * @param team     current owning team (numeric ECS ID)
    * @param progress capture progress from -1 â†’ 1
    */
   public static applyState(
@@ -2515,55 +2383,89 @@ export class FlagVisual {
     team: number,
     progress: number,
   ) {
-    const banner = group.getObjectByName('banner') as THREE.Mesh;
-    const pole = group.getObjectByName('pole') as THREE.Mesh;
-    const progressDisc = group.getObjectByName('progress') as THREE.Mesh;
+    const banner = group.getObjectByName('banner') as THREE.Mesh | null;
+    const ring = group.getObjectByName('ring') as THREE.Mesh | null;
+    const progressDisc = group.getObjectByName('progress') as THREE.Mesh | null;
+    const direction = group.getObjectByName('direction') as THREE.Mesh | null;
 
-    if (!banner || !pole || !progressDisc) {
-      console.warn('[FlagVisual] Missing banner/pole/progress in flag model');
+    if (!banner || !ring || !progressDisc) {
+      console.warn('[FlagVisual] Missing banner/ring/progress in flag model');
       return;
     }
 
-    const poleMat = pole.material as THREE.MeshStandardMaterial;
-    const bannerMat = banner.material as THREE.MeshStandardMaterial;
+    const bannerMat = banner.material as THREE.MeshBasicMaterial;
+    const ringMat = ring.material as THREE.MeshBasicMaterial;
     const progMat = progressDisc.material as THREE.MeshBasicMaterial;
+    const dirMat = direction
+      ? (direction.material as THREE.MeshBasicMaterial)
+      : null;
 
-    // --- Base pole is always neutral ---
-    poleMat.color.setHex(TEAM_COLORS.NEUTRAL);
+    // Base ownership color from team
+    let baseColor = TEAM_COLORS.NEUTRAL as number;
+    if (team === TEAM_IDS.AXIS) baseColor = TEAM_COLORS.AXIS as number;
+    else if (team === TEAM_IDS.ALLIES) baseColor = TEAM_COLORS.ALLIES as number;
 
-    // --- Determine base color from ownership team ---
-    let baseColor = TEAM_COLORS.NEUTRAL;
-    if (team === TEAM_IDS.AXIS) baseColor = TEAM_COLORS.AXIS;
-    else if (team === TEAM_IDS.ALLIES) baseColor = TEAM_COLORS.ALLIES;
-
-    // --- Progress is clamped [-1, 1] ---
-    const clamped = Math.max(-1, Math.min(1, progress));
-    const t = Math.abs(clamped);
+    // Clamp capture progress [-1, 1]
+    const raw = typeof progress === 'number' ? progress : 0;
+    const clamped = Math.max(-1, Math.min(1, raw));
+    const t = Math.abs(clamped); // 0..1
 
     // Scale progress disc
     progressDisc.scale.set(t, t, t);
 
-    // --- Determine target team color for capture-in-progress ---
-    let teamColor = 0xffffff;
+    // Time-based pulse for contested / capturing effects
+    const time = performance.now() / 1000;
+    const pulse = 0.75 + 0.25 * Math.sin(time * 4); // ~0.5..1.0
+
+    // Which team is currently capturing?
+    let capturingColor = 0xffffff;
+    let capturingTeam: number | null = null;
     if (clamped > 0) {
-      teamColor = TEAM_COLORS.AXIS;
+      capturingColor = TEAM_COLORS.AXIS as number;
+      capturingTeam = TEAM_IDS.AXIS;
     } else if (clamped < 0) {
-      teamColor = TEAM_COLORS.ALLIES;
+      capturingColor = TEAM_COLORS.ALLIES as number;
+      capturingTeam = TEAM_IDS.ALLIES;
     }
 
-    // Lerp white â†’ teamColor by |progress|
+    // Lerp white â†’ capturingColor by |progress|
     const white = new THREE.Color(0xffffff);
-    const teamCol = new THREE.Color(teamColor);
-    white.lerp(teamCol, t);
+    const teamCol = new THREE.Color(capturingColor);
+    white.lerp(teamCol, t); // â€œwhitishâ€ when low, pure team color when full
 
-    // --- Apply final colors ---
-    if (clamped === 0) {
-      // No capture happening
+    const isCapturing = clamped !== 0;
+    const isContested = isCapturing && t < 0.4; // near-neutral but non-zero
+
+    if (!isCapturing) {
+      // Idle: banner is owner color, ring is subtle, arrow hidden
       bannerMat.color.setHex(baseColor);
       progMat.color.setHex(0xffffff);
+      ringMat.opacity = 0.3;
+
+      if (direction && dirMat) {
+        direction.visible = false;
+        dirMat.opacity = 0.0;
+      }
     } else {
+      // Actively being captured: banner + progress use capture color
       bannerMat.color.copy(white);
       progMat.color.copy(white);
+
+      // Ring opacity increases with progress; pulses when â€œcontestedâ€
+      const baseOpacity = 0.25 + 0.5 * t; // 0.25 .. 0.75
+      ringMat.opacity = baseOpacity * (isContested ? pulse : 1.0);
+
+      if (direction && dirMat && capturingTeam !== null) {
+        direction.visible = true;
+
+        // Direction arrow color = capturing team
+        dirMat.color.setHex(capturingColor);
+        dirMat.opacity = 0.5 + 0.4 * pulse; // subtle pulse
+
+        // Spin direction based on capturing team (A vs B)
+        const dirSign = capturingTeam === TEAM_IDS.AXIS ? 1 : -1;
+        direction.rotation.z = time * 2.0 * dirSign;
+      }
     }
   }
 }
@@ -2582,63 +2484,86 @@ import { TEAM_COLORS } from '../core/constants';
 
 export class ModelFactory {
   /**
-   * Create the standard infantry soldier mesh (capsule).
+   * Create the standard infantry soldier object.
    *
-   * Initial color is neutral; team tinting is handled later by Renderer.
+   * We return a THREE.Group so we can name parts (body/head) and
+   * recolor the body later based on team.
    */
-  public static createSoldier(): THREE.Mesh {
-    const geometry = new THREE.CapsuleGeometry(0.4, 1.8, 4, 8);
-    const material = new THREE.MeshStandardMaterial({
+  public static createPlayer(): THREE.Group {
+    const group = new THREE.Group();
+    group.name = 'player';
+
+    // Body
+    const bodyGeom = new THREE.BoxGeometry(0.6, 1.6, 0.4);
+    const bodyMat = new THREE.MeshPhongMaterial({
       color: TEAM_COLORS.NEUTRAL,
     });
+    const body = new THREE.Mesh(bodyGeom, bodyMat);
+    body.castShadow = true;
+    body.name = 'body';
+    group.add(body);
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
+    // Head
+    const headGeom = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMat = new THREE.MeshPhongMaterial({ color: 0xffe0bd });
+    const head = new THREE.Mesh(headGeom, headMat);
+    head.position.y = 1.1;
+    head.castShadow = true;
+    head.name = 'head';
+    group.add(head);
 
-    return mesh;
+    return group;
   }
 
   /**
    * Create a complete flag group:
-   * - Pole (Box)
-   * - Banner (Box, named "banner")
-   * - Capture ring (Ring)
+   * - Base cylinder
+   * - Pole (named "pole")
+   * - Banner (Plane, named "banner")
+   * - Capture ring (named "ring")
    * - Progress disc (Circle, named "progress")
+   * - Capture direction arrow (Plane, named "direction")
    *
-   * All color logic (team/ownership/progress) is handled in Renderer;
+   * All color logic (team/ownership/progress) is handled in FlagVisual;
    * this factory only creates neutral-colored geometry.
    *
    * @param radius Capture radius for the ring and disc (default 8.0)
    */
   public static createFlag(radius: number = 8.0): THREE.Group {
     const group = new THREE.Group();
+    group.name = 'flag';
 
-    // A. Pole
-    const poleGeom = new THREE.BoxGeometry(0.4, 6, 0.4);
-    const poleMat = new THREE.MeshStandardMaterial({
-      color: TEAM_COLORS.NEUTRAL,
-    });
+    // A. Base
+    const baseGeom = new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16);
+    const baseMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+    const base = new THREE.Mesh(baseGeom, baseMat);
+    base.castShadow = true;
+    base.receiveShadow = true;
+    base.name = 'base';
+    group.add(base);
+
+    // B. Pole
+    const poleGeom = new THREE.CylinderGeometry(0.1, 0.1, 4, 8);
+    const poleMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
     const pole = new THREE.Mesh(poleGeom, poleMat);
-    pole.position.y = 3;
+    pole.position.y = 2.2;
     pole.castShadow = true;
-    pole.receiveShadow = true;
     pole.name = 'pole';
     group.add(pole);
 
-    // B. Banner
-    const bannerGeom = new THREE.BoxGeometry(1.2, 0.8, 0.1);
-    const bannerMat = new THREE.MeshStandardMaterial({
+    // C. Banner
+    const bannerGeom = new THREE.PlaneGeometry(1.8, 1.2);
+    const bannerMat = new THREE.MeshBasicMaterial({
       color: TEAM_COLORS.NEUTRAL,
       side: THREE.DoubleSide,
     });
     const banner = new THREE.Mesh(bannerGeom, bannerMat);
-    banner.position.set(0.6, 5.5, 0);
-    banner.castShadow = true;
+    banner.position.set(0.9, 2.8, 0);
+    banner.rotation.y = Math.PI / 2;
     banner.name = 'banner';
     group.add(banner);
 
-    // C. Capture zone ring (ground marker)
+    // D. Capture radius ring
     const ringGeom = new THREE.RingGeometry(radius - 0.3, radius, 64);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -2648,10 +2573,11 @@ export class ModelFactory {
     });
     const ring = new THREE.Mesh(ringGeom, ringMat);
     ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.1;
+    ring.position.y = 0.01;
+    ring.name = 'ring';
     group.add(ring);
 
-    // D. Progress disc (scaled by capture progress, named "progress")
+    // E. Progress disc (fills as the point is being captured)
     const progGeom = new THREE.CircleGeometry(radius, 64);
     const progMat = new THREE.MeshBasicMaterial({
       color: TEAM_COLORS.NEUTRAL,
@@ -2661,10 +2587,24 @@ export class ModelFactory {
     });
     const progress = new THREE.Mesh(progGeom, progMat);
     progress.rotation.x = -Math.PI / 2;
-    progress.position.y = 0.15;
-    progress.scale.set(0, 0, 0); // start hidden
+    progress.position.y = 0.02;
+    progress.scale.set(0, 0, 0); // no capture at start
     progress.name = 'progress';
     group.add(progress);
+
+    // F. Direction arrow: shows capture direction / team color
+    const arrowGeom = new THREE.PlaneGeometry(radius * 0.5, radius * 0.12);
+    const arrowMat = new THREE.MeshBasicMaterial({
+      color: TEAM_COLORS.NEUTRAL,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.0, // hidden until capture starts
+    });
+    const arrow = new THREE.Mesh(arrowGeom, arrowMat);
+    arrow.position.set(radius * 0.75, 0.03, 0);
+    arrow.rotation.x = -Math.PI / 2;
+    arrow.name = 'direction';
+    group.add(arrow);
 
     return group;
   }
@@ -3636,17 +3576,20 @@ import {
     // Render flags (capture points)
     const flags = flagQuery(world);
     for (const eid of flags) {
-      const state = {
-        type: 'flag' as const,
-        pos: {
-          x: Transform.x[eid],
-          y: Transform.y[eid],
-          z: Transform.z[eid],
-        },
-        rot: 0,
-        team: CapturePoint.team[eid],
-        progress: CapturePoint.progress[eid],
-      };
+        const raw = CapturePoint.progress[eid] || 0;
+        const progress = Math.min(1, Math.abs(raw / 100));
+        
+        const state = {
+          type: 'flag' as const,
+          pos: {
+            x: Transform.x[eid],
+            y: Transform.y[eid],
+            z: Transform.z[eid],
+          },
+          team: CapturePoint.team[eid],    // existing schema
+          progress,
+        };
+        
   
       renderer.updateEntity(eid, state, false);
     }
