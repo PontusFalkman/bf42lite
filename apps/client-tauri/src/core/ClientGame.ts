@@ -23,6 +23,7 @@ import { updateWorldRender } from '../world/worldRender';
 import { CommandSender } from '../net/CommandSender';
 import { SnapshotHandler } from '../systems/SnapshotHandler';
 import { syncLocalPlayerFromSnapshot } from '../systems/syncLocalPlayer';
+import { HUDUpdater } from '../ui/HUDUpdater';
 
 export class ClientGame {
   private movementSystem = createMovementSystem();
@@ -33,6 +34,7 @@ export class ClientGame {
 
   private input: InputManager;
   private ui: UIManager;
+  private hud: HUDUpdater;
   public reconciler: Reconciler;
   private weaponSystem: WeaponSystem;
   private commandSender: CommandSender;
@@ -60,9 +62,12 @@ export class ClientGame {
       this.weaponSystem.setClass(classId);
     });
 
+    // New HUD façade
+    this.hud = new HUDUpdater(this.ui);
+
     this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-    // Snapshot handler (HUD / flags)
+    // Snapshot handler (HUD / flags – still uses UIManager internally for tickets/game-over)
     this.snapshotHandler = new SnapshotHandler(
       world,
       this.renderer,
@@ -94,21 +99,22 @@ export class ClientGame {
       console.log('Disconnected from server');
     };
 
+    // Hit marker now goes through HUD façade
     this.net.onHitConfirmed = (damage: number) => {
-      this.ui.showHitMarker(damage);
+      this.hud.showHitMarker(damage);
     };
 
     this.net.onSnapshot = (msg: Snapshot) => {
       // 1) Global snapshot handling (tickets, flags HUD, game over, etc.)
       this.snapshotHandler.process(msg);
 
-      // 2) Local player sync + reconciliation
+      // 2) Local player sync + reconciliation + per-player HUD
       this.lastRtt = syncLocalPlayerFromSnapshot(
         msg,
         this.sim.world,
         this.localEntityId,
         this.net,
-        this.ui,
+        this.hud,
         this.reconciler,
         this.movementSystem,
         this.lastRtt,
@@ -170,7 +176,7 @@ export class ClientGame {
     updateWorldRender(
       this.sim.world,
       this.renderer,
-      this.ui,
+      this.hud,
       this.localEntityId,
       fps,
       this.lastRtt,

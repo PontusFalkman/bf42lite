@@ -9,7 +9,7 @@ import {
 
 import type { Snapshot } from '@bf42lite/protocol';
 import type { NetworkManager } from '../managers/NetworkManager';
-import type { UIManager } from '../managers/UIManager';
+import type { HUDUpdater } from '../ui/HUDUpdater';
 import type { Reconciler } from './Reconciler';
 
 import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
@@ -24,7 +24,7 @@ export function syncLocalPlayerFromSnapshot(
   world: SimWorld,
   localEntityId: number,
   net: NetworkManager,
-  ui: UIManager,
+  hud: HUDUpdater,
   reconciler: Reconciler,
   movementSystem: (world: SimWorld) => void,
   lastRtt: number,
@@ -60,7 +60,9 @@ export function syncLocalPlayerFromSnapshot(
 
   Health.current[localEntityId] = hp;
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
-  ui.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+
+  // HUD: respawn timer
+  hud.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
 
   // Team mapping (Rust TeamId → numeric ECS team)
   if (myServerEntity.team) {
@@ -85,25 +87,16 @@ export function syncLocalPlayerFromSnapshot(
   const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
 
   if (myServerEntity.ammo) {
-    ui.updateAmmo(
+    hud.updateAmmo(
       myServerEntity.ammo.current,
       myServerEntity.ammo.reserve,
       weaponName,
     );
   }
 
-  // Reconciliation (movement correction)
-  if (myServerEntity.lastProcessedTick !== undefined) {
-    const rtt = reconciler.reconcile(
-      myServerEntity.lastProcessedTick,
-      myServerEntity,
-      localEntityId,
-      world,
-      movementSystem,
-    );
-    if (rtt > 0) {
-      lastRtt = rtt;
-    }
+  // RTT (if provided by snapshot/game_state)
+  if (typeof msg.game_state?.rtt_ms === 'number') {
+    lastRtt = msg.game_state.rtt_ms;
   }
 
   return lastRtt;

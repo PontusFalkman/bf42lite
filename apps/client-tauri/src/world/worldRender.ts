@@ -1,15 +1,15 @@
 // apps/client-tauri/src/world/worldRender.ts
 
-import { defineQuery, Transform, InputState } from '@bf42lite/engine-core';
-import { Soldier, CapturePoint, Team, Health } from '@bf42lite/games-bf42';
+import { defineQuery } from '@bf42lite/engine-core';
+import { Soldier, CapturePoint, Health } from '@bf42lite/games-bf42';
 
 import { EntityMapper } from '../core/EntityMapper';
 import type { Renderer } from '../core/Renderer';
-import type { UIManager } from '../managers/UIManager';
+import type { HUDUpdater } from '../ui/HUDUpdater';
 
 // ECS queries for players and flags
-const playerQuery = defineQuery([Transform, Soldier]);
-const flagQuery = defineQuery([CapturePoint, Transform]);
+const playerQuery = defineQuery([Soldier]);
+const flagQuery = defineQuery([CapturePoint]);
 
 /**
  * Build and send all render + HUD state for this frame.
@@ -21,46 +21,33 @@ const flagQuery = defineQuery([CapturePoint, Transform]);
 export function updateWorldRender(
   world: any,
   renderer: Renderer,
-  ui: UIManager,
+  hud: HUDUpdater,
   localEntityId: number,
   fps: number,
   rttMs: number,
 ): void {
   // Basic HUD stats
-  ui.updateStats(fps, rttMs);
+  hud.updateStats(fps, rttMs);
 
   if (localEntityId >= 0) {
     const hp = Health.current[localEntityId] ?? 0;
-    ui.updateHealth(hp);
+    hud.updateHealth(hp);
   }
 
   // === PLAYERS ===
   const players = playerQuery(world);
-
   for (const eid of players) {
-    const isLocal = eid === localEntityId;
-
-    const state = {
-      type: 'player' as const,
-      pos: {
-        x: Transform.x[eid],
-        y: Transform.y[eid],
-        z: Transform.z[eid],
-      },
-      // Yaw comes from Transform; pitch from input state (if present)
-      rot: Transform.rotation[eid] ?? 0,
-      pitch: InputState.viewY ? InputState.viewY[eid] ?? 0 : 0,
-      team: Team.id ? Team.id[eid] ?? 0 : 0,
-    };
-
-    renderer.updateEntity(eid, state, isLocal);
+    const state = EntityMapper.mapPlayer(eid, world, eid === localEntityId);
+    renderer.updateEntity(eid, state, eid === localEntityId);
   }
 
   // === FLAGS (CONQUEST POINTS) ===
   const flags = flagQuery(world);
   for (const eid of flags) {
     const state = EntityMapper.mapFlag(eid, world);
-console.log('[FLAG-RENDER]', eid, state.team, state.progress);
+
+    // Optional debug:
+    // console.log('[FLAG-RENDER]', eid, state.team, state.progress);
 
     renderer.updateEntity(eid, state, false);
   }

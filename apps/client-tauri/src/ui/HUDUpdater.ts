@@ -51,26 +51,12 @@ export class HUDUpdater {
   }
 
   /**
-   * Apply HUD-related parts of a snapshot (tickets, game over, flag HUD, etc.).
-   * This is a façade over the more detailed logic currently inside handleSnapshot.
+   * Snapshot-driven HUD hook (tickets / game over / flags).
+   * NOTE: Currently not wired; keep as a place to consolidate
+   * handleSnapshot logic once the protocol shape is stable.
    */
-  public applySnapshotHUD(msg: Snapshot): void {
-    // Tickets (if present)
-    if (msg.game_state && msg.game_state.tickets) {
-      const tickets = msg.game_state.tickets;
-      this.ui.updateTickets(tickets.axis ?? 0, tickets.allies ?? 0);
-    }
-
-    // Game over state (if present)
-    if (msg.game_state && msg.game_state.game_over) {
-      const over = msg.game_state.game_over;
-      this.ui.showGameOver(over.winnerTeamId ?? null, over.reason ?? '');
-    }
-
-    // Flag HUD (if you expose it in UIManager)
-    if (msg.flags && msg.flags.length > 0 && this.ui.updateFlagHud) {
-      // Minimal example: pass raw flags; UIManager remains responsible
-      this.ui.updateFlagHud(msg.flags);
-    }
+  public applySnapshotHUD(_msg: Snapshot): void {
+    // Intentionally left as a placeholder for the future.
+    // For now, handleSnapshot.ts still drives tickets/flags/game-over HUD.
   }
 }
