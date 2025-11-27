@@ -18,5 +18,10 @@
       "@bf42lite/net": ["../../packages/net/src"]
     }
   },
-  "include": ["src"]
+
+  "include": ["src"],
+
+  "exclude": [
+    "src/network/**/*"
+  ]
 }

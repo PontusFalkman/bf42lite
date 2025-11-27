@@ -25,6 +25,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       
 +---net
 ª       CommandSender.ts
+ª       SnapshotDecoder.ts
+ª       types.ts
 ª       
 +---network
 ª       index.ts
@@ -38,6 +40,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       
 +---systems
 ª       FlagSystem.ts
+ª       interpolationHelpers.ts
 ª       InterpolationSystem.ts
 ª       MovementSystem.ts
 ª       PredictionSystem.ts
@@ -1024,11 +1027,11 @@ import { log } from '../utils/log';
 import type { Renderer } from '../core/Renderer';
 import type { Reconciler } from '../systems/Reconciler';
 
-import { decodeServerMessage } from '../network/SnapshotDecoder';
+import { decodeServerMessage } from '../net/SnapshotDecoder';
 // after previous step:
 import { RemoteEntitiesSystem } from '../systems/RemoteEntitiesSystem';
 import { FlagSystem } from '../systems/FlagSystem';
-import { interpolateRemotePlayers as interpRemote } from '../network/interpolation';
+import { interpolateRemotePlayers as interpRemote } from '../systems/interpolationHelpers';
 
 // Local wire type for spawn request â€“ must match Rust/zod schema
 type SpawnRequestWire = {
@@ -1605,6 +1608,236 @@ export class CommandSender {
 }
 
 
+## FILE: apps\client-tauri\src\net\SnapshotDecoder.ts
+---------------------------
+// apps/client-tauri/src/net/SnapshotDecoder.ts
+
+import type {
+  Snapshot,
+  FlagSnapshot,
+  GameModeState,
+} from '@bf42lite/protocol';
+import type { DecodedServerMessage } from './types';
+
+/**
+ * Normalize flag snapshots coming from Rust/host into uniform object form.
+ * Supports both:
+ *   - Array layout: [id, x, y, z, radius, ownerStr, capture]
+ *   - Object layout: { id, pos: {x,y,z}, radius, owner, capture }
+ */
+export function normalizeFlags(raw: any[] | undefined | null): FlagSnapshot[] {
+  const src = raw ?? [];
+
+  return src.map((f: any): FlagSnapshot => {
+    if (Array.isArray(f)) {
+      const id = f[0];
+      const x = f[1];
+      const y = f[2];
+      const z = f[3];
+      const radius = f[4] ?? 0;
+      const owner = f[5] ?? null;
+      const capture = typeof f[6] === 'number' ? f[6] : 0;
+
+      return {
+        id: id ?? 0,
+        x: x ?? 0,
+        y: y ?? 0,
+        z: z ?? 0,
+        radius,
+        owner,
+        capture,
+      };
+    }
+
+    const pos = f.pos ?? {};
+    const x = f.x ?? pos.x ?? 0;
+    const y = f.y ?? pos.y ?? 0;
+    const z = f.z ?? pos.z ?? 0;
+    const radius = f.radius ?? f.r ?? 0;
+    const owner = f.owner ?? null;
+    const capture = typeof f.capture === 'number' ? f.capture : 0;
+
+    return {
+      id: f.id ?? 0,
+      x,
+      y,
+      z,
+      radius,
+      owner,
+      capture,
+    };
+  });
+}
+
+/**
+ * Centralized decoder for all server â†’ client messages.
+ *
+ * `nextTick` should be provided by the caller (NetworkManager) and is used
+ * to assign a monotonically increasing tick to snapshots that do not
+ * already have a tick number (array / Rust envelopes).
+ */
+export function decodeServerMessage(
+  raw: any,
+  nextTick: number,
+): DecodedServerMessage {
+  // 1) Array-based messages (older/alternate host): [kindId, payload]
+  if (Array.isArray(raw)) {
+    const arr = raw as any[];
+
+    if (arr.length === 2) {
+      const [kindId, payload] = arr;
+
+      // kindId === 1 => snapshot
+      if (kindId === 1 && Array.isArray(payload)) {
+        const [entitiesRaw, flagsRaw, gameStateRaw] = payload as [
+          any[],
+          any[],
+          any,
+        ];
+
+        const flags = normalizeFlags(flagsRaw);
+
+        const game_state: GameModeState | undefined = Array.isArray(
+          gameStateRaw,
+        )
+          ? {
+              team_a_tickets: gameStateRaw[0] ?? 0,
+              team_b_tickets: gameStateRaw[1] ?? 0,
+              match_ended: !!gameStateRaw[2],
+              winner: null,
+            }
+          : gameStateRaw;
+
+        const snapshot: Snapshot = {
+          type: 'snapshot',
+          tick: nextTick,
+          entities: entitiesRaw ?? [],
+          flags,
+          game_state,
+        };
+
+        return { type: 'snapshot', snapshot };
+      }
+    }
+
+    return { type: 'unknown', raw };
+  }
+
+  // 2) Object-style messages (current Rust host + legacy JSON)
+  const msg = raw as any;
+
+  // Explicit "welcome" style: { type: 'welcome', yourId }
+  if (msg.type === 'welcome' && typeof msg.yourId === 'number') {
+    return {
+      type: 'welcome',
+      yourId: msg.yourId,
+    };
+  }
+
+  // Legacy JSON snapshot already matching the Snapshot interface
+  if (msg.type === 'snapshot') {
+    return {
+      type: 'snapshot',
+      snapshot: msg as Snapshot,
+    };
+  }
+
+  // Hit confirm notification
+  if (msg.type === 'hit-confirmed') {
+    return {
+      type: 'hit-confirmed',
+      damage: msg.damage ?? 0,
+    };
+  }
+
+  // Rust/Tauri envelope: { your_id, snapshot: { ... } }
+  if (msg.snapshot) {
+    const rawFlags =
+      msg.snapshot.flags || msg.snapshot.flag_snapshots || [];
+
+    const flags = normalizeFlags(rawFlags);
+
+    const snapshot: Snapshot = {
+      type: 'snapshot',
+      tick: nextTick,
+      entities: msg.snapshot.entities ?? [],
+      flags,
+      game_state: msg.snapshot.game_state,
+      game: msg.snapshot.game, // keep for backward compatibility, if present
+    };
+
+    const decoded: any = {
+      type: 'snapshot' as const,
+      snapshot,
+    };
+
+    if (typeof msg.your_id === 'number') {
+      decoded.yourId = msg.your_id;
+    }
+
+    return decoded;
+  }
+
+  // Fallback: unknown/unhandled message
+  return {
+    type: 'unknown',
+    raw,
+  };
+}
+
+
+## FILE: apps\client-tauri\src\net\types.ts
+---------------------------
+// apps/client-tauri/src/net/types.ts
+
+import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
+
+// Normalized flag is already identical to the protocol FlagSnapshot.
+// This alias is mainly for readability on the client side.
+export type NormalizedFlag = FlagSnapshot;
+
+// Interpolation types for remote entities
+export interface InterpolationSnapshot {
+  tick: number;
+  pos: { x: number; y: number; z: number };
+  rot: number;
+  timestamp: number;
+}
+
+export interface InterpolationBuffer {
+  snapshots: InterpolationSnapshot[];
+}
+
+// Decoded server messages after passing through the network decoder
+export interface DecodedSnapshotMessage {
+  type: 'snapshot';
+  snapshot: Snapshot;
+  // Present when coming from Rust envelope { your_id, snapshot }
+  yourId?: number;
+}
+
+export interface DecodedWelcomeMessage {
+  type: 'welcome';
+  yourId: number;
+}
+
+export interface DecodedHitMessage {
+  type: 'hit-confirmed';
+  damage: number;
+}
+
+export interface DecodedUnknownMessage {
+  type: 'unknown';
+  raw: any;
+}
+
+export type DecodedServerMessage =
+  | DecodedSnapshotMessage
+  | DecodedWelcomeMessage
+  | DecodedHitMessage
+  | DecodedUnknownMessage;
+
+
 ## FILE: apps\client-tauri\src\network\index.ts
 ---------------------------
 // apps/client-tauri/src/network/index.ts
@@ -1617,281 +1850,21 @@ export * from './interpolation';
 ## FILE: apps\client-tauri\src\network\interpolation.ts
 ---------------------------
 // apps/client-tauri/src/network/interpolation.ts
+// Temporary shim: re-export interpolation helpers from systems.
 
-import {
-    Transform,
-    type SimWorld,
-  } from '@bf42lite/engine-core';
-  import type {
-    InterpolationBuffer,
-    InterpolationSnapshot,
-  } from './types';
-  
-  /**
-   * Push a new interpolation snapshot into the buffer for a given entity.
-   * Keeps history capped to `maxSnapshots`.
-   */
-  export function pushInterpolationSnapshot(
-    buffers: Map<number, InterpolationBuffer>,
-    localId: number,
-    tick: number,
-    pos: { x: number; y: number; z: number },
-    rot: number,
-    timestamp: number,
-    maxSnapshots = 20,
-  ): void {
-    let buffer = buffers.get(localId);
-    if (!buffer) {
-      buffer = { snapshots: [] };
-      buffers.set(localId, buffer);
-    }
-  
-    const snap: InterpolationSnapshot = {
-      tick,
-      pos: { x: pos.x, y: pos.y, z: pos.z },
-      rot,
-      timestamp,
-    };
-  
-    buffer.snapshots.push(snap);
-    if (buffer.snapshots.length > maxSnapshots) {
-      buffer.snapshots.shift();
-    }
-  }
-  
-  /**
-   * Simple time-based interpolation for remote player positions.
-   *
-   * `renderTimeMs` should be something like `performance.now() - INTERPOLATION_DELAY_MS`
-   * to introduce a small delay and ensure you almost always have at least
-   * two snapshots to interpolate between.
-   */
-  export function interpolateRemotePlayers(
-    world: SimWorld,
-    buffers: Map<number, InterpolationBuffer>,
-    renderTimeMs: number,
-  ): void {
-    for (const [eid, buffer] of buffers.entries()) {
-      const snaps = buffer.snapshots;
-      if (snaps.length < 2) continue;
-  
-      // Find the two snapshots that bracket renderTimeMs
-      let prev: InterpolationSnapshot | undefined;
-      let next: InterpolationSnapshot | undefined;
-  
-      for (let i = snaps.length - 1; i >= 0; i--) {
-        const s = snaps[i];
-        if (s.timestamp <= renderTimeMs) {
-          prev = s;
-          next = snaps[i + 1];
-          break;
-        }
-      }
-  
-      // Fallback to last two if we didn't find a proper bracket
-      if (!prev || !next) {
-        prev = snaps[snaps.length - 2];
-        next = snaps[snaps.length - 1];
-      }
-  
-      if (!prev || !next) continue;
-  
-      const span = next.timestamp - prev.timestamp;
-      const tRaw =
-        span > 0 ? (renderTimeMs - prev.timestamp) / span : 0;
-      const t = Math.max(0, Math.min(1, tRaw));
-  
-      const lerp = (a: number, b: number) => a + (b - a) * t;
-  
-      Transform.x[eid] = lerp(prev.pos.x, next.pos.x);
-      Transform.y[eid] = lerp(prev.pos.y, next.pos.y);
-      Transform.z[eid] = lerp(prev.pos.z, next.pos.z);
-      Transform.rotation[eid] = lerp(prev.rot, next.rot);
-    }
-  
-    // Currently no need to touch `world` fields; transform changes are enough.
-  }
-  
+export {
+  pushInterpolationSnapshot,
+  interpolateRemotePlayers,
+} from '../systems/interpolationHelpers';
+
 
 ## FILE: apps\client-tauri\src\network\SnapshotDecoder.ts
 ---------------------------
 // apps/client-tauri/src/network/SnapshotDecoder.ts
+// Temporary shim: re-export from the new net module.
 
-import type {
-    Snapshot,
-    FlagSnapshot,
-    GameModeState,
-  } from '@bf42lite/protocol';
-  import type {
-    DecodedServerMessage,
-  } from './types';
-  
-  /**
-   * Normalize flag snapshots coming from Rust/host into uniform object form.
-   * Supports both:
-   *   - Array layout: [id, x, y, z, radius, ownerStr, capture]
-   *   - Object layout: { id, pos: {x,y,z}, radius, owner, capture }
-   */
-  export function normalizeFlags(raw: any[] | undefined | null): FlagSnapshot[] {
-    const src = raw ?? [];
-  
-    return src.map((f: any): FlagSnapshot => {
-      if (Array.isArray(f)) {
-        const id = f[0];
-        const x = f[1];
-        const y = f[2];
-        const z = f[3];
-        const radius = f[4] ?? 0;
-        const owner = f[5] ?? null;
-        const capture = typeof f[6] === 'number' ? f[6] : 0;
-  
-        return {
-          id: id ?? 0,
-          x: x ?? 0,
-          y: y ?? 0,
-          z: z ?? 0,
-          radius,
-          owner,
-          capture,
-        };
-      }
-  
-      const pos = f.pos ?? {};
-      const x = f.x ?? pos.x ?? 0;
-      const y = f.y ?? pos.y ?? 0;
-      const z = f.z ?? pos.z ?? 0;
-      const radius = f.radius ?? f.r ?? 0;
-      const owner = f.owner ?? null;
-      const capture = typeof f.capture === 'number' ? f.capture : 0;
-  
-      return {
-        id: f.id ?? 0,
-        x,
-        y,
-        z,
-        radius,
-        owner,
-        capture,
-      };
-    });
-  }
-  
-  /**
-   * Centralized decoder for all server â†’ client messages.
-   *
-   * `nextTick` should be provided by the caller (NetworkManager) and is used
-   * to assign a monotonically increasing tick to snapshots that do not
-   * already have a tick number (array / Rust envelopes).
-   */
-  export function decodeServerMessage(
-    raw: any,
-    nextTick: number,
-  ): DecodedServerMessage {
-    // 1) Array-based messages (older/alternate host): [kindId, payload]
-    if (Array.isArray(raw)) {
-      const arr = raw as any[];
-  
-      if (arr.length === 2) {
-        const [kindId, payload] = arr;
-  
-        // kindId === 1 => snapshot
-        if (kindId === 1 && Array.isArray(payload)) {
-          const [entitiesRaw, flagsRaw, gameStateRaw] = payload as [
-            any[],
-            any[],
-            any,
-          ];
-  
-          const flags = normalizeFlags(flagsRaw);
-  
-          const game_state: GameModeState | undefined = Array.isArray(
-            gameStateRaw,
-          )
-            ? {
-                team_a_tickets: gameStateRaw[0] ?? 0,
-                team_b_tickets: gameStateRaw[1] ?? 0,
-                match_ended: !!gameStateRaw[2],
-                winner: null,
-              }
-            : gameStateRaw;
-  
-          const snapshot: Snapshot = {
-            type: 'snapshot',
-            tick: nextTick,
-            entities: entitiesRaw ?? [],
-            flags,
-            game_state,
-          };
-  
-          return { type: 'snapshot', snapshot };
-        }
-      }
-  
-      return { type: 'unknown', raw };
-    }
-  
-    // 2) Object-style messages (current Rust host + legacy JSON)
-    const msg = raw as any;
-  
-    // Explicit "welcome" style: { type: 'welcome', yourId }
-    if (msg.type === 'welcome' && typeof msg.yourId === 'number') {
-      return {
-        type: 'welcome',
-        yourId: msg.yourId,
-      };
-    }
-  
-    // Legacy JSON snapshot already matching the Snapshot interface
-    if (msg.type === 'snapshot') {
-      return {
-        type: 'snapshot',
-        snapshot: msg as Snapshot,
-      };
-    }
-  
-    // Hit confirm notification
-    if (msg.type === 'hit-confirmed') {
-      return {
-        type: 'hit-confirmed',
-        damage: msg.damage ?? 0,
-      };
-    }
-  
-    // Rust/Tauri envelope: { your_id, snapshot: { ... } }
-    if (msg.snapshot) {
-      const rawFlags =
-        msg.snapshot.flags || msg.snapshot.flag_snapshots || [];
-  
-      const flags = normalizeFlags(rawFlags);
-  
-      const snapshot: Snapshot = {
-        type: 'snapshot',
-        tick: nextTick,
-        entities: msg.snapshot.entities ?? [],
-        flags,
-        game_state: msg.snapshot.game_state,
-        game: msg.snapshot.game, // keep for backward compatibility, if present
-      };
-  
-      const decoded: any = {
-        type: 'snapshot' as const,
-        snapshot,
-      };
-  
-      if (typeof msg.your_id === 'number') {
-        decoded.yourId = msg.your_id;
-      }
-  
-      return decoded;
-    }
-  
-    // Fallback: unknown/unhandled message
-    return {
-      type: 'unknown',
-      raw,
-    };
-  }
-  
+export * from '../net/SnapshotDecoder';
+
 
 ## FILE: apps\client-tauri\src\network\types.ts
 ---------------------------
@@ -2279,6 +2252,105 @@ export class FlagSystem {
 }
 
 
+## FILE: apps\client-tauri\src\systems\interpolationHelpers.ts
+---------------------------
+// apps/client-tauri/src/systems/interpolationHelpers.ts
+
+import {
+  Transform,
+  type SimWorld,
+} from '@bf42lite/engine-core';
+
+import type {
+  InterpolationBuffer,
+  InterpolationSnapshot,
+} from '../net/types';
+
+/**
+ * Push a new interpolation snapshot into the buffer for a given entity.
+ * Keeps history capped to `maxSnapshots`.
+ */
+export function pushInterpolationSnapshot(
+  buffers: Map<number, InterpolationBuffer>,
+  localId: number,
+  tick: number,
+  pos: { x: number; y: number; z: number },
+  rot: number,
+  timestamp: number,
+  maxSnapshots = 20,
+): void {
+  let buffer = buffers.get(localId);
+  if (!buffer) {
+    buffer = { snapshots: [] };
+    buffers.set(localId, buffer);
+  }
+
+  const snap: InterpolationSnapshot = {
+    tick,
+    pos: { x: pos.x, y: pos.y, z: pos.z },
+    rot,
+    timestamp,
+  };
+
+  buffer.snapshots.push(snap);
+  if (buffer.snapshots.length > maxSnapshots) {
+    buffer.snapshots.shift();
+  }
+}
+
+/**
+ * Simple time-based interpolation for remote player positions.
+ *
+ * `renderTimeMs` should be something like `performance.now() - INTERPOLATION_DELAY_MS`
+ * to introduce a small delay and ensure you almost always have at least
+ * two snapshots to interpolate between.
+ */
+export function interpolateRemotePlayers(
+  world: SimWorld,
+  buffers: Map<number, InterpolationBuffer>,
+  renderTimeMs: number,
+): void {
+  for (const [eid, buffer] of buffers.entries()) {
+    const snaps = buffer.snapshots;
+    if (snaps.length < 2) continue;
+
+    // Find the two snapshots that bracket renderTimeMs
+    let prev: InterpolationSnapshot | undefined;
+    let next: InterpolationSnapshot | undefined;
+
+    for (let i = snaps.length - 1; i >= 0; i--) {
+      const s = snaps[i];
+      if (s.timestamp <= renderTimeMs) {
+        prev = s;
+        next = snaps[i + 1];
+        break;
+      }
+    }
+
+    // Fallback to last two if we didn't find a proper bracket
+    if (!prev || !next) {
+      prev = snaps[snaps.length - 2];
+      next = snaps[snaps.length - 1];
+    }
+
+    if (!prev || !next) continue;
+
+    const span = next.timestamp - prev.timestamp;
+    const tRaw = span > 0 ? (renderTimeMs - prev.timestamp) / span : 0;
+    const t = Math.max(0, Math.min(1, tRaw));
+
+    const lerp = (a: number, b: number) => a + (b - a) * t;
+
+    Transform.x[eid] = lerp(prev.pos.x, next.pos.x);
+    Transform.y[eid] = lerp(prev.pos.y, next.pos.y);
+    Transform.z[eid] = lerp(prev.pos.z, next.pos.z);
+    Transform.rotation[eid] = lerp(prev.rot, next.rot);
+  }
+
+  // Currently no need to touch `world` fields; transform changes are enough.
+}
+
+
 ## FILE: apps\client-tauri\src\systems\InterpolationSystem.ts
 ---------------------------
 // apps/client-tauri/src/systems/InterpolationSystem.ts
@@ -2473,7 +2545,7 @@ export class PredictionSystem {
 
 import { Transform, Velocity, SimWorld } from '@bf42lite/engine-core';
 import { ClientInput, EntityState } from '@bf42lite/protocol';
-import type { InterpolationBuffer } from '../network/types';
+import type { InterpolationBuffer } from '../net/types';
 import { log } from '../utils/log';
 
 export interface InputHistory {
@@ -2695,7 +2767,7 @@ import type { Renderer } from '../core/Renderer';
 import type { Reconciler } from './Reconciler';
 
 // We will migrate this later; for now we still reuse the old helper.
-import { pushInterpolationSnapshot } from '../network/interpolation';
+import { pushInterpolationSnapshot } from './interpolationHelpers';
 
 export class RemoteEntitiesSystem {
   private static ensureEntity(
