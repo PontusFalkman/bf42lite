@@ -11,18 +11,6 @@ D:\BF42LITE\PACKAGES\SIM
 ª   tsconfig.json
 ª   tsconfig.tsbuildinfo
 ª   
-+---dist
-ª   ª   components.d.ts
-ª   ª   components.js
-ª   ª   index.d.ts
-ª   ª   index.js
-ª   ª   
-ª   +---systems
-ª           health.d.ts
-ª           health.js
-ª           movement.d.ts
-ª           movement.js
-ª           
 +---node_modules
 ª   +---.bin
 ª   ª       tsc

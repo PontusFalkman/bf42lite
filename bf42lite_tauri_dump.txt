@@ -12,6 +12,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
 ª   build.rs
 ª   Cargo.lock
 ª   Cargo.toml
+ª   game_config.toml
 ª   tauri.conf.json
 ª   
 +---capabilities
@@ -44,6 +45,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
 ª       StoreLogo.png
 ª       
 +---src
+ª   ª   config.rs
 ª   ª   gameloop.rs
 ª   ª   lib.rs
 ª   ª   main.rs
@@ -182,6 +184,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       dep-build-script-build-script-build
     ª   ª   ª       invoked.timestamp
     ª   ª   ª       
+    ª   ª   +---bf42lite-3c72d9e78ab6d2fa
+    ª   ª   ª       build-script-build-script-build
+    ª   ª   ª       build-script-build-script-build.json
+    ª   ª   ª       dep-build-script-build-script-build
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       
     ª   ª   +---bf42lite-45bfef534e82e9cc
     ª   ª   ª       dep-lib-bf42lite
     ª   ª   ª       invoked.timestamp
@@ -193,11 +201,22 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       run-build-script-build-script-build
     ª   ª   ª       run-build-script-build-script-build.json
     ª   ª   ª       
+    ª   ª   +---bf42lite-7b1753e50d2bb214
+    ª   ª   ª       dep-lib-bf42lite
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-bf42lite
+    ª   ª   ª       lib-bf42lite.json
+    ª   ª   ª       output-lib-bf42lite
+    ª   ª   ª       
     ª   ª   +---bf42lite-7be0b53bfdcb2d1f
     ª   ª   ª       build-script-build-script-build
     ª   ª   ª       build-script-build-script-build.json
     ª   ª   ª       dep-build-script-build-script-build
     ª   ª   ª       invoked.timestamp
+    ª   ª   ª       
+    ª   ª   +---bf42lite-9664e28282078d0a
+    ª   ª   ª       run-build-script-build-script-build
+    ª   ª   ª       run-build-script-build-script-build.json
     ª   ª   ª       
     ª   ª   +---bf42lite-af34f396ab6cb9e7
     ª   ª   ª       run-build-script-build-script-build
@@ -1335,6 +1354,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-kuchikiki
     ª   ª   ª       lib-kuchikiki.json
     ª   ª   ª       
+    ª   ª   +---kuchikiki-798a8552d28a5fd6
+    ª   ª   ª       dep-lib-kuchikiki
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-kuchikiki
+    ª   ª   ª       lib-kuchikiki.json
+    ª   ª   ª       
     ª   ª   +---kuchikiki-8eac537f3f4c662e
     ª   ª   ª       dep-lib-kuchikiki
     ª   ª   ª       invoked.timestamp
@@ -2387,6 +2412,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-serde_spanned
     ª   ª   ª       lib-serde_spanned.json
     ª   ª   ª       
+    ª   ª   +---serde_spanned-4d1feb93ff468b99
+    ª   ª   ª       dep-lib-serde_spanned
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-serde_spanned
+    ª   ª   ª       lib-serde_spanned.json
+    ª   ª   ª       
     ª   ª   +---serde_spanned-6593482da67cdf27
     ª   ª   ª       dep-lib-serde_spanned
     ª   ª   ª       invoked.timestamp
@@ -2681,6 +2712,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri
     ª   ª   ª       lib-tauri.json
     ª   ª   ª       
+    ª   ª   +---tauri-4ba9851fcf499285
+    ª   ª   ª       build-script-build-script-build
+    ª   ª   ª       build-script-build-script-build.json
+    ª   ª   ª       dep-build-script-build-script-build
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       
     ª   ª   +---tauri-6e1524f4e2dae0e1
     ª   ª   ª       build-script-build-script-build
     ª   ª   ª       build-script-build-script-build.json
@@ -2701,6 +2738,16 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri
     ª   ª   ª       lib-tauri.json
     ª   ª   ª       
+    ª   ª   +---tauri-a57c15b17f99ffe9
+    ª   ª   ª       run-build-script-build-script-build
+    ª   ª   ª       run-build-script-build-script-build.json
+    ª   ª   ª       
+    ª   ª   +---tauri-build-0ebae59a5fc5809d
+    ª   ª   ª       dep-lib-tauri_build
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_build
+    ª   ª   ª       lib-tauri_build.json
+    ª   ª   ª       
     ª   ª   +---tauri-build-a26958b4ab5ed687
     ª   ª   ª       dep-lib-tauri_build
     ª   ª   ª       invoked.timestamp
@@ -2718,6 +2765,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       invoked.timestamp
     ª   ª   ª       lib-tauri_build
     ª   ª   ª       lib-tauri_build.json
+    ª   ª   ª       
+    ª   ª   +---tauri-codegen-3cadd8800caa6d53
+    ª   ª   ª       dep-lib-tauri_codegen
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_codegen
+    ª   ª   ª       lib-tauri_codegen.json
     ª   ª   ª       
     ª   ª   +---tauri-codegen-51692fc2b9c0d63a
     ª   ª   ª       dep-lib-tauri_codegen
@@ -2737,11 +2790,23 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri_codegen
     ª   ª   ª       lib-tauri_codegen.json
     ª   ª   ª       
+    ª   ª   +---tauri-d581d99d76aa4f2b
+    ª   ª   ª       dep-lib-tauri
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri
+    ª   ª   ª       lib-tauri.json
+    ª   ª   ª       
     ª   ª   +---tauri-fb8492db37b6f3c2
     ª   ª   ª       build-script-build-script-build
     ª   ª   ª       build-script-build-script-build.json
     ª   ª   ª       dep-build-script-build-script-build
     ª   ª   ª       invoked.timestamp
+    ª   ª   ª       
+    ª   ª   +---tauri-macros-7bccdddeb32feec8
+    ª   ª   ª       dep-lib-tauri_macros
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_macros
+    ª   ª   ª       lib-tauri_macros.json
     ª   ª   ª       
     ª   ª   +---tauri-macros-bd9a2d0d2d966006
     ª   ª   ª       dep-lib-tauri_macros
@@ -2761,6 +2826,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri_macros
     ª   ª   ª       lib-tauri_macros.json
     ª   ª   ª       
+    ª   ª   +---tauri-plugin-c0fc34f3d8de1c8e
+    ª   ª   ª       dep-lib-tauri_plugin
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_plugin
+    ª   ª   ª       lib-tauri_plugin.json
+    ª   ª   ª       
     ª   ª   +---tauri-plugin-eb24ec2b4a2d52e0
     ª   ª   ª       dep-lib-tauri_plugin
     ª   ª   ª       invoked.timestamp
@@ -2773,15 +2844,31 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri_plugin_shell
     ª   ª   ª       lib-tauri_plugin_shell.json
     ª   ª   ª       
+    ª   ª   +---tauri-plugin-shell-33f8f1c9e4439821
+    ª   ª   ª       run-build-script-build-script-build
+    ª   ª   ª       run-build-script-build-script-build.json
+    ª   ª   ª       
     ª   ª   +---tauri-plugin-shell-553a53993c57c269
     ª   ª   ª       run-build-script-build-script-build
     ª   ª   ª       run-build-script-build-script-build.json
+    ª   ª   ª       
+    ª   ª   +---tauri-plugin-shell-8e0fc731fb2cbeaf
+    ª   ª   ª       build-script-build-script-build
+    ª   ª   ª       build-script-build-script-build.json
+    ª   ª   ª       dep-build-script-build-script-build
+    ª   ª   ª       invoked.timestamp
     ª   ª   ª       
     ª   ª   +---tauri-plugin-shell-d8bd8450f22b1de6
     ª   ª   ª       build-script-build-script-build
     ª   ª   ª       build-script-build-script-build.json
     ª   ª   ª       dep-build-script-build-script-build
     ª   ª   ª       invoked.timestamp
+    ª   ª   ª       
+    ª   ª   +---tauri-plugin-shell-e85177b541173f51
+    ª   ª   ª       dep-lib-tauri_plugin_shell
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_plugin_shell
+    ª   ª   ª       lib-tauri_plugin_shell.json
     ª   ª   ª       
     ª   ª   +---tauri-runtime-0d4e8e7ed9884f8b
     ª   ª   ª       run-build-script-build-script-build
@@ -2866,6 +2953,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-tauri_utils.json
     ª   ª   ª       
     ª   ª   +---tauri-utils-6e19238654626e0b
+    ª   ª   ª       dep-lib-tauri_utils
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-tauri_utils
+    ª   ª   ª       lib-tauri_utils.json
+    ª   ª   ª       
+    ª   ª   +---tauri-utils-70d29cd45b8f7f9a
     ª   ª   ª       dep-lib-tauri_utils
     ª   ª   ª       invoked.timestamp
     ª   ª   ª       lib-tauri_utils
@@ -3077,6 +3170,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       lib-toml
     ª   ª   ª       lib-toml.json
     ª   ª   ª       
+    ª   ª   +---toml-5ebc34950564fbd6
+    ª   ª   ª       dep-lib-toml
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-toml
+    ª   ª   ª       lib-toml.json
+    ª   ª   ª       
     ª   ª   +---toml_datetime-3d97e7ae61a39998
     ª   ª   ª       dep-lib-toml_datetime
     ª   ª   ª       invoked.timestamp
@@ -3094,6 +3193,18 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       invoked.timestamp
     ª   ª   ª       lib-toml_datetime
     ª   ª   ª       lib-toml_datetime.json
+    ª   ª   ª       
+    ª   ª   +---toml_datetime-f12f26d64f3386c0
+    ª   ª   ª       dep-lib-toml_datetime
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-toml_datetime
+    ª   ª   ª       lib-toml_datetime.json
+    ª   ª   ª       
+    ª   ª   +---toml_edit-35e387ea6a01b1d3
+    ª   ª   ª       dep-lib-toml_edit
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-toml_edit
+    ª   ª   ª       lib-toml_edit.json
     ª   ª   ª       
     ª   ª   +---toml_edit-4dbb278441c61c51
     ª   ª   ª       dep-lib-toml_edit
@@ -3731,6 +3842,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       run-build-script-build-script-build
     ª   ª   ª       run-build-script-build-script-build.json
     ª   ª   ª       
+    ª   ª   +---winnow-16e2efa6d7fd223d
+    ª   ª   ª       dep-lib-winnow
+    ª   ª   ª       invoked.timestamp
+    ª   ª   ª       lib-winnow
+    ª   ª   ª       lib-winnow.json
+    ª   ª   ª       
     ª   ª   +---winnow-241f27a1d55914df
     ª   ª   ª       dep-lib-winnow
     ª   ª   ª       invoked.timestamp
@@ -3922,6 +4039,13 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       build_script_build-2ae44deb07f8ed41.pdb
     ª   ª   ª       build_script_build.pdb
     ª   ª   ª       
+    ª   ª   +---bf42lite-3c72d9e78ab6d2fa
+    ª   ª   ª       build-script-build.exe
+    ª   ª   ª       build_script_build-3c72d9e78ab6d2fa.d
+    ª   ª   ª       build_script_build-3c72d9e78ab6d2fa.exe
+    ª   ª   ª       build_script_build-3c72d9e78ab6d2fa.pdb
+    ª   ª   ª       build_script_build.pdb
+    ª   ª   ª       
     ª   ª   +---bf42lite-6bfe15ca38b8c48a
     ª   ª   ª   ª   invoked.timestamp
     ª   ª   ª   ª   output
@@ -3940,6 +4064,23 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       build_script_build-7be0b53bfdcb2d1f.pdb
     ª   ª   ª       build_script_build.pdb
     ª   ª   ª       
+    ª   ª   +---bf42lite-9664e28282078d0a
+    ª   ª   ª   ª   invoked.timestamp
+    ª   ª   ª   ª   output
+    ª   ª   ª   ª   root-output
+    ª   ª   ª   ª   stderr
+    ª   ª   ª   ª   
+    ª   ª   ª   +---out
+    ª   ª   ª       ª   45f1706e214e051e2ea25d5fcefb1d3a2ca8c5cc7ea0df00a57ce212cf0da8c5
+    ª   ª   ª       ª   acl-manifests.json
+    ª   ª   ª       ª   capabilities.json
+    ª   ª   ª       ª   resource.lib
+    ª   ª   ª       ª   resource.rc
+    ª   ª   ª       ª   __global-api-script.js
+    ª   ª   ª       ª   
+    ª   ª   ª       +---app-manifest
+    ª   ª   ª               __app__-permission-files
+    ª   ª   ª               
     ª   ª   +---bf42lite-af34f396ab6cb9e7
     ª   ª   ª   ª   invoked.timestamp
     ª   ª   ª   ª   output
@@ -4591,6 +4732,13 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       build_script_build-e303ceba06478981.pdb
     ª   ª   ª       build_script_build.pdb
     ª   ª   ª       
+    ª   ª   +---tauri-4ba9851fcf499285
+    ª   ª   ª       build-script-build.exe
+    ª   ª   ª       build_script_build-4ba9851fcf499285.d
+    ª   ª   ª       build_script_build-4ba9851fcf499285.exe
+    ª   ª   ª       build_script_build-4ba9851fcf499285.pdb
+    ª   ª   ª       build_script_build.pdb
+    ª   ª   ª       
     ª   ª   +---tauri-6e1524f4e2dae0e1
     ª   ª   ª       build-script-build.exe
     ª   ª   ª       build_script_build-6e1524f4e2dae0e1.d
@@ -4842,6 +4990,241 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª                           unmaximize.toml
     ª   ª   ª                           unminimize.toml
     ª   ª   ª                           
+    ª   ª   +---tauri-a57c15b17f99ffe9
+    ª   ª   ª   ª   invoked.timestamp
+    ª   ª   ª   ª   output
+    ª   ª   ª   ª   root-output
+    ª   ª   ª   ª   stderr
+    ª   ª   ª   ª   
+    ª   ª   ª   +---out
+    ª   ª   ª       ª   checked_features
+    ª   ª   ª       ª   tauri-core-app-permission-files
+    ª   ª   ª       ª   tauri-core-event-permission-files
+    ª   ª   ª       ª   tauri-core-image-permission-files
+    ª   ª   ª       ª   tauri-core-menu-permission-files
+    ª   ª   ª       ª   tauri-core-path-permission-files
+    ª   ª   ª       ª   tauri-core-permission-files
+    ª   ª   ª       ª   tauri-core-resources-permission-files
+    ª   ª   ª       ª   tauri-core-tray-permission-files
+    ª   ª   ª       ª   tauri-core-webview-permission-files
+    ª   ª   ª       ª   tauri-core-window-permission-files
+    ª   ª   ª       ª   
+    ª   ª   ª       +---permissions
+    ª   ª   ª           ª   default.toml
+    ª   ª   ª           ª   
+    ª   ª   ª           +---app
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               app_hide.toml
+    ª   ª   ª           ª               app_show.toml
+    ª   ª   ª           ª               bundle_type.toml
+    ª   ª   ª           ª               default_window_icon.toml
+    ª   ª   ª           ª               fetch_data_store_identifiers.toml
+    ª   ª   ª           ª               identifier.toml
+    ª   ª   ª           ª               name.toml
+    ª   ª   ª           ª               register_listener.toml
+    ª   ª   ª           ª               remove_data_store.toml
+    ª   ª   ª           ª               remove_listener.toml
+    ª   ª   ª           ª               set_app_theme.toml
+    ª   ª   ª           ª               set_dock_visibility.toml
+    ª   ª   ª           ª               tauri_version.toml
+    ª   ª   ª           ª               version.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---event
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               emit.toml
+    ª   ª   ª           ª               emit_to.toml
+    ª   ª   ª           ª               listen.toml
+    ª   ª   ª           ª               unlisten.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---image
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               from_bytes.toml
+    ª   ª   ª           ª               from_path.toml
+    ª   ª   ª           ª               new.toml
+    ª   ª   ª           ª               rgba.toml
+    ª   ª   ª           ª               size.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---menu
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               append.toml
+    ª   ª   ª           ª               create_default.toml
+    ª   ª   ª           ª               get.toml
+    ª   ª   ª           ª               insert.toml
+    ª   ª   ª           ª               is_checked.toml
+    ª   ª   ª           ª               is_enabled.toml
+    ª   ª   ª           ª               items.toml
+    ª   ª   ª           ª               new.toml
+    ª   ª   ª           ª               popup.toml
+    ª   ª   ª           ª               prepend.toml
+    ª   ª   ª           ª               remove.toml
+    ª   ª   ª           ª               remove_at.toml
+    ª   ª   ª           ª               set_accelerator.toml
+    ª   ª   ª           ª               set_as_app_menu.toml
+    ª   ª   ª           ª               set_as_help_menu_for_nsapp.toml
+    ª   ª   ª           ª               set_as_windows_menu_for_nsapp.toml
+    ª   ª   ª           ª               set_as_window_menu.toml
+    ª   ª   ª           ª               set_checked.toml
+    ª   ª   ª           ª               set_enabled.toml
+    ª   ª   ª           ª               set_icon.toml
+    ª   ª   ª           ª               set_text.toml
+    ª   ª   ª           ª               text.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---path
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               basename.toml
+    ª   ª   ª           ª               dirname.toml
+    ª   ª   ª           ª               extname.toml
+    ª   ª   ª           ª               is_absolute.toml
+    ª   ª   ª           ª               join.toml
+    ª   ª   ª           ª               normalize.toml
+    ª   ª   ª           ª               resolve.toml
+    ª   ª   ª           ª               resolve_directory.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---resources
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               close.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---tray
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               get_by_id.toml
+    ª   ª   ª           ª               new.toml
+    ª   ª   ª           ª               remove_by_id.toml
+    ª   ª   ª           ª               set_icon.toml
+    ª   ª   ª           ª               set_icon_as_template.toml
+    ª   ª   ª           ª               set_menu.toml
+    ª   ª   ª           ª               set_show_menu_on_left_click.toml
+    ª   ª   ª           ª               set_temp_dir_path.toml
+    ª   ª   ª           ª               set_title.toml
+    ª   ª   ª           ª               set_tooltip.toml
+    ª   ª   ª           ª               set_visible.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---webview
+    ª   ª   ª           ª   +---autogenerated
+    ª   ª   ª           ª       ª   default.toml
+    ª   ª   ª           ª       ª   
+    ª   ª   ª           ª       +---commands
+    ª   ª   ª           ª               clear_all_browsing_data.toml
+    ª   ª   ª           ª               create_webview.toml
+    ª   ª   ª           ª               create_webview_window.toml
+    ª   ª   ª           ª               get_all_webviews.toml
+    ª   ª   ª           ª               internal_toggle_devtools.toml
+    ª   ª   ª           ª               print.toml
+    ª   ª   ª           ª               reparent.toml
+    ª   ª   ª           ª               set_webview_auto_resize.toml
+    ª   ª   ª           ª               set_webview_background_color.toml
+    ª   ª   ª           ª               set_webview_focus.toml
+    ª   ª   ª           ª               set_webview_position.toml
+    ª   ª   ª           ª               set_webview_size.toml
+    ª   ª   ª           ª               set_webview_zoom.toml
+    ª   ª   ª           ª               webview_close.toml
+    ª   ª   ª           ª               webview_hide.toml
+    ª   ª   ª           ª               webview_position.toml
+    ª   ª   ª           ª               webview_show.toml
+    ª   ª   ª           ª               webview_size.toml
+    ª   ª   ª           ª               
+    ª   ª   ª           +---window
+    ª   ª   ª               +---autogenerated
+    ª   ª   ª                   ª   default.toml
+    ª   ª   ª                   ª   
+    ª   ª   ª                   +---commands
+    ª   ª   ª                           available_monitors.toml
+    ª   ª   ª                           center.toml
+    ª   ª   ª                           close.toml
+    ª   ª   ª                           create.toml
+    ª   ª   ª                           current_monitor.toml
+    ª   ª   ª                           cursor_position.toml
+    ª   ª   ª                           destroy.toml
+    ª   ª   ª                           get_all_windows.toml
+    ª   ª   ª                           hide.toml
+    ª   ª   ª                           inner_position.toml
+    ª   ª   ª                           inner_size.toml
+    ª   ª   ª                           internal_toggle_maximize.toml
+    ª   ª   ª                           is_always_on_top.toml
+    ª   ª   ª                           is_closable.toml
+    ª   ª   ª                           is_decorated.toml
+    ª   ª   ª                           is_enabled.toml
+    ª   ª   ª                           is_focused.toml
+    ª   ª   ª                           is_fullscreen.toml
+    ª   ª   ª                           is_maximizable.toml
+    ª   ª   ª                           is_maximized.toml
+    ª   ª   ª                           is_minimizable.toml
+    ª   ª   ª                           is_minimized.toml
+    ª   ª   ª                           is_resizable.toml
+    ª   ª   ª                           is_visible.toml
+    ª   ª   ª                           maximize.toml
+    ª   ª   ª                           minimize.toml
+    ª   ª   ª                           monitor_from_point.toml
+    ª   ª   ª                           outer_position.toml
+    ª   ª   ª                           outer_size.toml
+    ª   ª   ª                           primary_monitor.toml
+    ª   ª   ª                           request_user_attention.toml
+    ª   ª   ª                           scale_factor.toml
+    ª   ª   ª                           set_always_on_bottom.toml
+    ª   ª   ª                           set_always_on_top.toml
+    ª   ª   ª                           set_background_color.toml
+    ª   ª   ª                           set_badge_count.toml
+    ª   ª   ª                           set_badge_label.toml
+    ª   ª   ª                           set_closable.toml
+    ª   ª   ª                           set_content_protected.toml
+    ª   ª   ª                           set_cursor_grab.toml
+    ª   ª   ª                           set_cursor_icon.toml
+    ª   ª   ª                           set_cursor_position.toml
+    ª   ª   ª                           set_cursor_visible.toml
+    ª   ª   ª                           set_decorations.toml
+    ª   ª   ª                           set_effects.toml
+    ª   ª   ª                           set_enabled.toml
+    ª   ª   ª                           set_focus.toml
+    ª   ª   ª                           set_focusable.toml
+    ª   ª   ª                           set_fullscreen.toml
+    ª   ª   ª                           set_icon.toml
+    ª   ª   ª                           set_ignore_cursor_events.toml
+    ª   ª   ª                           set_maximizable.toml
+    ª   ª   ª                           set_max_size.toml
+    ª   ª   ª                           set_minimizable.toml
+    ª   ª   ª                           set_min_size.toml
+    ª   ª   ª                           set_overlay_icon.toml
+    ª   ª   ª                           set_position.toml
+    ª   ª   ª                           set_progress_bar.toml
+    ª   ª   ª                           set_resizable.toml
+    ª   ª   ª                           set_shadow.toml
+    ª   ª   ª                           set_simple_fullscreen.toml
+    ª   ª   ª                           set_size.toml
+    ª   ª   ª                           set_size_constraints.toml
+    ª   ª   ª                           set_skip_taskbar.toml
+    ª   ª   ª                           set_theme.toml
+    ª   ª   ª                           set_title.toml
+    ª   ª   ª                           set_title_bar_style.toml
+    ª   ª   ª                           set_visible_on_all_workspaces.toml
+    ª   ª   ª                           show.toml
+    ª   ª   ª                           start_dragging.toml
+    ª   ª   ª                           start_resize_dragging.toml
+    ª   ª   ª                           theme.toml
+    ª   ª   ª                           title.toml
+    ª   ª   ª                           toggle_maximize.toml
+    ª   ª   ª                           unmaximize.toml
+    ª   ª   ª                           unminimize.toml
+    ª   ª   ª                           
     ª   ª   +---tauri-fb8492db37b6f3c2
     ª   ª   ª       build-script-build.exe
     ª   ª   ª       build_script_build-fb8492db37b6f3c2.d
@@ -4849,6 +5232,16 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª       build_script_build-fb8492db37b6f3c2.pdb
     ª   ª   ª       build_script_build.pdb
     ª   ª   ª       
+    ª   ª   +---tauri-plugin-shell-33f8f1c9e4439821
+    ª   ª   ª   ª   invoked.timestamp
+    ª   ª   ª   ª   output
+    ª   ª   ª   ª   root-output
+    ª   ª   ª   ª   stderr
+    ª   ª   ª   ª   
+    ª   ª   ª   +---out
+    ª   ª   ª           global-scope.json
+    ª   ª   ª           tauri-plugin-shell-permission-files
+    ª   ª   ª           
     ª   ª   +---tauri-plugin-shell-553a53993c57c269
     ª   ª   ª   ª   invoked.timestamp
     ª   ª   ª   ª   output
@@ -4859,6 +5252,13 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª   ª           global-scope.json
     ª   ª   ª           tauri-plugin-shell-permission-files
     ª   ª   ª           
+    ª   ª   +---tauri-plugin-shell-8e0fc731fb2cbeaf
+    ª   ª   ª       build-script-build.exe
+    ª   ª   ª       build_script_build-8e0fc731fb2cbeaf.d
+    ª   ª   ª       build_script_build-8e0fc731fb2cbeaf.exe
+    ª   ª   ª       build_script_build-8e0fc731fb2cbeaf.pdb
+    ª   ª   ª       build_script_build.pdb
+    ª   ª   ª       
     ª   ª   +---tauri-plugin-shell-d8bd8450f22b1de6
     ª   ª   ª       build-script-build.exe
     ª   ª   ª       build_script_build-d8bd8450f22b1de6.d
@@ -5210,6 +5610,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       bf42lite-2309e1d19d023e30.d
     ª   ª       bf42lite-25fc87b96bd69048.d
     ª   ª       bf42lite-45bfef534e82e9cc.d
+    ª   ª       bf42lite-7b1753e50d2bb214.d
     ª   ª       bf42lite.d
     ª   ª       bf42lite.exe
     ª   ª       bf42lite.pdb
@@ -5399,6 +5800,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       json_patch-d4c2126edea49604.d
     ª   ª       keyboard_types-3d212749b90b74ae.d
     ª   ª       kuchikiki-175423b783154b72.d
+    ª   ª       kuchikiki-798a8552d28a5fd6.d
     ª   ª       kuchikiki-8eac537f3f4c662e.d
     ª   ª       kuchikiki-de173de1716cb41e.d
     ª   ª       lazy_static-fca5b92b7e63f291.d
@@ -5430,6 +5832,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libbf42lite-25fc87b96bd69048.rmeta
     ª   ª       libbf42lite-45bfef534e82e9cc.rlib
     ª   ª       libbf42lite-45bfef534e82e9cc.rmeta
+    ª   ª       libbf42lite-7b1753e50d2bb214.rlib
+    ª   ª       libbf42lite-7b1753e50d2bb214.rmeta
     ª   ª       libbitflags-82f8c6fa064b99cf.rlib
     ª   ª       libbitflags-82f8c6fa064b99cf.rmeta
     ª   ª       libbitflags-ca85090cac1ff863.rlib
@@ -5743,6 +6147,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libkeyboard_types-3d212749b90b74ae.rmeta
     ª   ª       libkuchikiki-175423b783154b72.rlib
     ª   ª       libkuchikiki-175423b783154b72.rmeta
+    ª   ª       libkuchikiki-798a8552d28a5fd6.rlib
+    ª   ª       libkuchikiki-798a8552d28a5fd6.rmeta
     ª   ª       libkuchikiki-8eac537f3f4c662e.rlib
     ª   ª       libkuchikiki-8eac537f3f4c662e.rmeta
     ª   ª       libkuchikiki-de173de1716cb41e.rlib
@@ -5991,6 +6397,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libserde_json-ec35352224f80971.rmeta
     ª   ª       libserde_spanned-32052f60e43ab7a3.rlib
     ª   ª       libserde_spanned-32052f60e43ab7a3.rmeta
+    ª   ª       libserde_spanned-4d1feb93ff468b99.rlib
+    ª   ª       libserde_spanned-4d1feb93ff468b99.rmeta
     ª   ª       libserde_spanned-6593482da67cdf27.rlib
     ª   ª       libserde_spanned-6593482da67cdf27.rmeta
     ª   ª       libserde_spanned-d1b1cfff5c44e9fe.rlib
@@ -6081,22 +6489,32 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libtauri-2571ed42e96fee3c.rmeta
     ª   ª       libtauri-983e6b6c4526c92e.rlib
     ª   ª       libtauri-983e6b6c4526c92e.rmeta
+    ª   ª       libtauri-d581d99d76aa4f2b.rlib
+    ª   ª       libtauri-d581d99d76aa4f2b.rmeta
+    ª   ª       libtauri_build-0ebae59a5fc5809d.rlib
+    ª   ª       libtauri_build-0ebae59a5fc5809d.rmeta
     ª   ª       libtauri_build-a26958b4ab5ed687.rlib
     ª   ª       libtauri_build-a26958b4ab5ed687.rmeta
     ª   ª       libtauri_build-f1ce6dbb8a907533.rlib
     ª   ª       libtauri_build-f1ce6dbb8a907533.rmeta
     ª   ª       libtauri_build-fcacecefcd1effbb.rlib
     ª   ª       libtauri_build-fcacecefcd1effbb.rmeta
+    ª   ª       libtauri_codegen-3cadd8800caa6d53.rlib
+    ª   ª       libtauri_codegen-3cadd8800caa6d53.rmeta
     ª   ª       libtauri_codegen-51692fc2b9c0d63a.rlib
     ª   ª       libtauri_codegen-51692fc2b9c0d63a.rmeta
     ª   ª       libtauri_codegen-80ce7bdb54709a7d.rlib
     ª   ª       libtauri_codegen-80ce7bdb54709a7d.rmeta
     ª   ª       libtauri_codegen-f234ea05d7c3dce7.rlib
     ª   ª       libtauri_codegen-f234ea05d7c3dce7.rmeta
+    ª   ª       libtauri_plugin-c0fc34f3d8de1c8e.rlib
+    ª   ª       libtauri_plugin-c0fc34f3d8de1c8e.rmeta
     ª   ª       libtauri_plugin-eb24ec2b4a2d52e0.rlib
     ª   ª       libtauri_plugin-eb24ec2b4a2d52e0.rmeta
     ª   ª       libtauri_plugin_shell-1a3782fc31f23765.rlib
     ª   ª       libtauri_plugin_shell-1a3782fc31f23765.rmeta
+    ª   ª       libtauri_plugin_shell-e85177b541173f51.rlib
+    ª   ª       libtauri_plugin_shell-e85177b541173f51.rmeta
     ª   ª       libtauri_runtime-53262143f610da59.rlib
     ª   ª       libtauri_runtime-53262143f610da59.rmeta
     ª   ª       libtauri_runtime-930ea8aa50883350.rlib
@@ -6113,6 +6531,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libtauri_utils-44250d1d2e1add62.rmeta
     ª   ª       libtauri_utils-6e19238654626e0b.rlib
     ª   ª       libtauri_utils-6e19238654626e0b.rmeta
+    ª   ª       libtauri_utils-70d29cd45b8f7f9a.rlib
+    ª   ª       libtauri_utils-70d29cd45b8f7f9a.rmeta
     ª   ª       libtauri_utils-8ffecbb3d2e2d295.rlib
     ª   ª       libtauri_utils-8ffecbb3d2e2d295.rmeta
     ª   ª       libtauri_utils-b5a4416f6f5af107.rlib
@@ -6167,12 +6587,18 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libtoml-36a3fef8e5a9819a.rmeta
     ª   ª       libtoml-3a7ec384979a79c3.rlib
     ª   ª       libtoml-3a7ec384979a79c3.rmeta
+    ª   ª       libtoml-5ebc34950564fbd6.rlib
+    ª   ª       libtoml-5ebc34950564fbd6.rmeta
     ª   ª       libtoml_datetime-3d97e7ae61a39998.rlib
     ª   ª       libtoml_datetime-3d97e7ae61a39998.rmeta
     ª   ª       libtoml_datetime-3fe1556d9a3d4039.rlib
     ª   ª       libtoml_datetime-3fe1556d9a3d4039.rmeta
     ª   ª       libtoml_datetime-6ba0afb2a24af8e5.rlib
     ª   ª       libtoml_datetime-6ba0afb2a24af8e5.rmeta
+    ª   ª       libtoml_datetime-f12f26d64f3386c0.rlib
+    ª   ª       libtoml_datetime-f12f26d64f3386c0.rmeta
+    ª   ª       libtoml_edit-35e387ea6a01b1d3.rlib
+    ª   ª       libtoml_edit-35e387ea6a01b1d3.rmeta
     ª   ª       libtoml_edit-4dbb278441c61c51.rlib
     ª   ª       libtoml_edit-4dbb278441c61c51.rmeta
     ª   ª       libtoml_edit-ae48d9379fbf3a4c.rlib
@@ -6337,6 +6763,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       libwindows_x86_64_msvc-e29a875c55724ea2.rmeta
     ª   ª       libwindow_vibrancy-a2714813ac7ba21f.rlib
     ª   ª       libwindow_vibrancy-a2714813ac7ba21f.rmeta
+    ª   ª       libwinnow-16e2efa6d7fd223d.rlib
+    ª   ª       libwinnow-16e2efa6d7fd223d.rmeta
     ª   ª       libwinnow-241f27a1d55914df.rlib
     ª   ª       libwinnow-241f27a1d55914df.rmeta
     ª   ª       libwinnow-4d30bb5735bd9210.rlib
@@ -6545,6 +6973,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       serde_repr-cada9bbd77591f38.dll.lib
     ª   ª       serde_repr-cada9bbd77591f38.pdb
     ª   ª       serde_spanned-32052f60e43ab7a3.d
+    ª   ª       serde_spanned-4d1feb93ff468b99.d
     ª   ª       serde_spanned-6593482da67cdf27.d
     ª   ª       serde_spanned-d1b1cfff5c44e9fe.d
     ª   ª       serde_untagged-31f9fddca36a543f.d
@@ -6600,12 +7029,20 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       tauri-1771e92bea3106f5.d
     ª   ª       tauri-2571ed42e96fee3c.d
     ª   ª       tauri-983e6b6c4526c92e.d
+    ª   ª       tauri-d581d99d76aa4f2b.d
+    ª   ª       tauri_build-0ebae59a5fc5809d.d
     ª   ª       tauri_build-a26958b4ab5ed687.d
     ª   ª       tauri_build-f1ce6dbb8a907533.d
     ª   ª       tauri_build-fcacecefcd1effbb.d
+    ª   ª       tauri_codegen-3cadd8800caa6d53.d
     ª   ª       tauri_codegen-51692fc2b9c0d63a.d
     ª   ª       tauri_codegen-80ce7bdb54709a7d.d
     ª   ª       tauri_codegen-f234ea05d7c3dce7.d
+    ª   ª       tauri_macros-7bccdddeb32feec8.d
+    ª   ª       tauri_macros-7bccdddeb32feec8.dll
+    ª   ª       tauri_macros-7bccdddeb32feec8.dll.exp
+    ª   ª       tauri_macros-7bccdddeb32feec8.dll.lib
+    ª   ª       tauri_macros-7bccdddeb32feec8.pdb
     ª   ª       tauri_macros-bd9a2d0d2d966006.d
     ª   ª       tauri_macros-bd9a2d0d2d966006.dll
     ª   ª       tauri_macros-bd9a2d0d2d966006.dll.exp
@@ -6621,8 +7058,10 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       tauri_macros-f7b931ef5acc5bf4.dll.exp
     ª   ª       tauri_macros-f7b931ef5acc5bf4.dll.lib
     ª   ª       tauri_macros-f7b931ef5acc5bf4.pdb
+    ª   ª       tauri_plugin-c0fc34f3d8de1c8e.d
     ª   ª       tauri_plugin-eb24ec2b4a2d52e0.d
     ª   ª       tauri_plugin_shell-1a3782fc31f23765.d
+    ª   ª       tauri_plugin_shell-e85177b541173f51.d
     ª   ª       tauri_runtime-53262143f610da59.d
     ª   ª       tauri_runtime-930ea8aa50883350.d
     ª   ª       tauri_runtime-f13f3aef2a6d2cef.d
@@ -6631,6 +7070,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       tauri_runtime_wry-b542d05103a3ee0e.d
     ª   ª       tauri_utils-44250d1d2e1add62.d
     ª   ª       tauri_utils-6e19238654626e0b.d
+    ª   ª       tauri_utils-70d29cd45b8f7f9a.d
     ª   ª       tauri_utils-8ffecbb3d2e2d295.d
     ª   ª       tauri_utils-b5a4416f6f5af107.d
     ª   ª       tauri_utils-c59a45dd34c2f322.d
@@ -6678,9 +7118,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       toml-25c84215cf085f4b.d
     ª   ª       toml-36a3fef8e5a9819a.d
     ª   ª       toml-3a7ec384979a79c3.d
+    ª   ª       toml-5ebc34950564fbd6.d
     ª   ª       toml_datetime-3d97e7ae61a39998.d
     ª   ª       toml_datetime-3fe1556d9a3d4039.d
     ª   ª       toml_datetime-6ba0afb2a24af8e5.d
+    ª   ª       toml_datetime-f12f26d64f3386c0.d
+    ª   ª       toml_edit-35e387ea6a01b1d3.d
     ª   ª       toml_edit-4dbb278441c61c51.d
     ª   ª       toml_edit-ae48d9379fbf3a4c.d
     ª   ª       toml_parser-d0605aced9eb2c87.d
@@ -6788,6 +7231,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       windows_x86_64_msvc-da64cd86326b49d5.d
     ª   ª       windows_x86_64_msvc-e29a875c55724ea2.d
     ª   ª       window_vibrancy-a2714813ac7ba21f.d
+    ª   ª       winnow-16e2efa6d7fd223d.d
     ª   ª       winnow-241f27a1d55914df.d
     ª   ª       winnow-4d30bb5735bd9210.d
     ª   ª       winnow-d76070710a3acd8f.d
@@ -6825,6 +7269,271 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   ª       
     ª   +---examples
     ª   +---incremental
+    ª       +---bf42lite-0cx8vw0o4thig
+    ª       ª   ª   s-hddq0nekh7-0iyhjnf.lock
+    ª       ª   ª   
+    ª       ª   +---s-hddq0nekh7-0iyhjnf-b4p7nusu7s7awgl5gzyp7bp4v
+    ª       ª           03ot7ef28toy1phqbbgiyeqvf.o
+    ª       ª           05ilcb38e08i966g6z3johj1h.o
+    ª       ª           08h1n70qkd67uox2uwq02q4eg.o
+    ª       ª           0daubk1gk3r5h3lpiox7sfzkv.o
+    ª       ª           0fzxgikunthhy5dupgxhqm9ia.o
+    ª       ª           0h6pd14mkitz61vyo5f0gt12c.o
+    ª       ª           0lr1hdghflz8vadsz4ia7f1x2.o
+    ª       ª           0n5zsz0thk5s5oi75adwh0m63.o
+    ª       ª           0rivo5nde1lmg6w9mmy2webdj.o
+    ª       ª           0rtepcfzbwv8u4ayosnj6af58.o
+    ª       ª           0tnwkktdx8gdzut1b1am3gk7q.o
+    ª       ª           116h2xohi3a2uqz0minu967l0.o
+    ª       ª           1245wnugab0t4oicozmtyg4cf.o
+    ª       ª           1327upiuq4r4yw8inxffb3664.o
+    ª       ª           1c067svh0esk2q7tvisekdt59.o
+    ª       ª           1ca7umfitzb58papbzbbp8adh.o
+    ª       ª           1ghyw6eis7ml0jegl623ixh5o.o
+    ª       ª           1j4yhxc1qq7ezbya2d50ewk03.o
+    ª       ª           1nncbd3uwugvva89u9ahuws85.o
+    ª       ª           1u29j6o1schiv70b2iype7qwm.o
+    ª       ª           1xkoy7osllb1iui07egj74cu7.o
+    ª       ª           1yafsvekhnv7b3iy1q2wh0g82.o
+    ª       ª           1ze4hcyu98pegh5dhhja7acs7.o
+    ª       ª           1zutr3p7d24uyoty31rlr6muf.o
+    ª       ª           23o2s9ywmi7txwuqp3bxlbzcc.o
+    ª       ª           243fj21s8kdju0jizdv54zqnj.o
+    ª       ª           25ivm1p73jt6cfg7xi906cr1f.o
+    ª       ª           2az5trj96nw8xumeujpaw4vjk.o
+    ª       ª           2cd1ljj5i5bap0nsljnjmtwht.o
+    ª       ª           2hgt5jy2w5d6amuizjg1wd9ec.o
+    ª       ª           2jk81g8mpkxb1jf95uyqxci86.o
+    ª       ª           2knqa1n5dqms7qt18tn8o1bon.o
+    ª       ª           2l2tgrotxfm8a03slqavg3wqq.o
+    ª       ª           2m5jgbrz8jbai7jkfx22s8mot.o
+    ª       ª           2mnw4wdwv44binae17viy72xc.o
+    ª       ª           2ovaohm86bsq7lgn6qsdxoxk0.o
+    ª       ª           2sntul4l0w7eb0yehdp51895q.o
+    ª       ª           2tonck5zph6iqrxkh2paf42an.o
+    ª       ª           2uiru76sk5roznuzdsuew7vbs.o
+    ª       ª           2wjetz3nojwwo23p2kt70a965.o
+    ª       ª           2wro3524yom0m6l2zqe24721d.o
+    ª       ª           32hx1rc9c31yson3vxkklfggb.o
+    ª       ª           32jz56fwvs9cte6igsn0qbv6o.o
+    ª       ª           35cywoepb3h9brl8mg5x9racq.o
+    ª       ª           36ghamr2phzpqf91xzjocibd1.o
+    ª       ª           36w65lobwjqpdiipyzxec2rpk.o
+    ª       ª           3cusl5f5d745hgxhhcbs2i9p0.o
+    ª       ª           3esdld5fbyj33j43k9tf4wshy.o
+    ª       ª           3ft0f054x5qgg10u85wbwwmbl.o
+    ª       ª           3okn0986p6z5kike7nainvn3h.o
+    ª       ª           3p2823t2s0l8f0gsqjj23nman.o
+    ª       ª           3q8aufht8vujvix4qt9b77xfn.o
+    ª       ª           3qr1wtz5ooo13c87olcj9eed3.o
+    ª       ª           3s9vwk4qi88m7xv0zrj3i7zz1.o
+    ª       ª           3v7pza9n5q3o8mfzobgd8obdu.o
+    ª       ª           3xy7t9t3sn8arvjj71izdwox3.o
+    ª       ª           41hvz5k54m1knaes8e2bqs1xy.o
+    ª       ª           47nnpzl9b928l3yw4eogahujp.o
+    ª       ª           48m4eh3yyp7gnjd80f7qxwsme.o
+    ª       ª           491lq2hs0slkfd8cn20h6hg9f.o
+    ª       ª           4c01mp7ci7p6xcmn4s6nr3g17.o
+    ª       ª           4h0dnme918hufpvozp6ruylek.o
+    ª       ª           4ham0o9545nfy077xcaiw3fk6.o
+    ª       ª           4j7uxghsocvcozvazake2lzbo.o
+    ª       ª           4jdcn4cdcr43jovd8u1krcty2.o
+    ª       ª           4jhganxsjm66yw5a1epilfw9g.o
+    ª       ª           4l3gs38pevmqmn5k16s4pz2bi.o
+    ª       ª           4lrpv04ubidzhlpvh4tmx7ccd.o
+    ª       ª           4m7o7ioy5ppqonicjg8h2aj25.o
+    ª       ª           4upcs1ogfx0muvl8fw3eh9w6u.o
+    ª       ª           4xxs3vapltpe2m8v2zrcllaiz.o
+    ª       ª           4yns99v1o1mabeq6aqrj85kv1.o
+    ª       ª           504jbjps6hwf5l37aymo9y9dg.o
+    ª       ª           50r42ugshmvkcujxtgjwrc5p4.o
+    ª       ª           52miw1oqhqtqp7ucz7b3igyu6.o
+    ª       ª           54j4xp1flgx3q731ooozi84sz.o
+    ª       ª           565x92rnd0fnu4x321rxbgbpr.o
+    ª       ª           57v3jnpxoyiejgls59od6awb8.o
+    ª       ª           5dph3jdfbs2mcpvs0qqe1heph.o
+    ª       ª           5j5iwtw93rqr5due56c4mkxvr.o
+    ª       ª           5kl7vsbnbwf0ugni0f8ydlgq6.o
+    ª       ª           5l8c60ere5tvq7511nyhc5s87.o
+    ª       ª           5oxqat2a470g1lqy7x3sh0fj0.o
+    ª       ª           5pgudwopufgmtop2ts8mco412.o
+    ª       ª           5s7evsppb0y5g7yebka1nzwac.o
+    ª       ª           5t7515brnpfrqaeog0n4sqxl4.o
+    ª       ª           5tioygd1kqexnf6cxiezt56u7.o
+    ª       ª           5v3ocd01t1jx357q9akxgt76g.o
+    ª       ª           5v67iiyr9prjxgfqlfzp4u9l2.o
+    ª       ª           5wjr3gtizm4edfhztz8a3c0of.o
+    ª       ª           5x7p32q5ewen274wavdnz7vz5.o
+    ª       ª           5znhaaxrbuwk8fxwvsy7c99cj.o
+    ª       ª           63ur223zfbsnb2hd967gfd2vl.o
+    ª       ª           699zwlcg4pl4yzw67m02bue2w.o
+    ª       ª           6a3nawv5ofsnttidgzlype468.o
+    ª       ª           6fpumqrv77532x9v2lpwhd83h.o
+    ª       ª           6gwv2oz8axm6aapnm2p90xtkq.o
+    ª       ª           6iue9nrw4c94arbjknh34vhmd.o
+    ª       ª           6oud3pzo82im6reohyl2f5ffr.o
+    ª       ª           6q5vetwdwzzvi70r5vne018rq.o
+    ª       ª           6rdyx6u8zxe9kc8kw7ceok2qn.o
+    ª       ª           6sgzx0ejrelkyekj8ff8ikcer.o
+    ª       ª           6uky757pqdbx8ri6sfvrasnci.o
+    ª       ª           6wglsux17xcifi62faj4mki89.o
+    ª       ª           6x0dbku0p7apfrvpx7s4v1gtv.o
+    ª       ª           733pm7pmoeiq8war2s8i3oym8.o
+    ª       ª           73ceidc3p2zldkl5jriahysab.o
+    ª       ª           75kgbscephyk8z6ievotcgpvs.o
+    ª       ª           75tfyo681tzzjisogzsjof7wx.o
+    ª       ª           76wsdbxm4ak1o9zx4blcjfc4h.o
+    ª       ª           788kir4lvx97r6ziwveksj4dn.o
+    ª       ª           7afvg3weyqqcwpsqnmhry24qx.o
+    ª       ª           7b7fwcwhvjblqfqo5yfwgci5c.o
+    ª       ª           7fa1vyff4vj82alh5o7s38khr.o
+    ª       ª           7j54he9l4ipnpk2jgepr54ba2.o
+    ª       ª           7jbqiuzccy4fxyx3xzgvp0d97.o
+    ª       ª           7l5fpyl9d3gouup2f3g0rn9xy.o
+    ª       ª           7lcv12aklcjvn9d16sm9w93k8.o
+    ª       ª           7qn0fkfrbumw9spk2eammhvpr.o
+    ª       ª           7sfgw6hoxf807jpwnzwsqpjj0.o
+    ª       ª           83bg2nwsj9dsyzozk56gr1q2v.o
+    ª       ª           83o34vxh35tl2opr0phbepnn7.o
+    ª       ª           84h1sx30f4ccz3xdxcz82kgxb.o
+    ª       ª           85kkqarjhedyql46yla3hj71z.o
+    ª       ª           8731i4bxnrxqcbf3naeqnk7v0.o
+    ª       ª           87gafczh41m8bfwnbalaeo3wz.o
+    ª       ª           8alxlhvvjz3x8tyzx6fvm5eor.o
+    ª       ª           8bp4r4b9q3pcq3cmce5s4t1ya.o
+    ª       ª           8c7mau3t9of1l0yz4bpi9buix.o
+    ª       ª           8didsarakgt3lj63ct9scmsfn.o
+    ª       ª           8h6nafg1fbrd2zhqtvqekhrgv.o
+    ª       ª           8j7yx70tfjn33lw3km9l107js.o
+    ª       ª           8l2q4s4l0e02moatf38v2tfqa.o
+    ª       ª           8r7gfhyi9uarzbl9z6jeztzyr.o
+    ª       ª           8sc1d9i7o8vzyqybnv4w446sa.o
+    ª       ª           8syozf2s0f797dbfv30wu81tu.o
+    ª       ª           8t2s4xcn51q01wiqwhmxp1wci.o
+    ª       ª           8t4p0lqb5spj3jr8db6lelfuy.o
+    ª       ª           8v7ihbr7rtpokeels57lf7wa6.o
+    ª       ª           8win2m4fij88kss7tj86dronz.o
+    ª       ª           8xx26ep3ud19xp0d1tsdvb8c8.o
+    ª       ª           91xq7uw5qo9irp8knjnmzybmp.o
+    ª       ª           92zcyw8ngc2vrg5gb1w854jbu.o
+    ª       ª           96rd6scfa7eid5me0oy6sahbt.o
+    ª       ª           97qe9hs9rs8uorsvxjz7id0us.o
+    ª       ª           97rh0r0zcezr4r69sq6uaug1w.o
+    ª       ª           99i6xn366oku314xdghjyoci8.o
+    ª       ª           9bgad1wcdr74lccpy8069ayv6.o
+    ª       ª           9bj9dazs41nz5vdsfd4vv51c5.o
+    ª       ª           9c6s9u6zzbj9pmd9354zy6rae.o
+    ª       ª           9go8nca8qfmsgf0hepu2c4kfk.o
+    ª       ª           9hla790ffq4zqftahaly6qdtv.o
+    ª       ª           9jo5sxw85p0lybp9k29ba6nd2.o
+    ª       ª           9lfql4itg8l6o7hezdcn3ynt6.o
+    ª       ª           9n8bc20m4km7v77zgcc7g2th8.o
+    ª       ª           9rrlka45mlss9gb02svabva4a.o
+    ª       ª           9s9xtcijgbn72ie20odcmg00e.o
+    ª       ª           9tkdyvvqctrcrkjo1z3uogg41.o
+    ª       ª           9u0ejlxdle4u27zpj0it5817v.o
+    ª       ª           9vx6pv4sbvalxcjkdpyuy2zuo.o
+    ª       ª           9vxi1p3jqcf0j0yknhskabeqi.o
+    ª       ª           9xio5bm7pcsm2phil30e016l4.o
+    ª       ª           9y05ps4xnva7mivy7d6brf6ng.o
+    ª       ª           9zs814ttv4cn5vt07q87zcdxa.o
+    ª       ª           a5jzvw1ghmp7kim8qg15osrj5.o
+    ª       ª           a7h36nxw3i4tbxgsup4zqu6ht.o
+    ª       ª           a7vqefpfxke8n5dcvhc3z9td0.o
+    ª       ª           a8jokl37o7jjhavn87d56g7cc.o
+    ª       ª           a8to3cryeca599ecky4rbmins.o
+    ª       ª           ab46ab0rzp3axwzk5pxl7a2kq.o
+    ª       ª           aclx564p6vgmln57sif51fqbb.o
+    ª       ª           ag1p8whty9bhawonxzwccne5x.o
+    ª       ª           ahbq5e0qqa3yvhjljr8ntr0ob.o
+    ª       ª           aivn9a26tkyiejjhe0waciqxz.o
+    ª       ª           ajv0j9phrkk34t9joeb4r4sdc.o
+    ª       ª           aon0vapwpyp4bq7adzt3ruwks.o
+    ª       ª           aotyokmcdhnkzfcf3ii296bdh.o
+    ª       ª           arczy79q5mrmsndly5g9aahzq.o
+    ª       ª           arzgqs4x5w04309vu8v3bi5l6.o
+    ª       ª           auw06950yibm8rhq0kt4yjv7m.o
+    ª       ª           av9jv24k69n3waou7debi581u.o
+    ª       ª           aykcs91dnmtmc4be8zgmznul1.o
+    ª       ª           azgbxezsstf9qnvafu4erj1vp.o
+    ª       ª           b39elee5anx0zrlseebt20jx9.o
+    ª       ª           b47lnb4bvg075e8lmj54xfmaz.o
+    ª       ª           b5uzn6gpmudxigus7eh1fgj02.o
+    ª       ª           b8xsiaxzxjlboby8yejocorf3.o
+    ª       ª           baktk6otxcmfl8c4yqa99b7yn.o
+    ª       ª           bcjev5tzpp5peguyeg3gis3da.o
+    ª       ª           bf50hj47y8sl0aowsnqrlmxfr.o
+    ª       ª           bgut7jeoiaahs6ck4ifhwjx5y.o
+    ª       ª           bifsly70nspsk789jop4xus34.o
+    ª       ª           bk5ri8w557b1oggajh0s0pema.o
+    ª       ª           bmz9jvnklr99cz2cr8pughjou.o
+    ª       ª           bnd6f8cvok4j40fscpdc3ekr1.o
+    ª       ª           bsb1x1q3ohiw28s25g8bymhon.o
+    ª       ª           btta74r0o34a3ealbwycfq7ml.o
+    ª       ª           bv1dgi4hwyhu48ggz66ddw97i.o
+    ª       ª           bvfc0ab920hdjg5ph18gxeazp.o
+    ª       ª           c16znhqyvj11ps5icgpk8hx3d.o
+    ª       ª           c27oz40d83sxad7xlbdr564fo.o
+    ª       ª           c839jmapfcxtosiilqki60r0b.o
+    ª       ª           cbiool7hcsveklbjiifts8e4g.o
+    ª       ª           cbxe514ihda8hve6igdeib5n4.o
+    ª       ª           cdrg0fopxzdd6se893pnccy2q.o
+    ª       ª           cgz4ute6jax2p9aecsu6mdbqk.o
+    ª       ª           cim5xr03oaxtncy8f1tm7prt8.o
+    ª       ª           cl7uz4dxahs77uawk0ac4dira.o
+    ª       ª           cleilhlxngwanzk4g0geqa9by.o
+    ª       ª           clqdlrxrhoy5o15np0dh3msb1.o
+    ª       ª           co92mky8b23fypj5kkqyojpsw.o
+    ª       ª           cqa5teru2nwckkowr2dcs0dno.o
+    ª       ª           cqjwvt4gqi7o2z7bfxt6cg59a.o
+    ª       ª           cu6y4faekzplwt1ziu19i4iqz.o
+    ª       ª           cv9o05bmr1wvs58zhjmt1sbm1.o
+    ª       ª           cwakniiqo59b10e1w3oacgdo2.o
+    ª       ª           cyj30bumvi7vr4p65aaj08k7s.o
+    ª       ª           cyyq1yw7dtjf35exqk5yq3uue.o
+    ª       ª           d0vq1qietyhtuxetjgm6u2bet.o
+    ª       ª           d5t9vgl9eecixmv89cvv70v90.o
+    ª       ª           d6entt7uis2zaldfvk9rhyijg.o
+    ª       ª           d7okqf02w9k9dez87v4bjkekp.o
+    ª       ª           d8ub41g8exviwu853f0ymaxzg.o
+    ª       ª           d95wehn5ssy35sfxjhnajhcl4.o
+    ª       ª           d9hhr21bpllvseg9omefis8dv.o
+    ª       ª           d9kv9kbfgm0gi72c0r3v0f9xp.o
+    ª       ª           db40uduv3qm25p6zkopal58od.o
+    ª       ª           dep-graph.bin
+    ª       ª           dlavfup0ufqyaj89puvct65em.o
+    ª       ª           dm62ndzx8eg8d6as2vxl7654u.o
+    ª       ª           dtkit59ddq4e1emlxzxjpshy7.o
+    ª       ª           dwa1vapno4wr5rzk2kxr3a8c0.o
+    ª       ª           dza2hsfw91f3ue0o73567un4z.o
+    ª       ª           dzaa0rlv8891b8lhnr8xwq879.o
+    ª       ª           dzjse77kpvgm6k9dxrm3ab7bl.o
+    ª       ª           e54twxwimfgnf9yynwn15kz9f.o
+    ª       ª           e7pdag966gs4blbl5bv03g762.o
+    ª       ª           e8avfemvb0tvpjmt2v2hr0fv7.o
+    ª       ª           ebilrwltywndbxan46qnihjle.o
+    ª       ª           ed21bxp2quihxrgwatzebfhug.o
+    ª       ª           ef6o6m3vn4bfc96bjq71fvqdn.o
+    ª       ª           egyhzrcb13cixmsgr8wguxlug.o
+    ª       ª           eh1fx9bskortbw5l9aoa4w81t.o
+    ª       ª           ehjdpsko6k0qwagknk5rztrgh.o
+    ª       ª           ejhqnpluxcmd0w4l789norsfg.o
+    ª       ª           elktokl0zlfvilxh1bysncnqb.o
+    ª       ª           eluitetp5exu94xhy2psml8od.o
+    ª       ª           eubcv4qw2088uen13mdfsvrf4.o
+    ª       ª           evlje1y4d1hv1cfb1xav7xe00.o
+    ª       ª           eye6gvjtfducxhnpiqcm61ax8.o
+    ª       ª           eyyt7ag6vju3dxtgp24dqrwxy.o
+    ª       ª           ez020qpc0jpmn1kauvl7nioza.o
+    ª       ª           ezzi59d651lsj6guozgzqc9od.o
+    ª       ª           f0klkkmzmmi3tldqn1likvsie.o
+    ª       ª           f1srpdm4hnoywfjbcm7gpugjm.o
+    ª       ª           f2kp5xwubmv1nkgrj0ga0pk3n.o
+    ª       ª           f3lm3f0e3ytz2okqyn62oow9a.o
+    ª       ª           metadata.rmeta
+    ª       ª           query-cache.bin
+    ª       ª           work-products.bin
+    ª       ª           
     ª       +---bf42lite-0qusa9mqv41cg
     ª       ª   ª   s-hd23gcbm4w-1h1nnv8.lock
     ª       ª   ª   
@@ -7381,6 +8090,19 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           query-cache.bin
     ª       ª           work-products.bin
     ª       ª           
+    ª       +---bf42lite-1o5j46zt2xiim
+    ª       ª   ª   s-hddq0v3p9p-0kfagcq.lock
+    ª       ª   ª   
+    ª       ª   +---s-hddq0v3p9p-0kfagcq-8f56rzydwracayp2j4uj90a80
+    ª       ª           3xx6hlxmmx9rq31k4adj860lj.o
+    ª       ª           498uouqfe7flelqapy6ejhm19.o
+    ª       ª           8qebd8odc2i897x1jw1zd3w19.o
+    ª       ª           ba46pqgbe0o5ygbu2ue2k3wfu.o
+    ª       ª           crd3dugqo7pii5hfigiitw3yb.o
+    ª       ª           dep-graph.bin
+    ª       ª           query-cache.bin
+    ª       ª           work-products.bin
+    ª       ª           
     ª       +---bf42lite-26iewqlx3bhjj
     ª       ª   ª   s-hd6h3oty1f-01drs3s.lock
     ª       ª   ª   
@@ -7672,6 +8394,19 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           query-cache.bin
     ª       ª           work-products.bin
     ª       ª           
+    ª       +---build_script_build-0w8rhr53qq861
+    ª       ª   ª   s-hddpyyjgs3-17jnuo3.lock
+    ª       ª   ª   
+    ª       ª   +---s-hddpyyjgs3-17jnuo3-8cpey4nf27netrl1qgjdonwqf
+    ª       ª           1nabpkql61kzjdsf9wyu8dpcl.o
+    ª       ª           84z43qatb7fege3ktiww6b92f.o
+    ª       ª           b95wot6r7u9fq6u93c2pbe4qt.o
+    ª       ª           c6l91epfze6pd58zec8oqrij3.o
+    ª       ª           d0aofp0vfqceyhif2i0vpaw0z.o
+    ª       ª           dep-graph.bin
+    ª       ª           query-cache.bin
+    ª       ª           work-products.bin
+    ª       ª           
     ª       +---build_script_build-26nmmftknxggq
     ª       ª   ª   s-hddmgl7kyc-1ynzl7y.lock
     ª       ª   ª   
@@ -7829,6 +8564,13 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       invoked.timestamp
         ª   ª       
         ª   +---bf42lite-2d9828d7aacc9d96
+        ª   ª       dep-lib-bf42lite
+        ª   ª       invoked.timestamp
+        ª   ª       lib-bf42lite
+        ª   ª       lib-bf42lite.json
+        ª   ª       output-lib-bf42lite
+        ª   ª       
+        ª   +---bf42lite-4bed6f4036f275a5
         ª   ª       dep-lib-bf42lite
         ª   ª       invoked.timestamp
         ª   ª       lib-bf42lite
@@ -10284,6 +11026,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       lib-serde_repr
         ª   ª       lib-serde_repr.json
         ª   ª       
+        ª   +---serde_spanned-1e149e01cd1a3c4c
+        ª   ª       dep-lib-serde_spanned
+        ª   ª       invoked.timestamp
+        ª   ª       lib-serde_spanned
+        ª   ª       lib-serde_spanned.json
+        ª   ª       
         ª   +---serde_spanned-803f3b968d13ddad
         ª   ª       dep-lib-serde_spanned
         ª   ª       invoked.timestamp
@@ -11000,11 +11748,23 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       lib-toml
         ª   ª       lib-toml.json
         ª   ª       
+        ª   +---toml-7e3bb0f6653f9f21
+        ª   ª       dep-lib-toml
+        ª   ª       invoked.timestamp
+        ª   ª       lib-toml
+        ª   ª       lib-toml.json
+        ª   ª       
         ª   +---toml-e07e7e5137d00029
         ª   ª       dep-lib-toml
         ª   ª       invoked.timestamp
         ª   ª       lib-toml
         ª   ª       lib-toml.json
+        ª   ª       
+        ª   +---toml_datetime-0a8e5140b7699061
+        ª   ª       dep-lib-toml_datetime
+        ª   ª       invoked.timestamp
+        ª   ª       lib-toml_datetime
+        ª   ª       lib-toml_datetime.json
         ª   ª       
         ª   +---toml_datetime-13a262b3cba668a7
         ª   ª       dep-lib-toml_datetime
@@ -11023,6 +11783,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       invoked.timestamp
         ª   ª       lib-toml_datetime
         ª   ª       lib-toml_datetime.json
+        ª   ª       
+        ª   +---toml_edit-1de0f36217013640
+        ª   ª       dep-lib-toml_edit
+        ª   ª       invoked.timestamp
+        ª   ª       lib-toml_edit
+        ª   ª       lib-toml_edit.json
         ª   ª       
         ª   +---toml_edit-54ad3d15f0814e96
         ª   ª       dep-lib-toml_edit
@@ -11781,6 +12547,12 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       lib-winnow.json
         ª   ª       
         ª   +---winnow-a2c7ff882315a461
+        ª   ª       dep-lib-winnow
+        ª   ª       invoked.timestamp
+        ª   ª       lib-winnow
+        ª   ª       lib-winnow.json
+        ª   ª       
+        ª   +---winnow-e4360761cca45e25
         ª   ª       dep-lib-winnow
         ª   ª       invoked.timestamp
         ª   ª       lib-winnow
@@ -13579,6 +14351,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       base64-313014d971a5fe63.d
         ª       bf42lite-019ee2ce59935fdf.d
         ª       bf42lite-2d9828d7aacc9d96.d
+        ª       bf42lite-4bed6f4036f275a5.d
         ª       bf42lite-e0aed8d2abd374af.d
         ª       bf42lite-e0aed8d2abd374af.long-type-3638367700165555402.txt
         ª       bf42lite.d
@@ -13825,6 +14598,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       libbf42lite-019ee2ce59935fdf.rmeta
         ª       libbf42lite-2d9828d7aacc9d96.rlib
         ª       libbf42lite-2d9828d7aacc9d96.rmeta
+        ª       libbf42lite-4bed6f4036f275a5.rlib
+        ª       libbf42lite-4bed6f4036f275a5.rmeta
         ª       libbf42lite-e0aed8d2abd374af.rlib
         ª       libbf42lite-e0aed8d2abd374af.rmeta
         ª       libbitflags-3aef44a823d9d2d8.rlib
@@ -14459,6 +15234,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       libserde_json-5c1d586776be60c7.rmeta
         ª       libserde_json-ded29286eee1871e.rlib
         ª       libserde_json-ded29286eee1871e.rmeta
+        ª       libserde_spanned-1e149e01cd1a3c4c.rlib
+        ª       libserde_spanned-1e149e01cd1a3c4c.rmeta
         ª       libserde_spanned-803f3b968d13ddad.rlib
         ª       libserde_spanned-803f3b968d13ddad.rmeta
         ª       libserde_spanned-8204213b1fe0c86d.rlib
@@ -14643,14 +15420,20 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       libtoml-4b1e3bc491e3d5b4.rmeta
         ª       libtoml-58cc901ce5b84599.rlib
         ª       libtoml-58cc901ce5b84599.rmeta
+        ª       libtoml-7e3bb0f6653f9f21.rlib
+        ª       libtoml-7e3bb0f6653f9f21.rmeta
         ª       libtoml-e07e7e5137d00029.rlib
         ª       libtoml-e07e7e5137d00029.rmeta
+        ª       libtoml_datetime-0a8e5140b7699061.rlib
+        ª       libtoml_datetime-0a8e5140b7699061.rmeta
         ª       libtoml_datetime-13a262b3cba668a7.rlib
         ª       libtoml_datetime-13a262b3cba668a7.rmeta
         ª       libtoml_datetime-6c4a16f23a28e29d.rlib
         ª       libtoml_datetime-6c4a16f23a28e29d.rmeta
         ª       libtoml_datetime-fc7dedd0ea3d0130.rlib
         ª       libtoml_datetime-fc7dedd0ea3d0130.rmeta
+        ª       libtoml_edit-1de0f36217013640.rlib
+        ª       libtoml_edit-1de0f36217013640.rmeta
         ª       libtoml_edit-54ad3d15f0814e96.rlib
         ª       libtoml_edit-54ad3d15f0814e96.rmeta
         ª       libtoml_edit-c2fe0d237acf9728.rlib
@@ -14853,6 +15636,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       libwinnow-62ade316accd92d1.rmeta
         ª       libwinnow-a2c7ff882315a461.rlib
         ª       libwinnow-a2c7ff882315a461.rmeta
+        ª       libwinnow-e4360761cca45e25.rlib
+        ª       libwinnow-e4360761cca45e25.rmeta
         ª       libwinnow-f9fe0430ec999ea3.rlib
         ª       libwinnow-f9fe0430ec999ea3.rmeta
         ª       libwinreg-b036fe03ffab4253.rlib
@@ -15071,6 +15856,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       serde_repr-8428af1f943d0f4c.dll.exp
         ª       serde_repr-8428af1f943d0f4c.dll.lib
         ª       serde_repr-8428af1f943d0f4c.pdb
+        ª       serde_spanned-1e149e01cd1a3c4c.d
         ª       serde_spanned-803f3b968d13ddad.d
         ª       serde_spanned-8204213b1fe0c86d.d
         ª       serde_spanned-c137e852f6c1214d.d
@@ -15203,10 +15989,13 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       toml-407597d1af7e526b.d
         ª       toml-4b1e3bc491e3d5b4.d
         ª       toml-58cc901ce5b84599.d
+        ª       toml-7e3bb0f6653f9f21.d
         ª       toml-e07e7e5137d00029.d
+        ª       toml_datetime-0a8e5140b7699061.d
         ª       toml_datetime-13a262b3cba668a7.d
         ª       toml_datetime-6c4a16f23a28e29d.d
         ª       toml_datetime-fc7dedd0ea3d0130.d
+        ª       toml_edit-1de0f36217013640.d
         ª       toml_edit-54ad3d15f0814e96.d
         ª       toml_edit-c2fe0d237acf9728.d
         ª       toml_parser-bb71379f7ad0304c.d
@@ -15333,6 +16122,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª       winnow-30e0be02380fee9f.d
         ª       winnow-62ade316accd92d1.d
         ª       winnow-a2c7ff882315a461.d
+        ª       winnow-e4360761cca45e25.d
         ª       winnow-f9fe0430ec999ea3.d
         ª       winreg-b036fe03ffab4253.d
         ª       winreg-f6a9796c88de9005.d
@@ -15520,6 +16310,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tokio",
  "tokio-tungstenite",
+ "toml 0.8.2",
 ]
 
 [[package]]
@@ -20318,6 +21109,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 serde_json = "1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net"] }
 futures-util = "0.3"
@@ -20327,6 +21119,17 @@ tauri-plugin-shell = "2"
 [features]
 default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
+
+
+## FILE: apps\client-tauri\src-tauri\game_config.toml
+---------------------------
+[movement]
+move_speed = 10.0
+air_speed_factor = 0.6
+gravity = -25.0
+jump_force = 9.0
+sprint_multiplier = 1.5
+mouse_sensitivity = 0.002
 
 
 ## FILE: apps\client-tauri\src-tauri\tauri.conf.json
@@ -27645,6 +28448,62 @@ yyìÕBí´9„1jAáYý;kntµîÖvø8k¶9é.hë
 ZÆ‰à`šLšIT¨sßöhÛŽ—Ã»×ÃLöxVHœœ8Û-êb¡”·™ËBá@(?å‚OAƒV†Ò{_Ï^Û)•0=¸õ‰ž9ËîE«ùŒDœY°ü¿#m;Ÿ3Ü¢Ã„uBäÊŒe@,Å‡ÂÄ9‚lL~âœKJÕM-¥êI-Åš©‹
 uÍ3R[žº•õÇ†îø+R^aKXƒ]]NUãÌbjÆ<2‹h7(~uÒ×ÍV~Fò<!Ìa•ñƒ:>47äš„iúeÿìËWA(Ÿ‡º¦”lšóYm¤;ë7<ú\“&?ã¯âN3µš¬fÇÿƒ…Ç~"VS89	üUÇÒ¿{’_”ò’Z‘ŽŠ†ÃÄ›Œ¤ ŠaÐ(Ð7wÙß¦­ø	ÚŽ‰â€‹£ ÍbÕ;_¹3ˆN0G	Æ[‘r&¸¨5ØÝÃµÓ90õ¢ëzé%YLMŸŸŸ8÷;Û¹Íî?v„ì¬,žv&uP¯ÃÃµŒÖÔt-ºù»Ýç/¿“óG& ŠcG¶¿’z÷É;'cˆ¢Ïe"e7ˆA*Ô±w³Åësç,	¸Øü4Œr"5³Í‹n/ÕNkÁ6#†ÀQ@kú:T£ÕH¸¥wÎ²¯t.¼é'ù†Y‹1Ûø[Œäžiž	ô·h|ã{Wàs£oKÆùï¾Vð£G@ï¼xÕ#½ç]¾íà•™Ès¸ÆJÒi jÉ,fÛQ±ATSz´+ž„#€‘,Ònƒ$#†D m{Û~×øÚC›ƒÝi²ú'Ã¹ªÈpI…~žC¹ó?y•'l,9m—aTQ.1Q°…à“*”¨‡Ê×c!¼®áÑ¤áOÚx˜–‰JˆØámëßüŸ«D¾·—¾\0Î"‰±'2¤‘è¨pÛûëÃé½¿€ÆÌq¦ G$v´Ê°|ØœÐô½“,h1¿žÀ•¶¨\XX¹LGÝ–g¾œÚüÔ?Q;yf@œmcl­“Åó†NX®iþ5Ùæ%Ÿ‡\ÛŸ(ï4ž -CÊ£ù$¯ÐF[£­[ÖÄ[7ýXäzsÚŽðŠ‘Öì<Æ÷ÕÍÄÎnÁBÆjkKÉI–ª&ÌUáª&Ø™(*â KiÚJ…MyÏîïØa‹Á BæÞ&‘á	Ñ“r‘QYÜ¡mÍ¡ŸhI¶A:D”;—E{ŸUÜ,ÇÚä}«¦lU öã0ƒœD†i'þ)ƒýé›ÿ¯õ{m^¦Y›YS    IEND®B`‚
 
+## FILE: apps\client-tauri\src-tauri\src\config.rs
+---------------------------
+// apps/client-tauri/src-tauri/src/config.rs
+
+use serde::Deserialize;
+use std::fs;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MovementConfig {
+    pub move_speed: f32,
+    pub air_speed_factor: f32,
+    pub gravity: f32,
+    pub jump_force: f32,
+    pub sprint_multiplier: f32,
+    pub mouse_sensitivity: f32,
+}
+
+impl Default for MovementConfig {
+    fn default() -> Self {
+        Self {
+            // These are your current hardcoded values:
+            move_speed: 10.0,
+            air_speed_factor: 0.6,
+            gravity: -25.0,
+            jump_force: 9.0,
+            sprint_multiplier: 1.5,
+            mouse_sensitivity: 0.002,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GameConfig {
+    #[serde(default)]
+    pub movement: MovementConfig,
+}
+
+impl Default for GameConfig {
+    fn default() -> Self {
+        Self {
+            movement: MovementConfig::default(),
+        }
+    }
+}
+
+impl GameConfig {
+    /// Load config from a TOML file. If anything fails, fall back to defaults.
+    pub fn load_from_file(path: &str) -> Self {
+        match fs::read_to_string(path) {
+            Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
+            Err(_) => GameConfig::default(),
+        }
+    }
+}
+
+
 ## FILE: apps\client-tauri\src-tauri\src\gameloop.rs
 ---------------------------
 import { defineSystem, defineQuery, removeComponent, hasComponent } from 'bitecs';
@@ -27733,6 +28592,7 @@ mod player;
 mod protocol;
 mod systems;
 pub mod maps;
+mod config;
 
 use crate::sim::SimState;
 use crate::protocol::ClientMessage;
@@ -28248,6 +29108,7 @@ use crate::protocol::{
 };
 use crate::systems;
 use crate::player::Player;
+use crate::config::GameConfig;
 
 pub struct SimState {
     pub players: HashMap<u32, Player>,
@@ -28255,6 +29116,7 @@ pub struct SimState {
     pub tickets_b: f32,
     pub frame_count: u64,
     pub flags: Vec<FlagZone>,
+     pub config: GameConfig,
 }
 
 // Simple server-side representation of a Conquest flag.
@@ -28275,12 +29137,16 @@ pub struct FlagZone {
 
 impl SimState {
     pub fn new() -> Self {
+        // Try to load from a TOML file; fall back to defaults if missing.
+        let config = GameConfig::load_from_file("game_config.toml");
+
         Self {
             players: HashMap::new(),
             tickets_a: 100.0,
             tickets_b: 100.0,
             frame_count: 0,
             flags: crate::maps::warehouse::create_flags(),
+            config,
         }
     }
 
@@ -28308,8 +29174,13 @@ impl SimState {
         self.frame_count += 1;
     
         // 1. Run Systems
-        systems::movement::update(&mut self.players, input_map, dt, self.frame_count);
-    
+systems::movement::update(
+    &mut self.players,
+    input_map,
+    dt,
+    self.frame_count,
+    &self.config.movement,
+);    
         // Existing [DEBUG] After movement + conquest calls stay as-is
         if let Some((id, p)) = self.players.iter().next() {
             println!(
@@ -28741,13 +29612,8 @@ use std::f32::consts::PI;
 
 use crate::player::Player;
 use crate::protocol::ClientMessage;
+use crate::config::MovementConfig; // NEW
 
-pub const MOVE_SPEED: f32 = 10.0;
-pub const AIR_SPEED_FACTOR: f32 = 0.6;
-pub const GRAVITY: f32 = -25.0;
-pub const JUMP_FORCE: f32 = 9.0;
-const MOUSE_SENSITIVITY: f32 = 0.002;
-const SPRINT_MULTIPLIER: f32 = 1.5;
 pub const MOVEMENT_VERSION: &str = "movement-v1.0.0";
 
 fn print_versions() {
@@ -28761,7 +29627,9 @@ pub fn update(
     input_map: &HashMap<u32, ClientMessage>,
     dt: f32,
     frame_count: u64,
+    movement: &MovementConfig,
 ) {
+
     // Print versions once in a while if you want (optional)
     if frame_count == 0 {
         print_versions();
@@ -28793,41 +29661,38 @@ pub fn update(
                     -PI / 2.0 + 0.1,
                     PI / 2.0 - 0.1,
                 );
+// Movement vectors based on yaw.
+let yaw = player.transform.yaw;
+// Use movement config for speed
+let mut speed = movement.move_speed;
+if sprint {
+    speed *= movement.sprint_multiplier;
+}
 
-                // Movement vectors based on yaw.
-                let yaw = player.transform.yaw;
-                let speed = if sprint {
-                    MOVE_SPEED * SPRINT_MULTIPLIER
-                } else {
-                    MOVE_SPEED
-                };
 
-                // Forward (W/S) direction
-                let vec_fwd_x = yaw.sin();
-                let vec_fwd_z = yaw.cos();
 
-                // Right (D/A) direction
-                let vec_right_x = yaw.cos();
-                let vec_right_z = -yaw.sin();
+let vec_fwd_x = yaw.sin();
+let vec_fwd_z = yaw.cos();
+let vec_right_x = yaw.cos();
+let vec_right_z = -yaw.sin();
 
-                let move_x = (vec_fwd_x * fwd) + (vec_right_x * right);
-                let move_z = (vec_fwd_z * fwd) + (vec_right_z * right);
+// Combine forward/right axes into a movement vector.
+let move_x = fwd * vec_fwd_x + right * vec_right_x;
+let move_z = fwd * vec_fwd_z + right * vec_right_z;
 
-                let len = (move_x * move_x + move_z * move_z).sqrt();
-                if len > 0.0 {
-                    player.transform.x += (move_x / len) * speed * dt;
-                    player.transform.z += (move_z / len) * speed * dt;
+let len = (move_x * move_x + move_z * move_z).sqrt();
+    if len > 0.0 {
+    player.transform.x += (move_x / len) * speed * dt;
+    player.transform.z += (move_z / len) * speed * dt;
 
-                    if frame_count % 30 == 0 {
-                        println!(
-                            "[PHYSICS] Player {} Moved: {:.2}, {:.2}",
-                            id, player.transform.x, player.transform.z
-                        );
-                    }
+    if frame_count % 30 == 0 {
+        println!(
+            "[PHYSICS] Player {} Moved: {:.2}, {:.2}",
+            id, player.transform.x, player.transform.z
+        );
+    }
                 }
-
-                // Jump / gravity logic can be added here later using axes.jump, GRAVITY, JUMP_FORCE, etc.
-            }
+                        }
         }
     }
 }
