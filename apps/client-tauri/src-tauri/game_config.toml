@@ -1,0 +1,7 @@
+[movement]
+move_speed = 10.0
+air_speed_factor = 0.6
+gravity = -25.0
+jump_force = 9.0
+sprint_multiplier = 1.5
+mouse_sensitivity = 0.002

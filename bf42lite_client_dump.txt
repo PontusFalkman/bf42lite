@@ -28,12 +28,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       SnapshotDecoder.ts
 ª       types.ts
 ª       
-+---network
-ª       index.ts
-ª       interpolation.ts
-ª       SnapshotDecoder.ts
-ª       types.ts
-ª       
 +---render
 ª       FlagVisual.ts
 ª       ModelFactory.ts
@@ -1814,84 +1808,6 @@ export interface DecodedSnapshotMessage {
   snapshot: Snapshot;
   // Present when coming from Rust envelope { your_id, snapshot }
   yourId?: number;
-}
-
-export interface DecodedWelcomeMessage {
-  type: 'welcome';
-  yourId: number;
-}
-
-export interface DecodedHitMessage {
-  type: 'hit-confirmed';
-  damage: number;
-}
-
-export interface DecodedUnknownMessage {
-  type: 'unknown';
-  raw: any;
-}
-
-export type DecodedServerMessage =
-  | DecodedSnapshotMessage
-  | DecodedWelcomeMessage
-  | DecodedHitMessage
-  | DecodedUnknownMessage;
-
-
-## FILE: apps\client-tauri\src\network\index.ts
----------------------------
-// apps/client-tauri/src/network/index.ts
-
-export * from './types';
-export * from './SnapshotDecoder';
-export * from './interpolation';
-
-
-## FILE: apps\client-tauri\src\network\interpolation.ts
----------------------------
-// apps/client-tauri/src/network/interpolation.ts
-// Temporary shim: re-export interpolation helpers from systems.
-
-export {
-  pushInterpolationSnapshot,
-  interpolateRemotePlayers,
-} from '../systems/interpolationHelpers';
-
-
-## FILE: apps\client-tauri\src\network\SnapshotDecoder.ts
----------------------------
-// apps/client-tauri/src/network/SnapshotDecoder.ts
-// Temporary shim: re-export from the new net module.
-
-export * from '../net/SnapshotDecoder';
-
-
-## FILE: apps\client-tauri\src\network\types.ts
----------------------------
-// apps/client-tauri/src/network/types.ts
-import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
-
-// Normalized flag is already identical to the protocol FlagSnapshot.
-// This alias is mainly for readability on the client side.
-export type NormalizedFlag = FlagSnapshot;
-
-// Interpolation types for remote entities
-export interface InterpolationSnapshot {
-  tick: number;
-  pos: { x: number; y: number; z: number };
-  rot: number;
-  timestamp: number;
-}
-
-export interface InterpolationBuffer {
-  snapshots: InterpolationSnapshot[];
-}
-
-// Decoded server messages after passing through the network decoder
-export interface DecodedSnapshotMessage {
-  type: 'snapshot';
-  snapshot: Snapshot;
-  yourId?: number;        // Present when coming from Rust envelope { your_id, snapshot }
 }
 
 export interface DecodedWelcomeMessage {

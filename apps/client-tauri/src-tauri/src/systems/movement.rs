@@ -4,13 +4,8 @@ use std::f32::consts::PI;
 
 use crate::player::Player;
 use crate::protocol::ClientMessage;
+use crate::config::MovementConfig; // NEW
 
-pub const MOVE_SPEED: f32 = 10.0;
-pub const AIR_SPEED_FACTOR: f32 = 0.6;
-pub const GRAVITY: f32 = -25.0;
-pub const JUMP_FORCE: f32 = 9.0;
-const MOUSE_SENSITIVITY: f32 = 0.002;
-const SPRINT_MULTIPLIER: f32 = 1.5;
 pub const MOVEMENT_VERSION: &str = "movement-v1.0.0";
 
 fn print_versions() {
@@ -24,7 +19,9 @@ pub fn update(
     input_map: &HashMap<u32, ClientMessage>,
     dt: f32,
     frame_count: u64,
+    movement: &MovementConfig,
 ) {
+
     // Print versions once in a while if you want (optional)
     if frame_count == 0 {
         print_versions();
@@ -56,41 +53,38 @@ pub fn update(
                     -PI / 2.0 + 0.1,
                     PI / 2.0 - 0.1,
                 );
+// Movement vectors based on yaw.
+let yaw = player.transform.yaw;
+// Use movement config for speed
+let mut speed = movement.move_speed;
+if sprint {
+    speed *= movement.sprint_multiplier;
+}
 
-                // Movement vectors based on yaw.
-                let yaw = player.transform.yaw;
-                let speed = if sprint {
-                    MOVE_SPEED * SPRINT_MULTIPLIER
-                } else {
-                    MOVE_SPEED
-                };
 
-                // Forward (W/S) direction
-                let vec_fwd_x = yaw.sin();
-                let vec_fwd_z = yaw.cos();
 
-                // Right (D/A) direction
-                let vec_right_x = yaw.cos();
-                let vec_right_z = -yaw.sin();
+let vec_fwd_x = yaw.sin();
+let vec_fwd_z = yaw.cos();
+let vec_right_x = yaw.cos();
+let vec_right_z = -yaw.sin();
 
-                let move_x = (vec_fwd_x * fwd) + (vec_right_x * right);
-                let move_z = (vec_fwd_z * fwd) + (vec_right_z * right);
+// Combine forward/right axes into a movement vector.
+let move_x = fwd * vec_fwd_x + right * vec_right_x;
+let move_z = fwd * vec_fwd_z + right * vec_right_z;
 
-                let len = (move_x * move_x + move_z * move_z).sqrt();
-                if len > 0.0 {
-                    player.transform.x += (move_x / len) * speed * dt;
-                    player.transform.z += (move_z / len) * speed * dt;
+let len = (move_x * move_x + move_z * move_z).sqrt();
+    if len > 0.0 {
+    player.transform.x += (move_x / len) * speed * dt;
+    player.transform.z += (move_z / len) * speed * dt;
 
-                    if frame_count % 30 == 0 {
-                        println!(
-                            "[PHYSICS] Player {} Moved: {:.2}, {:.2}",
-                            id, player.transform.x, player.transform.z
-                        );
-                    }
+    if frame_count % 30 == 0 {
+        println!(
+            "[PHYSICS] Player {} Moved: {:.2}, {:.2}",
+            id, player.transform.x, player.transform.z
+        );
+    }
                 }
-
-                // Jump / gravity logic can be added here later using axes.jump, GRAVITY, JUMP_FORCE, etc.
-            }
+                        }
         }
     }
 }

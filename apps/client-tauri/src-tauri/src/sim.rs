@@ -15,6 +15,7 @@ use crate::protocol::{
 };
 use crate::systems;
 use crate::player::Player;
+use crate::config::GameConfig;
 
 pub struct SimState {
     pub players: HashMap<u32, Player>,
@@ -22,6 +23,7 @@ pub struct SimState {
     pub tickets_b: f32,
     pub frame_count: u64,
     pub flags: Vec<FlagZone>,
+     pub config: GameConfig,
 }
 
 // Simple server-side representation of a Conquest flag.
@@ -42,12 +44,16 @@ pub struct FlagZone {
 
 impl SimState {
     pub fn new() -> Self {
+        // Try to load from a TOML file; fall back to defaults if missing.
+        let config = GameConfig::load_from_file("game_config.toml");
+
         Self {
             players: HashMap::new(),
             tickets_a: 100.0,
             tickets_b: 100.0,
             frame_count: 0,
             flags: crate::maps::warehouse::create_flags(),
+            config,
         }
     }
 
@@ -75,8 +81,13 @@ impl SimState {
         self.frame_count += 1;
     
         // 1. Run Systems
-        systems::movement::update(&mut self.players, input_map, dt, self.frame_count);
-    
+systems::movement::update(
+    &mut self.players,
+    input_map,
+    dt,
+    self.frame_count,
+    &self.config.movement,
+);    
         // Existing [DEBUG] After movement + conquest calls stay as-is
         if let Some((id, p)) = self.players.iter().next() {
             println!(

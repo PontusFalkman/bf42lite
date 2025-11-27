@@ -10,6 +10,7 @@ mod player;
 mod protocol;
 mod systems;
 pub mod maps;
+mod config;
 
 use crate::sim::SimState;
 use crate::protocol::ClientMessage;
