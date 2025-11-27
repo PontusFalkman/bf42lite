@@ -7091,9 +7091,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-0v9nc1rh4o7qj
-    ª       ª   ª   s-hdafu44o8j-1k8o8ji.lock
+    ª       ª   ª   s-hddmgp0zkl-1y3n5li.lock
     ª       ª   ª   
-    ª       ª   +---s-hdafu44o8j-1k8o8ji-6bv0yxvlpblksp2o67rlqturt
+    ª       ª   +---s-hddmgp0zkl-1y3n5li-6bv0yxvlpblksp2o67rlqturt
     ª       ª           00xwkerak1w3hnd8igsztr9ys.o
     ª       ª           02gm1rpnimm44qx03w5wg7z3y.o
     ª       ª           03dd5ei645h7u48cry68kg5n2.o
@@ -7647,9 +7647,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-2mymaheqdfn5t
-    ª       ª   ª   s-hdafuaw8l3-0dubxyd.lock
+    ª       ª   ª   s-hddmgygan9-04ur6rx.lock
     ª       ª   ª   
-    ª       ª   +---s-hdafuaw8l3-0dubxyd-1jbjzcgnutemvc8slubb35y5x
+    ª       ª   +---s-hddmgygan9-04ur6rx-1jbjzcgnutemvc8slubb35y5x
     ª       ª           4z0qgg0f1ypwezdbew4l6nkf1.o
     ª       ª           6o9c1rgvmamux9lza4uo26rlx.o
     ª       ª           d5gr80n1vjrzp5m2lowaxb2h2.o
@@ -7673,9 +7673,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---build_script_build-26nmmftknxggq
-    ª       ª   ª   s-hd9f1un9nk-0mhfcx1.lock
+    ª       ª   ª   s-hddmgl7kyc-1ynzl7y.lock
     ª       ª   ª   
-    ª       ª   +---s-hd9f1un9nk-0mhfcx1-2job35rgquvrb4mkm31bssq7o
+    ª       ª   +---s-hddmgl7kyc-1ynzl7y-2job35rgquvrb4mkm31bssq7o
     ª       ª           32s9j97pan8rommbueeip4dod.o
     ª       ª           4msn0704ftfwcq26zkqpv575g.o
     ª       ª           7ov9pk2364mlq0cc56hojxicm.o
@@ -12076,6 +12076,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª       ª       __app__-permission-files
         ª   ª       ª       
         ª   ª       +---tauri-codegen-assets
+        ª   ª               00083555868cda4732184c916d67f779fc459c3dde89c1c2f807fd6a82c5c85f.html
         ª   ª               013ac15b9fa36a87b78e9946cb0a0a06cca780e0638ec8caebeaa4286b58766c.js
         ª   ª               026e586b653a1095a204c63d1c89aef940f25dc97448baa2c5c41bbe096cd936.html
         ª   ª               0367117b0330c375b1ba3fae3a127641f1cf82e8359f1a6443c9469f51d5687c.js
@@ -12083,19 +12084,26 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª               083465b7f4e51b607280f958ba4a129fd7c9e068cabe9c0f1b6ed9affb6c6953.js
         ª   ª               09e71698437e4712ae7a50513108ba6d2ed89225f61291854068d445a08c9cbd.html
         ª   ª               0ad901a1f96c55e34630b9b3ae0386336daf129f2b4d518a1fb7d54d6ab741e2.js
+        ª   ª               0edf16fd20efda56ac5e7f4e714d09b8e80745e1d437ed201b67f76d9f50ad04.html
         ª   ª               176b4871baad22756efe57935cf0c7dec05cd0889d5fac78364a5a0b62f9dbab.html
         ª   ª               177d151111ce16af12beed9533d06afcc13d7dea824cc3b0d1c11a960fda0715.html
+        ª   ª               1fbe222d4b9de26a5d5b60a87832ddf1f88d5461522d84733e7cdd1d4906b164.html
         ª   ª               22a718795f865958317408da35bbef0c628202dc8c4d13bf1423e2d5a505fa02.html
         ª   ª               23e48ddec16b70834018cf05a65af3eebeee34330e232929f38b78c27c403410.js
         ª   ª               265c039968be1d5c441c0db404cba23fccd99d49b290a9b816bc46855fe69021.js
         ª   ª               288e1db2ecf624332ee976fc6e2e55efe289cd0f913142b03c34d1fc62fc3a42.html
         ª   ª               2ab0c711242ab737548deca09b3c51ce6a869708683e07d3b62a266857b5f8be.html
+        ª   ª               2f5a52fdf671b556cd09da13fcd19f9ca543aacb2794e01fa63ce28e6d59f3b2.js
+        ª   ª               2fc8d57ce3f528a14d4053b3a7b4bcb29d529653f5a60ddc4e67bdae2c1ef015.html
         ª   ª               32445ce4a391b1551f0ea623f25d9cca42ba6db160df0ba02ea3b458d7d62f93.html
         ª   ª               3493d721a6d78f918dfbcd7687a282ec8ddecaf5ff5460d74d5ac0fd294a9164.html
         ª   ª               37ed2c824b7f55ad2533f7c016e9e4cbae4a3956cc520bb8e68bf4c6cdf1e54e.html
+        ª   ª               39ae9ee8a1634285728180cc42572c4d818c3e7e2427e6678989f9cef3e25057.js
         ª   ª               3ed77d9ba17138d562436fbe80422465a5b3f3cf9c40510fffa0293f019af7d7.html
         ª   ª               3ffaed2da3f03dca9702a51cb476acec1dc8fa8c410953024abec0a4d8bb913e.js
         ª   ª               40dbb5c207af0f6c7916b9eabd9ddab941a5a71982a20b7cf913dc354a900ca5.js
+        ª   ª               437ca8a12b9d53cfb64cad5489c3c9afe00d53015979287cc440ee9b6ef446fc.html
+        ª   ª               471ee38ec08210a6ac55a7d313ac8700ad7877447d4e0c39813efeb9caab4d63.html
         ª   ª               482e8c5418362bdbf3930bde47aa64ff5393aaa25e1625ba038c3e3530b46d58.html
         ª   ª               4f9245b46f70b34b40232c91f6275547f2f8a996f01d2c9ebaa15c45361eaa3e.js
         ª   ª               4fdb937a2eeb865cf6ac67bf5d9978de16c94e24997e2edff9abe03d2f559532.html
@@ -12107,12 +12115,16 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª               567f59998d29df1912509767ea730409a5b956e47b280eec498ce0a2c62ac88e.html
         ª   ª               5b9b99d842b5346b00259bcb73d7fe1abd58494411ecac3669875c77b1da1c06.html
         ª   ª               5c21f90b8027888e4d3833e58f9c1713ed2308caa48f0f0223f6842988727498.glb
+        ª   ª               6093b2898a414437d868ebbb38d4e0ffd5d98b5e5ba7515101676021cc725171.js
+        ª   ª               649ccfbaac62aebb92df70889bcd2ac7a46281acf47fbd7b9d0d8dd044072953.html
         ª   ª               65bb6c19477aba8d1d54a093b0329241022df57df1de39e372c162c9bdff4e42.html
         ª   ª               67e61923f77b438d21246cea73ff04414f707276de45fddf664139e6c01778cd.html
         ª   ª               692c46595812d15f82e00af434bb93494bd374370730b9d671303b503511b038.js
         ª   ª               69a30d66cfa107421bf49e0b12e07f13cbce76f7de25196fab131a491e84283b.html
         ª   ª               69d843acd87b7686c12294b1b209083d74db59a59e94edb3c23b3c3b331a6ca5.js
+        ª   ª               69f4c31df9557011f77fa8ea5190e19d38e9b8e34a0146f65538de521b788cf9.html
         ª   ª               6b4431c4d8c0608b1c4eaf543c43423269ca1bec06c557e73e3e4976b598bb14.html
+        ª   ª               6d853a22e771c9aee3f373555fc97b05cb5ca9b2c79321e2a156a93772313f15.js
         ª   ª               6deb501eccbd35e434ee26c9e86ea9be36dc4691fca3876736e8845265a0c0b4.js
         ª   ª               6ffc75e080900ef5d528144375669bf27375f3d9547dde10c137a1af318cb833.js
         ª   ª               718387293e895980ee4b0fa858caa89cb9acf9b0266b56f2d56bc7beee8a1eaa.js
@@ -12122,34 +12134,56 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª               7859bac0be08727bd23ba6b5ce5c92b31c0b64bb03053be23b75248d6946f813.js
         ª   ª               7a5715b3f2aa76bb4902fcb1fd884eecc139fd9812bd36aa1bd1ff94c476a4a0.html
         ª   ª               7b0c353edf9bcf175354a6bc6c781b455a2e4f8d365a3f8521c6fcc35f0adbb0.js
+        ª   ª               7b7d117d3e1bb959c53989df166b0b22e036f66e296b1f0078884ff7124fd0d7.html
         ª   ª               7c678c5eedde0cbdcb60d05be40096ad513ade472aedc6892cdb6f48764735c2.html
         ª   ª               7d2c06f08e13e453cd04b80289270f2b5a530802d648c485a32f813e33b0af29.js
         ª   ª               7db0acec4406aa718f27333555eb748cc6ce1a80112d7007be80e2bd5099dd98.html
+        ª   ª               7dce079e36c5c5eead54c41ca2c0c2ca46d5133b40aa3600d9b0486ea18513d0.html
+        ª   ª               7f3ac9b3e592d13cc8ca5682ba103f884f3b55951cdd8cff51c0130b823dfe72.html
         ª   ª               800ac11bf0e464b1eb91e526722e6c6a6603b25e72a2ddac77e211a173a687dc.html
         ª   ª               80201ce760aeed0a3dfa9539628e6b53f488019f81dfc39831a7603a6ed1ac3c.html
         ª   ª               824ce7b5450d37cffef819663b27580b96df16975a4d48d67d68792ce515db7e.js
+        ª   ª               88a066d71c1f7173d24e49f7b968ce55eee9d2298de575cb994877b139dcaade.js
+        ª   ª               8fde731a06d47d3afe03ac593516fde95dabe61b0d5223632a3b7c0e06cce202.js
+        ª   ª               908ca5cce5a72f1823859ea53df08385ca135c20636a838374a14f8fb5078d61.js
+        ª   ª               9566f80b18dff49f7ac88bae65a6eac999e584c3f07ef17da4d0f9370a851bb9.html
+        ª   ª               95767e6e3efbced1db60b5339823281edb6b9cec71ddd6f3a0a75617f9b56ea2.html
+        ª   ª               959134250c665f157a9d34a04df06009fe4742d0e3fbb39c666a9a8c3ea636f4.js
+        ª   ª               992ca6155788ad37703cd809b0551aa9435ce0e07809f825d0043c46202477af.js
+        ª   ª               9a6d6bfae66282ac86bfda9fab59a2f990dfbc07dcab39243e44f05e6938e5f5.js
         ª   ª               9c68a5f46749ff6c28a43c77d6d88962e4a159e2512101247757ac5a9fe4e789.js
         ª   ª               a00585fa33dc4dbfe8af8ffd75573362203451cc47c9d98e2b853f0e12e9fa1c.html
         ª   ª               a23d85ff4ee80b763d8c78b3e339515e44eb5df9c77582cf36a27ceaca62a6b0.js
+        ª   ª               a433b2e1a0192a31b4ccf85284e7525f0053f775f2c77826a2d965eea3cf9f5e.js
+        ª   ª               a5c49b7fd2841c97093c3ffe71643ba05bd53dcb13a0abc355750f24a98ec12e.html
         ª   ª               a65380463cda47f47f23b78f9e0d394384d24728f89d1728490cea6c7aaa197a.js
         ª   ª               a7062f0e48fc1e7633485e2a462a65f3977f4d4b4c25ccd2fd94c4d608ffce0a.html
         ª   ª               a9a5f01f454363ef2bab09f91e5599cf931e82b1c7534d60b424bfaa4fea2bd9.html
+        ª   ª               aa49eb318244fdc5780464932de8667714cb22e2a801546b2fa85c39144a6600.js
         ª   ª               af67d612cbab81e741f55fbf7271fa4a5c54b15ded3d5d57c1b5b8652632fb7c.js
+        ª   ª               afae4f92e5b8baa2cf7660614ecf0bce581717cceea7641406af5d607ab8533c.html
         ª   ª               afd0d4e45199323d99c47335fdf0f2ec8462d7985a4daf28fac2f04b85deeb58.js
         ª   ª               ba8ded93c8b3723dfcfbd073a8cdcbc61e22fd936109fb1a85f739cee8a7bdb7.html
+        ª   ª               bc6a5d80c8bb72b93b0b12dea96e2595d64e8be8b85fee5929980f89e0e53aea.js
         ª   ª               bcf1fde49e77a73ead6dc74e97dc8feb97c2f8ba8ea16f53fb6d3ede46cbab0e.html
+        ª   ª               c2f81b99018478edf22cfed15f4830d2e308b9f154c9140305780f243c8b726a.js
         ª   ª               c7658710e2ea7c95b0e349d8a54dafa962b931b32308d9f5cdfdd898473850fb.js
+        ª   ª               cc99fdc103ba49520f32bbcdca079820ecd6a26a7481caea67d007ff1d0460ef.html
         ª   ª               cf76ca9828f8844cefe013c618aed9c9d772c21bdb11569d704c96bae02c0100.html
         ª   ª               d04bcc54f6cb8142b0c70d2ab0289f8eaaddbf81db16f1a6f6da984c542cc584.js
         ª   ª               d09fe9c70f0fcb644ecbbb2967e00ae87be010df1364a7a9af0640b645b6ec36.js
         ª   ª               d183e7ccc3f8a33c5f1abb369632d35d5c40ef2be5d8db2f3694ac3f88f160ae.html
+        ª   ª               d649a802d707220e319066a302cdf98fecf8a3b4ccc50b93536cf3d968ab859c.js
         ª   ª               dbd5380b915bf1c47ac47d95db987dfe072e0d5d153ede602c4fb8b428a92f14.html
+        ª   ª               dbf9b1e424ea8a14d7a6b3095699adc20829128031f8eceb11b26e3cb106b911.js
         ª   ª               df40c36c2df7ce4954027e8945dd132b4aedefc2e881e771ff768d04b819afdd.html
+        ª   ª               e3ff2ffe3be134b32196b710cf9d2ad2c4ebd7b0ad4afa10d0b55e6c01aefdc2.html
         ª   ª               e4822bc34f8f6d32e1fade739444ce7db6bf93aa953a87b7931b6bd7bf5ec88e.js
         ª   ª               e85e8e5883a6c15ae30c5304d845c862ac81b8403983819b5f78a91555621f71.html
         ª   ª               eebce1d8fb5847b4b9a6442557dd823cab2b564be0a652f575c811f32be53462.html
         ª   ª               f10cd8577b45e6728004b1af86aeb646e1621ac80a8c6666be5fac6a3289bc97.js
         ª   ª               f407531702cfa3211fb9915b852e25a47f308baf5e76a8f6ac1e8a1bbcadb423.js
+        ª   ª               f415414cd025f68d3e32fd041519025d5d154777ae3bc82ab0a845f8c6613457.html
         ª   ª               f589e4011a87c5189e8578eeef1f10daac7094db61baf04934270574fe4263c9.js
         ª   ª               f886823dbef494d26e28de8c1251fc1f1f5e86bce09066cbeeda5b6eab74012d.js
         ª   ª               fbfb5a4da24843f57b2edd46f2fba6543b400533895afd7e55d77ae0275229c9.js

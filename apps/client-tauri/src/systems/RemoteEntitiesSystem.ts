@@ -1,10 +1,19 @@
-// apps/client-tauri/src/network/RemoteEntitySync.ts
+// apps/client-tauri/src/systems/RemoteEntitiesSystem.ts
+//
+// System for synchronizing *remote* entities from server Snapshots into ECS.
+//
+// Responsibilities:
+// - Ensure a local ECS entity exists for each remote server entity id.
+// - Update Transform / components from snapshot data.
+// - Push interpolation samples for remote smoothing.
+// - Does NOT touch HUD; local-player HUD is handled elsewhere.
 
 import {
   Transform,
   Velocity,
   addComponent,
   addEntity,
+  type SimWorld,
 } from '@bf42lite/engine-core';
 
 import {
@@ -18,20 +27,14 @@ import {
 import type { Snapshot } from '@bf42lite/protocol';
 import type { NetworkManager } from '../managers/NetworkManager';
 import type { Renderer } from '../core/Renderer';
-import type { Reconciler } from '../systems/Reconciler';
-import {
-  pushInterpolationSnapshot,
-} from './interpolation';
+import type { Reconciler } from './Reconciler';
 
-/**
- * This module processes *remote* entities:
- * - ensures they exist in ECS
- * - updates their transform & components
- * - sends interpolation data to the reconciler buffer
- */
-export class RemoteEntitySync {
+// We will migrate this later; for now we still reuse the old helper.
+import { pushInterpolationSnapshot } from './interpolationHelpers';
+
+export class RemoteEntitiesSystem {
   private static ensureEntity(
-    world: any,
+    world: SimWorld,
     net: NetworkManager,
     renderer: Renderer,
     serverId: number,
@@ -57,14 +60,14 @@ export class RemoteEntitySync {
     return eid;
   }
 
-  static apply(
+  public static apply(
     snapshot: Snapshot,
-    world: any,
+    world: SimWorld,
     renderer: Renderer,
     net: NetworkManager,
     reconciler: Reconciler,
     nowTs: number,
-  ) {
+  ): void {
     if (!snapshot.entities) return;
 
     for (const ent of snapshot.entities) {

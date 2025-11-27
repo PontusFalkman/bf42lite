@@ -2,7 +2,7 @@
 
 import { Transform, Velocity, SimWorld } from '@bf42lite/engine-core';
 import { ClientInput, EntityState } from '@bf42lite/protocol';
-import type { InterpolationBuffer } from '../network/types';
+import type { InterpolationBuffer } from '../net/types';
 import { log } from '../utils/log';
 
 export interface InputHistory {

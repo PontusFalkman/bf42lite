@@ -13,10 +13,11 @@ import { log } from '../utils/log';
 import type { Renderer } from '../core/Renderer';
 import type { Reconciler } from '../systems/Reconciler';
 
-import { decodeServerMessage } from '../network/SnapshotDecoder';
-import { RemoteEntitySync } from '../network/RemoteEntitySync';
-import { FlagSync } from '../network/FlagSync';
-import { interpolateRemotePlayers as interpRemote } from '../network/interpolation';
+import { decodeServerMessage } from '../net/SnapshotDecoder';
+// after previous step:
+import { RemoteEntitiesSystem } from '../systems/RemoteEntitiesSystem';
+import { FlagSystem } from '../systems/FlagSystem';
+import { interpolateRemotePlayers as interpRemote } from '../systems/interpolationHelpers';
 
 // Local wire type for spawn request – must match Rust/zod schema
 type SpawnRequestWire = {
@@ -92,27 +93,27 @@ export class NetworkManager {
         return;
       }
 
-      case 'snapshot': {
-        const snapshot = decoded.snapshot;
+case 'snapshot': {
+  const snapshot = decoded.snapshot;
 
-        // Remote entities (ECS + interpolation buffers)
-        RemoteEntitySync.apply(
-          snapshot,
-          this.world,
-          this.renderer,
-          this,
-          this.reconciler,
-          nowTs,
-        );
+  // Remote entities (ECS + interpolation buffers)
+  RemoteEntitiesSystem.apply(
+    snapshot,
+    this.world,
+    this.renderer,
+    this,
+    this.reconciler,
+    nowTs,
+  );
 
-        // Conquest / flags ECS state
-        FlagSync.apply(snapshot, this.world);
+  // Conquest / flags ECS state
+  FlagSystem.applySnapshotFlags(snapshot, this.world);
 
-        // Forward to ClientGame (sync local player, UI, etc.)
-        this.onSnapshot(snapshot);
+  // Forward to ClientGame (sync local player, UI, etc.)
+  this.onSnapshot(snapshot);
 
-        return;
-      }
+  return;
+}
 
       case 'unknown':
       default: {

@@ -27,10 +27,8 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       CommandSender.ts
 ª       
 +---network
-ª       FlagSync.ts
 ª       index.ts
 ª       interpolation.ts
-ª       RemoteEntitySync.ts
 ª       SnapshotDecoder.ts
 ª       types.ts
 ª       
@@ -44,6 +42,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC
 ª       MovementSystem.ts
 ª       PredictionSystem.ts
 ª       Reconciler.ts
+ª       RemoteEntitiesSystem.ts
 ª       SnapshotHandler.ts
 ª       syncLocalPlayer.ts
 ª       updateGameFrame.ts
@@ -1026,8 +1025,9 @@ import type { Renderer } from '../core/Renderer';
 import type { Reconciler } from '../systems/Reconciler';
 
 import { decodeServerMessage } from '../network/SnapshotDecoder';
-import { RemoteEntitySync } from '../network/RemoteEntitySync';
-import { FlagSync } from '../network/FlagSync';
+// after previous step:
+import { RemoteEntitiesSystem } from '../systems/RemoteEntitiesSystem';
+import { FlagSystem } from '../systems/FlagSystem';
 import { interpolateRemotePlayers as interpRemote } from '../network/interpolation';
 
 // Local wire type for spawn request â€“ must match Rust/zod schema
@@ -1104,27 +1104,27 @@ export class NetworkManager {
         return;
       }
 
-      case 'snapshot': {
-        const snapshot = decoded.snapshot;
+case 'snapshot': {
+  const snapshot = decoded.snapshot;
 
-        // Remote entities (ECS + interpolation buffers)
-        RemoteEntitySync.apply(
-          snapshot,
-          this.world,
-          this.renderer,
-          this,
-          this.reconciler,
-          nowTs,
-        );
+  // Remote entities (ECS + interpolation buffers)
+  RemoteEntitiesSystem.apply(
+    snapshot,
+    this.world,
+    this.renderer,
+    this,
+    this.reconciler,
+    nowTs,
+  );
 
-        // Conquest / flags ECS state
-        FlagSync.apply(snapshot, this.world);
+  // Conquest / flags ECS state
+  FlagSystem.applySnapshotFlags(snapshot, this.world);
 
-        // Forward to ClientGame (sync local player, UI, etc.)
-        this.onSnapshot(snapshot);
+  // Forward to ClientGame (sync local player, UI, etc.)
+  this.onSnapshot(snapshot);
 
-        return;
-      }
+  return;
+}
 
       case 'unknown':
       default: {
@@ -1605,58 +1605,6 @@ export class CommandSender {
 }
 
 
-## FILE: apps\client-tauri\src\network\FlagSync.ts
----------------------------
-// apps/client-tauri/src/network/FlagSync.ts
-
-import {
-  Transform,
-  addComponent,
-  addEntity,
-} from '@bf42lite/engine-core';
-
-import {
-  CapturePoint,
-} from '@bf42lite/games-bf42';
-
-import type { Snapshot } from '@bf42lite/protocol';
-
-export class FlagSync {
-  private static flagMap = new Map<number, number>();
-
-  private static ensureFlag(world: any, id: number): number {
-    if (!FlagSync.flagMap.has(id)) {
-      const eid = addEntity(world);
-      addComponent(world, CapturePoint, eid);
-      addComponent(world, Transform, eid);
-      FlagSync.flagMap.set(id, eid);
-      return eid;
-    }
-
-    // non-null assertion is safe here because we just checked
-    return FlagSync.flagMap.get(id)!;
-  }
-
-  static apply(snapshot: Snapshot, world: any) {
-    if (!snapshot.flags) return;
-
-    for (const f of snapshot.flags) {
-      const eid = this.ensureFlag(world, f.id);
-
-      Transform.x[eid] = f.x;
-      Transform.y[eid] = f.y;
-      Transform.z[eid] = f.z;
-
-      CapturePoint.radius[eid] = f.radius ?? 8;
-      CapturePoint.owner[eid] =
-        f.owner === 'TeamA' ? 1 :
-        f.owner === 'TeamB' ? 2 : 0;
-      CapturePoint.capture[eid] = f.capture ?? 0;
-    }
-  }
-}
-
-
 ## FILE: apps\client-tauri\src\network\index.ts
 ---------------------------
 // apps/client-tauri/src/network/index.ts
@@ -1764,135 +1712,6 @@ import {
     // Currently no need to touch `world` fields; transform changes are enough.
   }
   
-
-## FILE: apps\client-tauri\src\network\RemoteEntitySync.ts
----------------------------
-// apps/client-tauri/src/network/RemoteEntitySync.ts
-
-import {
-  Transform,
-  Velocity,
-  addComponent,
-  addEntity,
-} from '@bf42lite/engine-core';
-
-import {
-  Health,
-  Ammo,
-  Soldier,
-  Team,
-  Loadout,
-} from '@bf42lite/games-bf42';
-
-import type { Snapshot } from '@bf42lite/protocol';
-import type { NetworkManager } from '../managers/NetworkManager';
-import type { Renderer } from '../core/Renderer';
-import type { Reconciler } from '../systems/Reconciler';
-import {
-  pushInterpolationSnapshot,
-} from './interpolation';
-
-/**
- * This module processes *remote* entities:
- * - ensures they exist in ECS
- * - updates their transform & components
- * - sends interpolation data to the reconciler buffer
- */
-export class RemoteEntitySync {
-  private static ensureEntity(
-    world: any,
-    net: NetworkManager,
-    renderer: Renderer,
-    serverId: number,
-  ): number {
-    const existing = net.getLocalId(serverId);
-    if (existing !== undefined) return existing;
-
-    const eid = addEntity(world);
-
-    addComponent(world, Transform, eid);
-    addComponent(world, Velocity, eid);
-    addComponent(world, Soldier, eid);
-    addComponent(world, Health, eid);
-    addComponent(world, Ammo, eid);
-    addComponent(world, Team, eid);
-    addComponent(world, Loadout, eid);
-
-    net.registerEntity(serverId, eid);
-    if (renderer.onEntityCreated) {
-      renderer.onEntityCreated(eid);
-    }
-
-    return eid;
-  }
-
-  static apply(
-    snapshot: Snapshot,
-    world: any,
-    renderer: Renderer,
-    net: NetworkManager,
-    reconciler: Reconciler,
-    nowTs: number,
-  ) {
-    if (!snapshot.entities) return;
-
-    for (const ent of snapshot.entities) {
-      const serverId = ent.id;
-      if (serverId == null) continue;
-
-      const eid = this.ensureEntity(world, net, renderer, serverId);
-
-      // Transform / rotation
-      if (ent.pos) {
-        const { x, y, z } = ent.pos;
-        Transform.x[eid] = x;
-        Transform.y[eid] = y;
-        Transform.z[eid] = z;
-
-        if (typeof ent.rot === 'number') {
-          Transform.rotation[eid] = ent.rot;
-        }
-
-        // Interpolation history
-        pushInterpolationSnapshot(
-          reconciler.remoteBuffers,
-          eid,
-          snapshot.tick,
-          { x, y, z },
-          ent.rot ?? 0,
-          nowTs,
-        );
-      }
-
-      // Health / death
-      if (ent.health != null) {
-        Health.current[eid] = ent.health;
-        Health.isDead[eid] = ent.isDead ? 1 : 0;
-      }
-
-      // Team
-      if (ent.team) {
-        Team.id[eid] = ent.team.id === 'TeamA' ? 1 : 2;
-      }
-
-      // Loadout / class
-      if (ent.loadout) {
-        Loadout.classId[eid] = ent.loadout.classId ?? 0;
-      }
-
-      // Ammo
-      if (ent.ammo) {
-        Ammo.current[eid] = ent.ammo.current ?? 0;
-        Ammo.reserve[eid] = ent.ammo.reserve ?? 0;
-      }
-
-      if (renderer.onEntityUpdated) {
-        renderer.onEntityUpdated(eid);
-      }
-    }
-  }
-}
-
 
 ## FILE: apps\client-tauri\src\network\SnapshotDecoder.ts
 ---------------------------
@@ -2842,13 +2661,144 @@ export class Reconciler {
 }
 
 
+## FILE: apps\client-tauri\src\systems\RemoteEntitiesSystem.ts
+---------------------------
+// apps/client-tauri/src/systems/RemoteEntitiesSystem.ts
+//
+// System for synchronizing *remote* entities from server Snapshots into ECS.
+//
+// Responsibilities:
+// - Ensure a local ECS entity exists for each remote server entity id.
+// - Update Transform / components from snapshot data.
+// - Push interpolation samples for remote smoothing.
+// - Does NOT touch HUD; local-player HUD is handled elsewhere.
+
+import {
+  Transform,
+  Velocity,
+  addComponent,
+  addEntity,
+  type SimWorld,
+} from '@bf42lite/engine-core';
+
+import {
+  Health,
+  Ammo,
+  Soldier,
+  Team,
+  Loadout,
+} from '@bf42lite/games-bf42';
+
+import type { Snapshot } from '@bf42lite/protocol';
+import type { NetworkManager } from '../managers/NetworkManager';
+import type { Renderer } from '../core/Renderer';
+import type { Reconciler } from './Reconciler';
+
+// We will migrate this later; for now we still reuse the old helper.
+import { pushInterpolationSnapshot } from '../network/interpolation';
+
+export class RemoteEntitiesSystem {
+  private static ensureEntity(
+    world: SimWorld,
+    net: NetworkManager,
+    renderer: Renderer,
+    serverId: number,
+  ): number {
+    const existing = net.getLocalId(serverId);
+    if (existing !== undefined) return existing;
+
+    const eid = addEntity(world);
+
+    addComponent(world, Transform, eid);
+    addComponent(world, Velocity, eid);
+    addComponent(world, Soldier, eid);
+    addComponent(world, Health, eid);
+    addComponent(world, Ammo, eid);
+    addComponent(world, Team, eid);
+    addComponent(world, Loadout, eid);
+
+    net.registerEntity(serverId, eid);
+    if (renderer.onEntityCreated) {
+      renderer.onEntityCreated(eid);
+    }
+
+    return eid;
+  }
+
+  public static apply(
+    snapshot: Snapshot,
+    world: SimWorld,
+    renderer: Renderer,
+    net: NetworkManager,
+    reconciler: Reconciler,
+    nowTs: number,
+  ): void {
+    if (!snapshot.entities) return;
+
+    for (const ent of snapshot.entities) {
+      const serverId = ent.id;
+      if (serverId == null) continue;
+
+      const eid = this.ensureEntity(world, net, renderer, serverId);
+
+      // Transform / rotation
+      if (ent.pos) {
+        const { x, y, z } = ent.pos;
+        Transform.x[eid] = x;
+        Transform.y[eid] = y;
+        Transform.z[eid] = z;
+
+        if (typeof ent.rot === 'number') {
+          Transform.rotation[eid] = ent.rot;
+        }
+
+        // Interpolation history
+        pushInterpolationSnapshot(
+          reconciler.remoteBuffers,
+          eid,
+          snapshot.tick,
+          { x, y, z },
+          ent.rot ?? 0,
+          nowTs,
+        );
+      }
+
+      // Health / death
+      if (ent.health != null) {
+        Health.current[eid] = ent.health;
+        Health.isDead[eid] = ent.isDead ? 1 : 0;
+      }
+
+      // Team
+      if (ent.team) {
+        Team.id[eid] = ent.team.id === 'TeamA' ? 1 : 2;
+      }
+
+      // Loadout / class
+      if (ent.loadout) {
+        Loadout.classId[eid] = ent.loadout.classId ?? 0;
+      }
+
+      // Ammo
+      if (ent.ammo) {
+        Ammo.current[eid] = ent.ammo.current ?? 0;
+        Ammo.reserve[eid] = ent.ammo.reserve ?? 0;
+      }
+
+      if (renderer.onEntityUpdated) {
+        renderer.onEntityUpdated(eid);
+      }
+    }
+  }
+}
+
+
 ## FILE: apps\client-tauri\src\systems\SnapshotHandler.ts
 ---------------------------
 // apps/client-tauri/src/systems/SnapshotHandler.ts
 //
-// Unified handler for processing server snapshots.
-// This now delegates HUD updates to HUDUpdater so that
-// ClientGame and snapshot flow do not touch UIManager directly.
+// Thin wrapper around Snapshot â†’ HUD effects.
+// Keeps ClientGame free from protocol / HUD wiring.
 
 import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
 import type { HUDUpdater } from '../ui/HUDUpdater';
@@ -2858,13 +2808,6 @@ export interface SnapshotResult {
   lastServerTick: number;
 }
 
-/**
- * SnapshotHandler centralizes â€œglobalâ€ snapshot effects:
- * - Tickets / flags / game-over HUD via HUDUpdater.applySnapshotHUD(...)
- * - Flag list for HUD / debug
- *
- * Entity ECS sync is still handled by NetworkManager â†’ RemoteEntitySync.
- */
 export class SnapshotHandler {
   private hud: HUDUpdater;
 
@@ -2990,8 +2933,9 @@ export function syncLocalPlayerFromSnapshot(
   }
 
   // RTT (if provided by snapshot/game_state)
-  if (typeof msg.game_state?.rtt_ms === 'number') {
-    lastRtt = msg.game_state.rtt_ms;
+  const gs: any = msg.game_state;
+  if (typeof gs?.rtt_ms === 'number') {
+    lastRtt = gs.rtt_ms;
   }
 
   return lastRtt;
@@ -3120,7 +3064,7 @@ export class HUDUpdater {
     this.ui.updateFlagsHUD(msg.flags);
 
     // --- Game over state ---
-    const st = msg.game_state;
+    const st: any = msg.game_state;
     const ended = !!st?.match_ended;
 
     if (ended) {

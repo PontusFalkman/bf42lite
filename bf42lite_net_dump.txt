@@ -16,6 +16,8 @@ D:\BF42LITE\PACKAGES\NET
 ª   ª   index.js
 ª   ª   LoopbackAdapter.d.ts
 ª   ª   LoopbackAdapter.js
+ª   ª   TauriAdapter.d.ts
+ª   ª   TauriAdapter.js
 ª   ª   tsconfig.tsbuildinfo
 ª   ª   types.d.ts
 ª   ª   types.js
