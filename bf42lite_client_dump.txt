@@ -302,19 +302,7 @@ export const CLASS_IDS = {
   SCOUT: 2,
 } as const;
 
-// --- WEAPONS (NAMES + BASIC STATS) ---
-
-export const WEAPON_NAMES: Record<number, string> = {
-  [CLASS_IDS.ASSAULT]: 'THOMPSON',
-  [CLASS_IDS.MEDIC]: 'MP40',
-  [CLASS_IDS.SCOUT]: 'KAR98K',
-};
-
-export const WEAPON_STATS = {
-  [CLASS_IDS.ASSAULT]: { rate: 0.12 }, // Assault
-  [CLASS_IDS.MEDIC]: { rate: 0.15 },   // Medic
-  [CLASS_IDS.SCOUT]: { rate: 1.5 },    // Scout (slow bolt-action)
-} as const;
+// (no weapon names/stats here anymore â€“ those now come from JSON)
 
 
 ## FILE: apps\client-tauri\src\core\EntityMapper.ts
@@ -983,25 +971,11 @@ import { Renderer } from './Renderer';
 import { NetworkManager } from '../managers/NetworkManager';
 import { InputState } from '@bf42lite/engine-core';
 
-// Keep client-side types aligned with server JSON
-export interface WeaponConfig {
-  id: number;
-  key: string;
-  name: string;
-  damage_per_hit: number;
-  fire_rate: number;      // seconds between shots
-  mag_size: number;
-  reserve_ammo: number;
-  recoil: number;
-}
+import type { WeaponConfig } from './WeaponConfigLoader';
+import { loadWeaponConfig } from './WeaponConfigLoader';
+import type { ClassConfig } from './ClassConfigLoader';
+import { loadClassConfig } from './ClassConfigLoader';
 
-export interface ClassConfig {
-  id: number;
-  key: string;
-  name: string;
-  max_health: number;
-  primary_weapon_id: number;
-}
 
 /**
  * Data-driven WeaponSystem:
@@ -1117,8 +1091,8 @@ export class WeaponSystem {
   private async loadConfigs() {
     try {
       const [weapons, classes] = await Promise.all([
-        this.loadWeaponsJson(),
-        this.loadClassesJson(),
+        loadWeaponConfig(),
+        loadClassConfig(),
       ]);
 
       this.weaponsById.clear();
@@ -1145,24 +1119,6 @@ export class WeaponSystem {
       console.error('[WeaponSystem] Failed to load weapon/class config:', err);
       this.isLoaded = false;
     }
-  }
-
-  private async loadWeaponsJson(): Promise<WeaponConfig[]> {
-    const res = await fetch('/weapons.json');
-    if (!res.ok) {
-      console.error('[WeaponSystem] Failed to load /weapons.json:', res.status);
-      return [];
-    }
-    return (await res.json()) as WeaponConfig[];
-  }
-
-  private async loadClassesJson(): Promise<ClassConfig[]> {
-    const res = await fetch('/classes.json');
-    if (!res.ok) {
-      console.error('[WeaponSystem] Failed to load /classes.json:', res.status);
-      return [];
-    }
-    return (await res.json()) as ClassConfig[];
   }
 }
 
@@ -3001,7 +2957,80 @@ import type { NetworkManager } from '../managers/NetworkManager';
 import type { HUDUpdater } from '../ui/HUDUpdater';
 import type { Reconciler } from './Reconciler';
 
-import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
+import { TEAM_IDS } from '../core/constants';
+import type { ClassConfig } from '../core/ClassConfigLoader';
+import { loadClassConfig } from '../core/ClassConfigLoader';
+import type { WeaponConfig } from '../core/WeaponConfigLoader';
+import { loadWeaponConfig } from '../core/WeaponConfigLoader';
+
+type WeaponHudInfo = {
+  weaponName: string;
+  magSize?: number;
+  reserveAmmo?: number;
+};
+
+let hudClassesById = new Map<number, ClassConfig>();
+let hudWeaponsById = new Map<number, WeaponConfig>();
+let hudConfigLoaded = false;
+let hudConfigLoadingPromise: Promise<void> | null = null;
+
+async function ensureHudConfigsLoaded(): Promise<void> {
+  if (hudConfigLoaded || hudConfigLoadingPromise) {
+    return hudConfigLoadingPromise ?? Promise.resolve();
+  }
+
+  hudConfigLoadingPromise = (async () => {
+    try {
+      const [weapons, classes] = await Promise.all([
+        loadWeaponConfig(),
+        loadClassConfig(),
+      ]);
+
+      hudWeaponsById.clear();
+      for (const w of weapons) {
+        hudWeaponsById.set(w.id, w);
+      }
+
+      hudClassesById.clear();
+      for (const c of classes) {
+        hudClassesById.set(c.id, c);
+      }
+
+      hudConfigLoaded = true;
+      console.log('[HUDConfig] Loaded weapons/classes for HUD');
+    } catch (err) {
+      console.error('[HUDConfig] Failed to load HUD configs', err);
+      hudConfigLoaded = false;
+    }
+  })();
+
+  return hudConfigLoadingPromise;
+}
+
+function getWeaponHudInfoForClass(classId: number): WeaponHudInfo {
+  if (!hudConfigLoaded) {
+    // Fire-and-forget load on first call; we keep a safe fallback name until it finishes.
+    void ensureHudConfigsLoaded();
+    return { weaponName: 'THOMPSON' };
+  }
+
+  const classCfg = hudClassesById.get(classId);
+  if (!classCfg) {
+    return { weaponName: 'THOMPSON' };
+  }
+
+  const weaponCfg = hudWeaponsById.get(classCfg.primary_weapon_id);
+  if (!weaponCfg) {
+    return { weaponName: 'THOMPSON' };
+  }
+
+  return {
+    weaponName: weaponCfg.name,
+    magSize: weaponCfg.mag_size,
+    reserveAmmo: weaponCfg.reserve_ammo,
+  };
+}
+
 
 /**
  * Synchronize the local player ECS state + UI from a server Snapshot.
@@ -3071,9 +3100,9 @@ export function syncLocalPlayerFromSnapshot(
       myServerEntity.loadout.classId ?? 0;
   }
 
-  // Ammo + weapon UI
-  const myClassId = Loadout.classId[localEntityId] || 0;
-  const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
+  // Ammo + weapon UI (JSON-driven: class -> primary_weapon_id -> weapon.name)
+  const myClassId = Loadout.classId[localEntityId] ?? 0;
+  const { weaponName } = getWeaponHudInfoForClass(myClassId);
 
   if (myServerEntity.ammo) {
     hud.updateAmmo(

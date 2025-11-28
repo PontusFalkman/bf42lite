@@ -92,14 +92,25 @@ export class UIManager {
             });
         }
 
-        // 3. Spawn Button Click Listener
-        if (this.ui.spawnBtn) {
-            this.ui.spawnBtn.addEventListener('click', () => {
-                // Spawn point enforcement optional; currently we let server decide
-                this.setDeployMode(false);
-                this.onSpawnRequest(this.selectedClassId);
-            });
+// 3. Spawn Button Click Listener
+if (this.ui.spawnBtn) {
+    this.ui.spawnBtn.addEventListener('click', () => {
+        // Require a spawn point selection
+        if (this.selectedSpawnId < 0) {
+            this.setCenterStatus('Select a spawn point first.');
+            console.warn('[UI] Deploy clicked but no spawn point selected');
+            return;
         }
+
+        // Optimistic deploy: hide deploy screen immediately.
+        this.setDeployMode(false);
+        this.setCenterStatus('Spawning...');
+        setTimeout(() => this.setCenterStatus(''), 800);
+
+        // Let the server know which class we chose.
+        this.onSpawnRequest(this.selectedClassId);
+    });
+}
     }
 
     // Show / hide deploy vs in-game HUD

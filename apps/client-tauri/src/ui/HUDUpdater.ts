@@ -16,6 +16,36 @@ export class HUDUpdater {
   }
 
   /**
+   * Toggle deploy screen vs in-game HUD.
+   */
+  public showDeployScreen(message?: string): void {
+    this.ui.setDeployMode(true);
+    if (message) {
+      this.updateCenterStatus(message);
+    }
+  }
+
+  public showLiveHUD(): void {
+    this.ui.setDeployMode(false);
+    // Clear center message when fully alive
+    this.updateCenterStatus('');
+  }
+
+  /**
+   * Update the center status text (e.g., spawn/death messages).
+   */
+  public updateCenterStatus(text: string): void {
+    this.ui.setCenterStatus(text);
+  }
+
+  /**
+   * Switch between deploy screen and in-game HUD.
+   */
+  public setDeployMode(isDeploy: boolean): void {
+    this.ui.setDeployMode(isDeploy);
+  }
+
+  /**
    * Update FPS + RTT stats in the HUD.
    */
   public updateStats(fps: number, rttMs: number): void {

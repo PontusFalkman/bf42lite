@@ -65,10 +65,14 @@ export class ClientGame {
     // New HUD façade
     this.hud = new HUDUpdater(this.ui);
 
+    // Start in deploy mode until the server respawns us
+    this.ui.setDeployMode(true);
+    this.hud.updateCenterStatus('Select a class and spawn point to deploy.');
+
     this.weaponSystem = new WeaponSystem(this.renderer, this.net);
 
-// Snapshot handler (HUD / flags routed through HUDUpdater)
-this.snapshotHandler = new SnapshotHandler(this.hud);
+    // Snapshot handler (HUD / flags routed through HUDUpdater)
+    this.snapshotHandler = new SnapshotHandler(this.hud);
 
     // Pointer lock + UI interaction toggles
     this.input.setInteraction(true);

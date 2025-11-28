@@ -137,6 +137,22 @@ export function syncLocalPlayerFromSnapshot(
   // HUD: respawn timer
   hud.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
 
+  // NEW: drive deploy vs live HUD directly from snapshot every tick
+  if (isNowDead) {
+    hud.showDeployScreen('Select a class and spawn point to deploy.');
+  } else {
+    hud.showLiveHUD();
+  }
+
+  // HUD: deploy vs live HUD toggle on state change
+  if (!wasDead && isNowDead) {
+    // Just died → show deploy screen
+    hud.showDeployScreen('You died. Select a spawn point.');
+  } else if (wasDead && !isNowDead) {
+    // Just respawned → back to game HUD
+    hud.showLiveHUD();
+  }
+
   // Team mapping (Rust TeamId → numeric ECS team)
   if (myServerEntity.team) {
     const protoId = myServerEntity.team.id;
