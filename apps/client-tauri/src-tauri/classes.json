@@ -1,0 +1,23 @@
+[
+  {
+    "id": 0,
+    "key": "ASSAULT",
+    "name": "Assault",
+    "max_health": 100.0,
+    "primary_weapon_id": 0
+  },
+  {
+    "id": 1,
+    "key": "MEDIC",
+    "name": "Medic",
+    "max_health": 110.0,
+    "primary_weapon_id": 1
+  },
+  {
+    "id": 2,
+    "key": "SCOUT",
+    "name": "Scout",
+    "max_health": 80.0,
+    "primary_weapon_id": 2
+  }
+]

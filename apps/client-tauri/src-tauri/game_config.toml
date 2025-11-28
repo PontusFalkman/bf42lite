@@ -1,7 +1,63 @@
+# game_config.toml
+
 [movement]
-move_speed = 10.0
-air_speed_factor = 0.6
-gravity = -25.0
-jump_force = 9.0
+move_speed = 6.0
+gravity = -9.81
+jump_force = 5.0
 sprint_multiplier = 1.5
-mouse_sensitivity = 0.002
+mouse_sensitivity = 0.1
+
+# --- WEAPONS ---
+
+[[weapons]]
+id = 0
+key = "ASSAULT_PRIMARY"
+name = "Thompson"
+damage_per_hit = 20.0
+fire_rate = 0.12         # seconds between shots, matches client WEAPON_STATS for Assault
+mag_size = 30
+reserve_ammo = 120
+recoil = 1.0
+
+[[weapons]]
+id = 1
+key = "MEDIC_PRIMARY"
+name = "MP40"
+damage_per_hit = 18.0
+fire_rate = 0.15         # seconds between shots, matches Medic
+mag_size = 32
+reserve_ammo = 128
+recoil = 0.9
+
+[[weapons]]
+id = 2
+key = "SCOUT_PRIMARY"
+name = "Kar98k"
+damage_per_hit = 80.0
+fire_rate = 1.5          # seconds between shots, matches Scout bolt-action
+mag_size = 5
+reserve_ammo = 25
+recoil = 2.0
+
+# --- CLASSES ---
+
+[[classes]]
+id = 0
+key = "ASSAULT"
+name = "Assault"
+max_health = 100.0
+primary_weapon_id = 0
+
+[[classes]]
+id = 1
+key = "MEDIC"
+name = "Medic"
+max_health = 110.0
+primary_weapon_id = 1
+
+[[classes]]
+id = 2
+key = "SCOUT"
+name = "Scout"
+max_health = 80.0
+primary_weapon_id = 2

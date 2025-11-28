@@ -1,0 +1,32 @@
+[
+  {
+    "id": 0,
+    "key": "ASSAULT_PRIMARY",
+    "name": "Thompson",
+    "damage_per_hit": 20.0,
+    "fire_rate": 0.12,
+    "mag_size": 30,
+    "reserve_ammo": 120,
+    "recoil": 1.0
+  },
+  {
+    "id": 1,
+    "key": "MEDIC_PRIMARY",
+    "name": "MP40",
+    "damage_per_hit": 18.0,
+    "fire_rate": 0.15,
+    "mag_size": 32,
+    "reserve_ammo": 128,
+    "recoil": 0.9
+  },
+  {
+    "id": 2,
+    "key": "SCOUT_PRIMARY",
+    "name": "Kar98k",
+    "damage_per_hit": 80.0,
+    "fire_rate": 1.5,
+    "mag_size": 5,
+    "reserve_ammo": 25,
+    "recoil": 2.0
+  }
+]

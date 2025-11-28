@@ -45,7 +45,7 @@ pub struct FlagZone {
 impl SimState {
     pub fn new() -> Self {
         // Try to load from a TOML file; fall back to defaults if missing.
-        let config = GameConfig::load_from_file("game_config.toml");
+let config = GameConfig::load_all();
 
         Self {
             players: HashMap::new(),
@@ -95,7 +95,7 @@ systems::movement::update(
                 id, p.transform.x, p.transform.y, p.transform.z, p.team
             );
         }
-        systems::combat::update(&mut self.players, input_map, dt);
+systems::combat::update(&mut self.players, input_map, dt, &self.config);
 
         // 2. Conquest logic: update flag capture + tickets
         systems::conquest::update_conquest(
