@@ -1,0 +1,463 @@
+/* === GLOBAL & RESET === */
+body {
+  margin: 0;
+  overflow: hidden;
+  background-color: #000;
+  user-select: none;
+  font-family: "Impact", sans-serif;
+}
+canvas {
+  display: block;
+}
+
+:root {
+  --bf-yellow: #ffcc00;
+  --bf-bg: rgba(0, 0, 0, 0.6);
+}
+
+/* === DEBUG OVERLAY (top-left) === */
+#debug-overlay {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: lime;
+  font-family: monospace;
+  font-size: 12px;
+  pointer-events: none;
+  text-shadow: 1px 1px 0 #000;
+  z-index: 20;
+}
+
+/* === HUD LAYER ROOT === */
+#hud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  color: #fff;
+  font-family: system-ui, sans-serif;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.9);
+  z-index: 10;
+}
+
+/* --- Top strip: tickets, objective, net stats --- */
+.hud-top {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.hud-top-left,
+.hud-top-center,
+.hud-top-right {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tickets-row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.tickets-block {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.team-label {
+  font-weight: 700;
+  letter-spacing: 1px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.team-label.axis {
+  color: #ff5555;
+}
+
+.team-label.allies {
+  color: #4aa8ff;
+}
+
+#tickets-axis,
+#tickets-allies {
+  min-width: 30px;
+  text-align: center;
+}
+
+#tickets-axis.low,
+#tickets-allies.low {
+  color: #ff4444;
+}
+
+#objective-text {
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+#flag-strip {
+  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.flag-mini {
+  width: 14px;
+  height: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.flag-mini.axis {
+  background: #7f2020;
+}
+
+.flag-mini.allies {
+  background: #20507f;
+}
+
+.flag-mini.neutral {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* --- Center status (under crosshair) --- */
+.hud-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -10px);
+  pointer-events: none;
+}
+
+#center-status {
+  font-size: 14px;
+  text-align: center;
+}
+
+/* --- Lower-left flag list --- */
+.hud-bottom-left {
+  position: absolute;
+  left: 20px;
+  bottom: 80px;
+  pointer-events: none;
+  font-size: 12px;
+}
+
+#flag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.flag-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.flag-name {
+  min-width: 70px;
+}
+
+.flag-owner {
+  font-weight: 600;
+}
+
+.flag-owner.axis {
+  color: #ff5555;
+}
+
+.flag-owner.allies {
+  color: #4aa8ff;
+}
+
+.flag-owner.neutral {
+  color: #cccccc;
+}
+
+.flag-progress {
+  flex: 1;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.flag-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  background: #ffffff;
+}
+
+/* --- Lower-right: health + ammo --- */
+.hud-bottom-right {
+  position: absolute;
+  right: 20px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+#weapon-panel {
+  text-align: right;
+}
+
+#weapon-name {
+  font-size: 16px;
+  color: #ffffff;
+}
+
+#ammo-display {
+  font-size: 32px;
+}
+
+#ammo-display span {
+  display: inline-block;
+  min-width: 28px;
+  text-align: right;
+}
+
+#health-bar {
+  position: relative;
+  width: 180px;
+  height: 14px;
+  border: 1px solid #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+#health-fill {
+  height: 100%;
+  width: 100%;
+  background: var(--bf-yellow);
+  transition: width 0.2s;
+}
+
+#health-val {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 11px;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+}
+
+/* --- Kill feed (right side, mid) --- */
+#kill-feed {
+  position: absolute;
+  right: 20px;
+  top: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  text-align: right;
+  pointer-events: none;
+}
+
+.kill-entry {
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.9);
+  opacity: 0.9;
+}
+
+.kill-entry.fade-out {
+  opacity: 0;
+  transition: opacity 0.5s linear;
+}
+
+/* === DEPLOY SCREEN (overlay) === */
+#deploy-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  color: var(--bf-yellow);
+}
+
+.map-container {
+  position: relative;
+  width: 500px;
+  height: 500px;
+  background: #2a3b2a;
+  border: 4px solid var(--bf-yellow);
+  margin-bottom: 20px;
+  background-image: radial-gradient(#445544 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.spawn-point {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+  background: white;
+  border: 2px solid black;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 5px #000;
+  z-index: 100;
+}
+
+.spawn-point.axis {
+  background: #ff4444;
+}
+
+.spawn-point.allies {
+  background: #4488ff;
+}
+
+.spawn-point:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  background: var(--bf-yellow);
+}
+
+.spawn-point.selected {
+  background: #00ff00 !important;
+  box-shadow: 0 0 15px #00ff00;
+  border-color: white;
+}
+
+button.bf-btn {
+  background: transparent;
+  border: 2px solid var(--bf-yellow);
+  color: var(--bf-yellow);
+  font-family: "Impact", sans-serif;
+  font-size: 24px;
+  padding: 10px 40px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: 0.1s;
+}
+
+button.bf-btn:hover {
+  background: var(--bf-yellow);
+  color: black;
+}
+
+.class-selector {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+  justify-content: center;
+}
+
+.class-btn {
+  padding: 10px 20px;
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  cursor: pointer;
+  font-family: "Courier New", monospace;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.class-btn:hover {
+  background: #444;
+}
+
+.class-btn.selected {
+  background: #d62828;
+  border-color: #ff0000;
+  box-shadow: 0 0 10px #d62828;
+}
+
+/* === CROSSHAIR & HITMARKER === */
+.center-screen {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+}
+
+#crosshair {
+  width: 40px;
+  height: 40px;
+  font-family: monospace;
+  font-size: 30px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 1px 1px 0 #000;
+}
+
+#hitmarker {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  font-family: sans-serif;
+  font-size: 35px;
+  font-weight: bold;
+  color: #ff3333;
+  opacity: 0;
+  transition: opacity 0.1s;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.hit-active {
+  opacity: 1 !important;
+}
+
+/* === GAME OVER SCREEN === */
+#game-over-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(50, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 40;
+  color: white;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s;
+}
+
+#game-over-screen.visible {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.end-title {
+  font-size: 80px;
+  text-transform: uppercase;
+  color: var(--bf-yellow);
+  margin-bottom: 20px;
+}
+
+.end-subtitle {
+  font-size: 30px;
+}
+
+/* Utility */
+.hidden {
+  display: none !important;
+}
