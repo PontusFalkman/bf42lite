@@ -12,7 +12,80 @@ import type { NetworkManager } from '../managers/NetworkManager';
 import type { HUDUpdater } from '../ui/HUDUpdater';
 import type { Reconciler } from './Reconciler';
 
-import { TEAM_IDS, WEAPON_NAMES } from '../core/constants';
+import { TEAM_IDS } from '../core/constants';
+import type { ClassConfig } from '../core/ClassConfigLoader';
+import { loadClassConfig } from '../core/ClassConfigLoader';
+import type { WeaponConfig } from '../core/WeaponConfigLoader';
+import { loadWeaponConfig } from '../core/WeaponConfigLoader';
+
+type WeaponHudInfo = {
+  weaponName: string;
+  magSize?: number;
+  reserveAmmo?: number;
+};
+
+let hudClassesById = new Map<number, ClassConfig>();
+let hudWeaponsById = new Map<number, WeaponConfig>();
+let hudConfigLoaded = false;
+let hudConfigLoadingPromise: Promise<void> | null = null;
+
+async function ensureHudConfigsLoaded(): Promise<void> {
+  if (hudConfigLoaded || hudConfigLoadingPromise) {
+    return hudConfigLoadingPromise ?? Promise.resolve();
+  }
+
+  hudConfigLoadingPromise = (async () => {
+    try {
+      const [weapons, classes] = await Promise.all([
+        loadWeaponConfig(),
+        loadClassConfig(),
+      ]);
+
+      hudWeaponsById.clear();
+      for (const w of weapons) {
+        hudWeaponsById.set(w.id, w);
+      }
+
+      hudClassesById.clear();
+      for (const c of classes) {
+        hudClassesById.set(c.id, c);
+      }
+
+      hudConfigLoaded = true;
+      console.log('[HUDConfig] Loaded weapons/classes for HUD');
+    } catch (err) {
+      console.error('[HUDConfig] Failed to load HUD configs', err);
+      hudConfigLoaded = false;
+    }
+  })();
+
+  return hudConfigLoadingPromise;
+}
+
+function getWeaponHudInfoForClass(classId: number): WeaponHudInfo {
+  if (!hudConfigLoaded) {
+    // Fire-and-forget load on first call; we keep a safe fallback name until it finishes.
+    void ensureHudConfigsLoaded();
+    return { weaponName: 'THOMPSON' };
+  }
+
+  const classCfg = hudClassesById.get(classId);
+  if (!classCfg) {
+    return { weaponName: 'THOMPSON' };
+  }
+
+  const weaponCfg = hudWeaponsById.get(classCfg.primary_weapon_id);
+  if (!weaponCfg) {
+    return { weaponName: 'THOMPSON' };
+  }
+
+  return {
+    weaponName: weaponCfg.name,
+    magSize: weaponCfg.mag_size,
+    reserveAmmo: weaponCfg.reserve_ammo,
+  };
+}
+
 
 /**
  * Synchronize the local player ECS state + UI from a server Snapshot.
@@ -82,9 +155,9 @@ export function syncLocalPlayerFromSnapshot(
       myServerEntity.loadout.classId ?? 0;
   }
 
-  // Ammo + weapon UI
-  const myClassId = Loadout.classId[localEntityId] || 0;
-  const weaponName = WEAPON_NAMES[myClassId] ?? 'THOMPSON';
+  // Ammo + weapon UI (JSON-driven: class -> primary_weapon_id -> weapon.name)
+  const myClassId = Loadout.classId[localEntityId] ?? 0;
+  const { weaponName } = getWeaponHudInfoForClass(myClassId);
 
   if (myServerEntity.ammo) {
     hud.updateAmmo(

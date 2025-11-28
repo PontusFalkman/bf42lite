@@ -5,25 +5,11 @@ import { Renderer } from './Renderer';
 import { NetworkManager } from '../managers/NetworkManager';
 import { InputState } from '@bf42lite/engine-core';
 
-// Keep client-side types aligned with server JSON
-export interface WeaponConfig {
-  id: number;
-  key: string;
-  name: string;
-  damage_per_hit: number;
-  fire_rate: number;      // seconds between shots
-  mag_size: number;
-  reserve_ammo: number;
-  recoil: number;
-}
+import type { WeaponConfig } from './WeaponConfigLoader';
+import { loadWeaponConfig } from './WeaponConfigLoader';
+import type { ClassConfig } from './ClassConfigLoader';
+import { loadClassConfig } from './ClassConfigLoader';
 
-export interface ClassConfig {
-  id: number;
-  key: string;
-  name: string;
-  max_health: number;
-  primary_weapon_id: number;
-}
 
 /**
  * Data-driven WeaponSystem:
@@ -139,8 +125,8 @@ export class WeaponSystem {
   private async loadConfigs() {
     try {
       const [weapons, classes] = await Promise.all([
-        this.loadWeaponsJson(),
-        this.loadClassesJson(),
+        loadWeaponConfig(),
+        loadClassConfig(),
       ]);
 
       this.weaponsById.clear();
@@ -167,23 +153,5 @@ export class WeaponSystem {
       console.error('[WeaponSystem] Failed to load weapon/class config:', err);
       this.isLoaded = false;
     }
-  }
-
-  private async loadWeaponsJson(): Promise<WeaponConfig[]> {
-    const res = await fetch('/weapons.json');
-    if (!res.ok) {
-      console.error('[WeaponSystem] Failed to load /weapons.json:', res.status);
-      return [];
-    }
-    return (await res.json()) as WeaponConfig[];
-  }
-
-  private async loadClassesJson(): Promise<ClassConfig[]> {
-    const res = await fetch('/classes.json');
-    if (!res.ok) {
-      console.error('[WeaponSystem] Failed to load /classes.json:', res.status);
-      return [];
-    }
-    return (await res.json()) as ClassConfig[];
   }
 }

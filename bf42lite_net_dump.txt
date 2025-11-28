@@ -52,6 +52,8 @@ D:\BF42LITE\PACKAGES\NET
 ª   ª       +---dist
 ª   ª       ª   ª   index.d.ts
 ª   ª       ª   ª   index.js
+ª   ª       ª   ª   messages.d.ts
+ª   ª       ª   ª   messages.js
 ª   ª       ª   ª   schema.d.ts
 ª   ª       ª   ª   schema.js
 ª   ª       ª   ª   tsconfig.tsbuildinfo
@@ -894,6 +896,7 @@ D:\BF42LITE\PACKAGES\NET
 ª   ª       ª               
 ª   ª       +---src
 ª   ª               index.ts
+ª   ª               messages.ts
 ª   ª               schema.ts
 ª   ª               
 ª   +---@types

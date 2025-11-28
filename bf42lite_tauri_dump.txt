@@ -7272,10 +7272,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   +---examples
     ª   +---incremental
     ª       +---bf42lite-0cx8vw0o4thig
-    ª       ª   ª   s-hde0lvizgr-0vni018.lock
+    ª       ª   ª   s-hde3vyip39-05lppje.lock
     ª       ª   ª   
-    ª       ª   +---s-hde0lvizgr-0vni018-6v6vpoq2ikzam4ozrjd4bzndj
-    ª       ª           01zhgu3yt0q26oimcbqkhlch4.o
+    ª       ª   +---s-hde3vyip39-05lppje-1icfka1c7c76rsm3cvwx8h5xp
     ª       ª           03ot7ef28toy1phqbbgiyeqvf.o
     ª       ª           05ilcb38e08i966g6z3johj1h.o
     ª       ª           08h1n70qkd67uox2uwq02q4eg.o
@@ -7288,17 +7287,20 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           0rivo5nde1lmg6w9mmy2webdj.o
     ª       ª           0rtepcfzbwv8u4ayosnj6af58.o
     ª       ª           0tnwkktdx8gdzut1b1am3gk7q.o
+    ª       ª           0tsbnylzvu0cb1x86zu6pq6qa.o
     ª       ª           116h2xohi3a2uqz0minu967l0.o
     ª       ª           1245wnugab0t4oicozmtyg4cf.o
     ª       ª           1327upiuq4r4yw8inxffb3664.o
-    ª       ª           16p6o8xewu9fg6roqsejk3k1a.o
+    ª       ª           13r6slfc4q0vdsrbiebu0hrpe.o
     ª       ª           1c067svh0esk2q7tvisekdt59.o
     ª       ª           1ca7umfitzb58papbzbbp8adh.o
     ª       ª           1dyina2o2skxqgtu5c28x9in0.o
     ª       ª           1g3q54dzvck5z89l0xp2gs1yu.o
     ª       ª           1ghyw6eis7ml0jegl623ixh5o.o
+    ª       ª           1iqxx8lljt5pater4xva0gnyw.o
     ª       ª           1j4yhxc1qq7ezbya2d50ewk03.o
     ª       ª           1nncbd3uwugvva89u9ahuws85.o
+    ª       ª           1rdazk6eoqmupksl1wdjlf7gz.o
     ª       ª           1xkoy7osllb1iui07egj74cu7.o
     ª       ª           1yafsvekhnv7b3iy1q2wh0g82.o
     ª       ª           1ze4hcyu98pegh5dhhja7acs7.o
@@ -7314,19 +7316,20 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           2s8fhchehdy66hxr5b9ohq056.o
     ª       ª           2sntul4l0w7eb0yehdp51895q.o
     ª       ª           2uiru76sk5roznuzdsuew7vbs.o
+    ª       ª           2v4d3m0imfejhh4a39uxz8squ.o
     ª       ª           2wjetz3nojwwo23p2kt70a965.o
     ª       ª           2wro3524yom0m6l2zqe24721d.o
-    ª       ª           2zbvmsk4fonmt9xbvksu8eh6m.o
+    ª       ª           31yvex0sn2xu50r4ha37y7vr8.o
     ª       ª           32hx1rc9c31yson3vxkklfggb.o
     ª       ª           32jz56fwvs9cte6igsn0qbv6o.o
     ª       ª           35cywoepb3h9brl8mg5x9racq.o
     ª       ª           36w65lobwjqpdiipyzxec2rpk.o
     ª       ª           3cusl5f5d745hgxhhcbs2i9p0.o
     ª       ª           3ft0f054x5qgg10u85wbwwmbl.o
-    ª       ª           3krge9od1n7hwuuhewxvdfufp.o
+    ª       ª           3nb25r856hxcxaqkf9b707hr9.o
     ª       ª           3okn0986p6z5kike7nainvn3h.o
-    ª       ª           3otupcu67x8uigr4vodheee0d.o
     ª       ª           3q8aufht8vujvix4qt9b77xfn.o
+    ª       ª           3qc5igncxjr17h8wbtw5adm7p.o
     ª       ª           3qr1wtz5ooo13c87olcj9eed3.o
     ª       ª           3v7pza9n5q3o8mfzobgd8obdu.o
     ª       ª           3xy7t9t3sn8arvjj71izdwox3.o
@@ -7354,6 +7357,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           54j4xp1flgx3q731ooozi84sz.o
     ª       ª           55rnw6pree1oj7uif3g4s367m.o
     ª       ª           57v3jnpxoyiejgls59od6awb8.o
+    ª       ª           58k2gxtvrg5695401v20gcufy.o
     ª       ª           58z2u5yzet3d81oyjj605n5t3.o
     ª       ª           5dph3jdfbs2mcpvs0qqe1heph.o
     ª       ª           5e2kxjmvcd4aydxgr1bn6w7fy.o
@@ -7374,7 +7378,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           65cqzq7dygwi1nfhwoancfa6w.o
     ª       ª           699zwlcg4pl4yzw67m02bue2w.o
     ª       ª           69uo9gb6o90ae8m2ez0pgeh1x.o
-    ª       ª           6fhegveck5b3rbn45ao3p7w1j.o
     ª       ª           6fpumqrv77532x9v2lpwhd83h.o
     ª       ª           6gwv2oz8axm6aapnm2p90xtkq.o
     ª       ª           6ki0hi4bdamfrsl8w1mhh3qht.o
@@ -7405,11 +7408,10 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           8731i4bxnrxqcbf3naeqnk7v0.o
     ª       ª           87gafczh41m8bfwnbalaeo3wz.o
     ª       ª           8alxlhvvjz3x8tyzx6fvm5eor.o
+    ª       ª           8b8oubxk8hp4vadbggy0g5ejt.o
     ª       ª           8c7mau3t9of1l0yz4bpi9buix.o
-    ª       ª           8cal8yqlvwbjupdyhen9w899i.o
     ª       ª           8cd5ptxusnwdmpgg0qczpka6o.o
     ª       ª           8h6nafg1fbrd2zhqtvqekhrgv.o
-    ª       ª           8kwv0ua4q31196tj8vcd0bgvm.o
     ª       ª           8l2q4s4l0e02moatf38v2tfqa.o
     ª       ª           8ofol6jkoyf3oe6mkmqpizs47.o
     ª       ª           8pegiexnffh98l81f9t19in90.o
@@ -7429,11 +7431,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           9bgad1wcdr74lccpy8069ayv6.o
     ª       ª           9bj9dazs41nz5vdsfd4vv51c5.o
     ª       ª           9c6s9u6zzbj9pmd9354zy6rae.o
-    ª       ª           9eclcldqmvd3aj6821xfh4ua5.o
     ª       ª           9go8nca8qfmsgf0hepu2c4kfk.o
     ª       ª           9hla790ffq4zqftahaly6qdtv.o
     ª       ª           9jo5sxw85p0lybp9k29ba6nd2.o
-    ª       ª           9kdp6fibr7oroaztzg0vqi960.o
     ª       ª           9lfql4itg8l6o7hezdcn3ynt6.o
     ª       ª           9n8bc20m4km7v77zgcc7g2th8.o
     ª       ª           9rrlka45mlss9gb02svabva4a.o
@@ -7443,7 +7443,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           9xio5bm7pcsm2phil30e016l4.o
     ª       ª           9xjegh7ugwqmubos66uwrpheu.o
     ª       ª           9zs814ttv4cn5vt07q87zcdxa.o
-    ª       ª           a1t3c73q5cvk7e6v6lgvt4r2i.o
     ª       ª           a3fiw345arkvd2wu7xlj1yq82.o
     ª       ª           a8jokl37o7jjhavn87d56g7cc.o
     ª       ª           a8to3cryeca599ecky4rbmins.o
@@ -7462,7 +7461,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           awe6usceq8sklsaykltnmv1qr.o
     ª       ª           aykcs91dnmtmc4be8zgmznul1.o
     ª       ª           b39elee5anx0zrlseebt20jx9.o
+    ª       ª           b3h3xufdqirzppotg9ms7kb8b.o
     ª       ª           b5uzn6gpmudxigus7eh1fgj02.o
+    ª       ª           b6m7aivk2fcp8jktv4rg4iky1.o
     ª       ª           b8xsiaxzxjlboby8yejocorf3.o
     ª       ª           b9sckgv62w672x9hyf5etqqp6.o
     ª       ª           b9vlmdtbwgs9gru187fmuf997.o
@@ -7479,8 +7480,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           bv1dgi4hwyhu48ggz66ddw97i.o
     ª       ª           bvfc0ab920hdjg5ph18gxeazp.o
     ª       ª           bze45qp7lo4ie6eupzlus663f.o
-    ª       ª           c50pv8z4dxjoyo3g0fmhn1hjo.o
-    ª       ª           c88yvxs0xtjpr1bmnx01o47r5.o
     ª       ª           carc2wxypjpustltztgn9ifcl.o
     ª       ª           cbiool7hcsveklbjiifts8e4g.o
     ª       ª           cbxe514ihda8hve6igdeib5n4.o
@@ -7491,7 +7490,6 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           clqdlrxrhoy5o15np0dh3msb1.o
     ª       ª           cqa5teru2nwckkowr2dcs0dno.o
     ª       ª           cqjwvt4gqi7o2z7bfxt6cg59a.o
-    ª       ª           cre1u9bgk0k42gkdxzy0654ri.o
     ª       ª           cu6y4faekzplwt1ziu19i4iqz.o
     ª       ª           cv9o05bmr1wvs58zhjmt1sbm1.o
     ª       ª           cwakniiqo59b10e1w3oacgdo2.o
@@ -7499,23 +7497,24 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           d0vq1qietyhtuxetjgm6u2bet.o
     ª       ª           d5t9vgl9eecixmv89cvv70v90.o
     ª       ª           d6entt7uis2zaldfvk9rhyijg.o
+    ª       ª           d85lt3ji2w3qa2gf49tfxp6j5.o
     ª       ª           d95wehn5ssy35sfxjhnajhcl4.o
     ª       ª           d9hhr21bpllvseg9omefis8dv.o
     ª       ª           d9kv9kbfgm0gi72c0r3v0f9xp.o
     ª       ª           db40uduv3qm25p6zkopal58od.o
-    ª       ª           dck93bqnl4bh8ynfk9gf59aqj.o
     ª       ª           dep-graph.bin
     ª       ª           dlavfup0ufqyaj89puvct65em.o
     ª       ª           dm62ndzx8eg8d6as2vxl7654u.o
     ª       ª           dp52xg21icgoaqwv1vevwbrqi.o
-    ª       ª           drbpycue4ybpo12ylwqnkpy5s.o
     ª       ª           dtkit59ddq4e1emlxzxjpshy7.o
     ª       ª           dwa1vapno4wr5rzk2kxr3a8c0.o
     ª       ª           dza2hsfw91f3ue0o73567un4z.o
     ª       ª           e54twxwimfgnf9yynwn15kz9f.o
     ª       ª           e7pdag966gs4blbl5bv03g762.o
     ª       ª           e8avfemvb0tvpjmt2v2hr0fv7.o
+    ª       ª           ebcw3qjkk9f59i7242fdp61js.o
     ª       ª           ebilrwltywndbxan46qnihjle.o
+    ª       ª           eck2vlahcicvnyvkyoz5c8uge.o
     ª       ª           ed21bxp2quihxrgwatzebfhug.o
     ª       ª           ef6o6m3vn4bfc96bjq71fvqdn.o
     ª       ª           egyhzrcb13cixmsgr8wguxlug.o
@@ -7524,6 +7523,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           ejhqnpluxcmd0w4l789norsfg.o
     ª       ª           eluitetp5exu94xhy2psml8od.o
     ª       ª           eodnrs8mv2vp7nyufjk14x4ln.o
+    ª       ª           eozd2zhqf64w4fxql8bugqvcb.o
     ª       ª           eubcv4qw2088uen13mdfsvrf4.o
     ª       ª           evlje1y4d1hv1cfb1xav7xe00.o
     ª       ª           eye6gvjtfducxhnpiqcm61ax8.o
@@ -8093,9 +8093,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-1o5j46zt2xiim
-    ª       ª   ª   s-hde0lxpm1j-0dodg9j.lock
+    ª       ª   ª   s-hde3w7hnsb-0rp2xuj.lock
     ª       ª   ª   
-    ª       ª   +---s-hde0lxpm1j-0dodg9j-e9agqvbz200a5cum2ry1rja8u
+    ª       ª   +---s-hde3w7hnsb-0rp2xuj-d2gohdat789hr3nluwz8qmuwl
     ª       ª           3xx6hlxmmx9rq31k4adj860lj.o
     ª       ª           498uouqfe7flelqapy6ejhm19.o
     ª       ª           8qebd8odc2i897x1jw1zd3w19.o
@@ -29242,42 +29242,54 @@ pub enum ClientMessage {
 
 // ---------- SERVER â†’ CLIENT (SNAPSHOT) ----------
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EntitySnapshot {
-    pub eid: u32,
-    pub transform: Transform,
-    pub health: Option<HealthStruct>,
-    pub stamina: Option<StaminaStruct>,
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub health: Option<f32>,
+    pub stamina: Option<f32>,
     pub team: Option<TeamStruct>,
     pub score: Option<ScoreStruct>,
     pub loadout: Option<LoadoutStruct>,
+    pub ammo: Option<AmmoStruct>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HealthStruct {
     pub current: f32,
     pub max: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StaminaStruct {
     pub current: f32,
     pub max: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TeamStruct {
     pub id: TeamId,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScoreStruct {
     pub kills: u32,
     pub deaths: u32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AmmoStruct {
+    pub current: u32,
+    pub reserve: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadoutStruct {
+    #[serde(rename = "classId")]
     pub class_id: u8,
 }
 
@@ -29317,14 +29329,14 @@ use crate::protocol::{
     EntitySnapshot,
     GameModeState,
     TeamId,
-    HealthStruct,
-    StaminaStruct,
     TeamStruct,
     ScoreStruct,
     ClientMessage,
     LoadoutStruct,
+    AmmoStruct,
     FlagSnapshot,
 };
+
 use crate::systems;
 use crate::player::Player;
 use crate::config::GameConfig;
@@ -29389,25 +29401,27 @@ let config = GameConfig::load_all();
     ) -> TickSnapshot {
         // Debug: how many inputs did we get this tick?
         println!("[DEBUG] input_map len = {}", input_map.len());
-    
+
         self.frame_count += 1;
-    
+
         // 1. Run Systems
-systems::movement::update(
-    &mut self.players,
-    input_map,
-    dt,
-    self.frame_count,
-    &self.config.movement,
-);    
-        // Existing [DEBUG] After movement + conquest calls stay as-is
+        systems::movement::update(
+            &mut self.players,
+            input_map,
+            dt,
+            self.frame_count,
+            &self.config.movement,
+        );
+
+        // Debug after movement (keep your existing log)
         if let Some((id, p)) = self.players.iter().next() {
             println!(
                 "[DEBUG] After movement: Player {} at ({:.1}, {:.1}, {:.1}) team={:?}",
                 id, p.transform.x, p.transform.y, p.transform.z, p.team
             );
         }
-systems::combat::update(&mut self.players, input_map, dt, &self.config);
+
+        systems::combat::update(&mut self.players, input_map, dt, &self.config);
 
         // 2. Conquest logic: update flag capture + tickets
         systems::conquest::update_conquest(
@@ -29419,60 +29433,70 @@ systems::combat::update(&mut self.players, input_map, dt, &self.config);
         );
 
         // 3. Game Mode Logic (winner)
-let winner = if self.tickets_a <= 0.0 {
-    TeamId::TeamB
-} else if self.tickets_b <= 0.0 {
-    TeamId::TeamA
-} else {
-    TeamId::None
-};
+        let winner = if self.tickets_a <= 0.0 {
+            TeamId::TeamB
+        } else if self.tickets_b <= 0.0 {
+            TeamId::TeamA
+        } else {
+            TeamId::None
+        };
 
         // 4. Snapshot Generation: entities
         let mut entities = Vec::new();
         for p in self.players.values() {
             entities.push(EntitySnapshot {
-                eid: p.id,
-                transform: p.transform.clone(),
-                health: Some(HealthStruct {
-                    current: p.health,
-                    max: p.max_health,
-                }),
-                stamina: Some(StaminaStruct {
-                    current: 100.0,
-                    max: 100.0,
-                }),
+                // Match protocol.rs EntitySnapshot
+                id: p.id,
+                x: p.transform.x,
+                y: p.transform.y,
+                z: p.transform.z,
+                yaw: p.transform.yaw,
+                pitch: p.transform.pitch,
+
+                // Protocol wants Option<f32> for health/stamina
+                health: Some(p.health),
+                stamina: Some(100.0), // placeholder until you have real stamina
+
                 team: Some(TeamStruct { id: p.team }),
                 score: Some(ScoreStruct {
                     kills: p.score_kills,
                     deaths: p.score_deaths,
                 }),
                 loadout: Some(LoadoutStruct {
-                    class_id: p.class_id,
+                    class_id: p.class_id as u8, // cast if needed
+                }),
+                // TEMP: send zeros until Player has ammo fields
+                ammo: Some(AmmoStruct {
+                    current: 0,
+                    reserve: 0,
                 }),
             });
         }
 
         // 5. Snapshot Generation: flags
-        let flags = self.flags.iter().map(|f| FlagSnapshot {
-            id: f.id,
-            x: f.x,
-            y: f.y,
-            z: f.z,
-            radius: f.radius,
-            owner: f.owner,
-            capture: f.capture,
-        }).collect();
+        let flags = self.flags
+            .iter()
+            .map(|f| FlagSnapshot {
+                id: f.id,
+                x: f.x,
+                y: f.y,
+                z: f.z,
+                radius: f.radius,
+                owner: f.owner,
+                capture: f.capture,
+            })
+            .collect();
 
         TickSnapshot {
             entities,
             flags,
             game_state: GameModeState {
                 team_a_tickets: self.tickets_a.round() as i32,
-                team_b_tickets: self.tickets_b.round() as i32,                
+                team_b_tickets: self.tickets_b.round() as i32,
                 match_ended: winner != TeamId::None,
                 winner,
             },
-        }        
+        }
     }
 }
 
