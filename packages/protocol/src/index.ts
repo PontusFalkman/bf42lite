@@ -35,6 +35,16 @@ export interface EntityState {
   rot: number;
   health: number;
   isDead: boolean;
+
+  loadout?: {
+    classId: number;
+  };
+
+  ammo?: {
+    current: number;
+    reserve: number;
+  };
+
   [key: string]: any;
 }
 

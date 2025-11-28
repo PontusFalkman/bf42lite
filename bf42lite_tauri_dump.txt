@@ -12,8 +12,10 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
 ª   build.rs
 ª   Cargo.lock
 ª   Cargo.toml
+ª   classes.json
 ª   game_config.toml
 ª   tauri.conf.json
+ª   weapons.json
 ª   
 +---capabilities
 ª       default.json
@@ -7270,16 +7272,18 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª   +---examples
     ª   +---incremental
     ª       +---bf42lite-0cx8vw0o4thig
-    ª       ª   ª   s-hddq0nekh7-0iyhjnf.lock
+    ª       ª   ª   s-hde0lvizgr-0vni018.lock
     ª       ª   ª   
-    ª       ª   +---s-hddq0nekh7-0iyhjnf-b4p7nusu7s7awgl5gzyp7bp4v
+    ª       ª   +---s-hde0lvizgr-0vni018-6v6vpoq2ikzam4ozrjd4bzndj
+    ª       ª           01zhgu3yt0q26oimcbqkhlch4.o
     ª       ª           03ot7ef28toy1phqbbgiyeqvf.o
     ª       ª           05ilcb38e08i966g6z3johj1h.o
     ª       ª           08h1n70qkd67uox2uwq02q4eg.o
+    ª       ª           0a4lqx1bdgqic5oro738penqw.o
     ª       ª           0daubk1gk3r5h3lpiox7sfzkv.o
     ª       ª           0fzxgikunthhy5dupgxhqm9ia.o
     ª       ª           0h6pd14mkitz61vyo5f0gt12c.o
-    ª       ª           0lr1hdghflz8vadsz4ia7f1x2.o
+    ª       ª           0ihv8jzt2vd9eivred5afn9t0.o
     ª       ª           0n5zsz0thk5s5oi75adwh0m63.o
     ª       ª           0rivo5nde1lmg6w9mmy2webdj.o
     ª       ª           0rtepcfzbwv8u4ayosnj6af58.o
@@ -7287,12 +7291,14 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           116h2xohi3a2uqz0minu967l0.o
     ª       ª           1245wnugab0t4oicozmtyg4cf.o
     ª       ª           1327upiuq4r4yw8inxffb3664.o
+    ª       ª           16p6o8xewu9fg6roqsejk3k1a.o
     ª       ª           1c067svh0esk2q7tvisekdt59.o
     ª       ª           1ca7umfitzb58papbzbbp8adh.o
+    ª       ª           1dyina2o2skxqgtu5c28x9in0.o
+    ª       ª           1g3q54dzvck5z89l0xp2gs1yu.o
     ª       ª           1ghyw6eis7ml0jegl623ixh5o.o
     ª       ª           1j4yhxc1qq7ezbya2d50ewk03.o
     ª       ª           1nncbd3uwugvva89u9ahuws85.o
-    ª       ª           1u29j6o1schiv70b2iype7qwm.o
     ª       ª           1xkoy7osllb1iui07egj74cu7.o
     ª       ª           1yafsvekhnv7b3iy1q2wh0g82.o
     ª       ª           1ze4hcyu98pegh5dhhja7acs7.o
@@ -7301,59 +7307,58 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           243fj21s8kdju0jizdv54zqnj.o
     ª       ª           25ivm1p73jt6cfg7xi906cr1f.o
     ª       ª           2az5trj96nw8xumeujpaw4vjk.o
-    ª       ª           2cd1ljj5i5bap0nsljnjmtwht.o
-    ª       ª           2hgt5jy2w5d6amuizjg1wd9ec.o
-    ª       ª           2jk81g8mpkxb1jf95uyqxci86.o
-    ª       ª           2knqa1n5dqms7qt18tn8o1bon.o
+    ª       ª           2d9shx0mx1vubu62nscxn8fwo.o
     ª       ª           2l2tgrotxfm8a03slqavg3wqq.o
     ª       ª           2m5jgbrz8jbai7jkfx22s8mot.o
     ª       ª           2mnw4wdwv44binae17viy72xc.o
-    ª       ª           2ovaohm86bsq7lgn6qsdxoxk0.o
+    ª       ª           2s8fhchehdy66hxr5b9ohq056.o
     ª       ª           2sntul4l0w7eb0yehdp51895q.o
-    ª       ª           2tonck5zph6iqrxkh2paf42an.o
     ª       ª           2uiru76sk5roznuzdsuew7vbs.o
     ª       ª           2wjetz3nojwwo23p2kt70a965.o
     ª       ª           2wro3524yom0m6l2zqe24721d.o
+    ª       ª           2zbvmsk4fonmt9xbvksu8eh6m.o
     ª       ª           32hx1rc9c31yson3vxkklfggb.o
     ª       ª           32jz56fwvs9cte6igsn0qbv6o.o
     ª       ª           35cywoepb3h9brl8mg5x9racq.o
-    ª       ª           36ghamr2phzpqf91xzjocibd1.o
     ª       ª           36w65lobwjqpdiipyzxec2rpk.o
     ª       ª           3cusl5f5d745hgxhhcbs2i9p0.o
-    ª       ª           3esdld5fbyj33j43k9tf4wshy.o
     ª       ª           3ft0f054x5qgg10u85wbwwmbl.o
+    ª       ª           3krge9od1n7hwuuhewxvdfufp.o
     ª       ª           3okn0986p6z5kike7nainvn3h.o
-    ª       ª           3p2823t2s0l8f0gsqjj23nman.o
+    ª       ª           3otupcu67x8uigr4vodheee0d.o
     ª       ª           3q8aufht8vujvix4qt9b77xfn.o
     ª       ª           3qr1wtz5ooo13c87olcj9eed3.o
-    ª       ª           3s9vwk4qi88m7xv0zrj3i7zz1.o
     ª       ª           3v7pza9n5q3o8mfzobgd8obdu.o
     ª       ª           3xy7t9t3sn8arvjj71izdwox3.o
-    ª       ª           41hvz5k54m1knaes8e2bqs1xy.o
-    ª       ª           47nnpzl9b928l3yw4eogahujp.o
+    ª       ª           47vmzhff601avttj7xrvf4htx.o
     ª       ª           48m4eh3yyp7gnjd80f7qxwsme.o
     ª       ª           491lq2hs0slkfd8cn20h6hg9f.o
+    ª       ª           4ak1xsisy65vjgej061b8nmt7.o
     ª       ª           4c01mp7ci7p6xcmn4s6nr3g17.o
     ª       ª           4h0dnme918hufpvozp6ruylek.o
-    ª       ª           4ham0o9545nfy077xcaiw3fk6.o
-    ª       ª           4j7uxghsocvcozvazake2lzbo.o
+    ª       ª           4iy5ti3a41jr8xq1qfk3uit4i.o
     ª       ª           4jdcn4cdcr43jovd8u1krcty2.o
-    ª       ª           4jhganxsjm66yw5a1epilfw9g.o
     ª       ª           4l3gs38pevmqmn5k16s4pz2bi.o
-    ª       ª           4lrpv04ubidzhlpvh4tmx7ccd.o
     ª       ª           4m7o7ioy5ppqonicjg8h2aj25.o
+    ª       ª           4stpdmcujyvror7od5acmvq2q.o
+    ª       ª           4szlp21dhgdvtfe5p9zh0p2hr.o
     ª       ª           4upcs1ogfx0muvl8fw3eh9w6u.o
     ª       ª           4xxs3vapltpe2m8v2zrcllaiz.o
     ª       ª           4yns99v1o1mabeq6aqrj85kv1.o
+    ª       ª           4z4vlmxn687svfov5v0vs17vl.o
+    ª       ª           4zrwz6hkxl17tx9uu0kkrzeis.o
     ª       ª           504jbjps6hwf5l37aymo9y9dg.o
     ª       ª           50r42ugshmvkcujxtgjwrc5p4.o
+    ª       ª           51e2jbli36w3gtc58ezffirsn.o
     ª       ª           52miw1oqhqtqp7ucz7b3igyu6.o
     ª       ª           54j4xp1flgx3q731ooozi84sz.o
-    ª       ª           565x92rnd0fnu4x321rxbgbpr.o
+    ª       ª           55rnw6pree1oj7uif3g4s367m.o
     ª       ª           57v3jnpxoyiejgls59od6awb8.o
+    ª       ª           58z2u5yzet3d81oyjj605n5t3.o
     ª       ª           5dph3jdfbs2mcpvs0qqe1heph.o
+    ª       ª           5e2kxjmvcd4aydxgr1bn6w7fy.o
+    ª       ª           5furibnfkhkapympg0yt885pb.o
     ª       ª           5j5iwtw93rqr5due56c4mkxvr.o
-    ª       ª           5kl7vsbnbwf0ugni0f8ydlgq6.o
     ª       ª           5l8c60ere5tvq7511nyhc5s87.o
     ª       ª           5oxqat2a470g1lqy7x3sh0fj0.o
     ª       ª           5pgudwopufgmtop2ts8mco412.o
@@ -7364,17 +7369,19 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           5v67iiyr9prjxgfqlfzp4u9l2.o
     ª       ª           5wjr3gtizm4edfhztz8a3c0of.o
     ª       ª           5x7p32q5ewen274wavdnz7vz5.o
-    ª       ª           5znhaaxrbuwk8fxwvsy7c99cj.o
     ª       ª           63ur223zfbsnb2hd967gfd2vl.o
+    ª       ª           658or3495w7otxuy2fjip4tfu.o
+    ª       ª           65cqzq7dygwi1nfhwoancfa6w.o
     ª       ª           699zwlcg4pl4yzw67m02bue2w.o
-    ª       ª           6a3nawv5ofsnttidgzlype468.o
+    ª       ª           69uo9gb6o90ae8m2ez0pgeh1x.o
+    ª       ª           6fhegveck5b3rbn45ao3p7w1j.o
     ª       ª           6fpumqrv77532x9v2lpwhd83h.o
     ª       ª           6gwv2oz8axm6aapnm2p90xtkq.o
-    ª       ª           6iue9nrw4c94arbjknh34vhmd.o
-    ª       ª           6oud3pzo82im6reohyl2f5ffr.o
+    ª       ª           6ki0hi4bdamfrsl8w1mhh3qht.o
     ª       ª           6q5vetwdwzzvi70r5vne018rq.o
     ª       ª           6rdyx6u8zxe9kc8kw7ceok2qn.o
     ª       ª           6sgzx0ejrelkyekj8ff8ikcer.o
+    ª       ª           6u0nddii3v6s62c01ylnd24xe.o
     ª       ª           6uky757pqdbx8ri6sfvrasnci.o
     ª       ª           6wglsux17xcifi62faj4mki89.o
     ª       ª           6x0dbku0p7apfrvpx7s4v1gtv.o
@@ -7383,131 +7390,128 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           75kgbscephyk8z6ievotcgpvs.o
     ª       ª           75tfyo681tzzjisogzsjof7wx.o
     ª       ª           76wsdbxm4ak1o9zx4blcjfc4h.o
+    ª       ª           779eh3erem5ziqxofibtumjle.o
     ª       ª           788kir4lvx97r6ziwveksj4dn.o
     ª       ª           7afvg3weyqqcwpsqnmhry24qx.o
     ª       ª           7b7fwcwhvjblqfqo5yfwgci5c.o
+    ª       ª           7ep5nqeiz6tcxsyuu2eugq4bs.o
     ª       ª           7fa1vyff4vj82alh5o7s38khr.o
     ª       ª           7j54he9l4ipnpk2jgepr54ba2.o
     ª       ª           7jbqiuzccy4fxyx3xzgvp0d97.o
-    ª       ª           7l5fpyl9d3gouup2f3g0rn9xy.o
-    ª       ª           7lcv12aklcjvn9d16sm9w93k8.o
     ª       ª           7qn0fkfrbumw9spk2eammhvpr.o
     ª       ª           7sfgw6hoxf807jpwnzwsqpjj0.o
-    ª       ª           83bg2nwsj9dsyzozk56gr1q2v.o
-    ª       ª           83o34vxh35tl2opr0phbepnn7.o
+    ª       ª           82pfm509dlvd4ys8f3ifztkhg.o
     ª       ª           84h1sx30f4ccz3xdxcz82kgxb.o
-    ª       ª           85kkqarjhedyql46yla3hj71z.o
     ª       ª           8731i4bxnrxqcbf3naeqnk7v0.o
     ª       ª           87gafczh41m8bfwnbalaeo3wz.o
     ª       ª           8alxlhvvjz3x8tyzx6fvm5eor.o
-    ª       ª           8bp4r4b9q3pcq3cmce5s4t1ya.o
     ª       ª           8c7mau3t9of1l0yz4bpi9buix.o
-    ª       ª           8didsarakgt3lj63ct9scmsfn.o
+    ª       ª           8cal8yqlvwbjupdyhen9w899i.o
+    ª       ª           8cd5ptxusnwdmpgg0qczpka6o.o
     ª       ª           8h6nafg1fbrd2zhqtvqekhrgv.o
-    ª       ª           8j7yx70tfjn33lw3km9l107js.o
+    ª       ª           8kwv0ua4q31196tj8vcd0bgvm.o
     ª       ª           8l2q4s4l0e02moatf38v2tfqa.o
+    ª       ª           8ofol6jkoyf3oe6mkmqpizs47.o
+    ª       ª           8pegiexnffh98l81f9t19in90.o
     ª       ª           8r7gfhyi9uarzbl9z6jeztzyr.o
     ª       ª           8sc1d9i7o8vzyqybnv4w446sa.o
     ª       ª           8syozf2s0f797dbfv30wu81tu.o
-    ª       ª           8t2s4xcn51q01wiqwhmxp1wci.o
     ª       ª           8t4p0lqb5spj3jr8db6lelfuy.o
     ª       ª           8v7ihbr7rtpokeels57lf7wa6.o
     ª       ª           8win2m4fij88kss7tj86dronz.o
     ª       ª           8xx26ep3ud19xp0d1tsdvb8c8.o
     ª       ª           91xq7uw5qo9irp8knjnmzybmp.o
-    ª       ª           92zcyw8ngc2vrg5gb1w854jbu.o
-    ª       ª           96rd6scfa7eid5me0oy6sahbt.o
+    ª       ª           94rrqih2dfeaydx1z0qr8xamf.o
+    ª       ª           95atuml93taynshx3tx8z1x4d.o
     ª       ª           97qe9hs9rs8uorsvxjz7id0us.o
-    ª       ª           97rh0r0zcezr4r69sq6uaug1w.o
+    ª       ª           98hdpk22ton17meppb70kfac7.o
     ª       ª           99i6xn366oku314xdghjyoci8.o
     ª       ª           9bgad1wcdr74lccpy8069ayv6.o
     ª       ª           9bj9dazs41nz5vdsfd4vv51c5.o
     ª       ª           9c6s9u6zzbj9pmd9354zy6rae.o
+    ª       ª           9eclcldqmvd3aj6821xfh4ua5.o
     ª       ª           9go8nca8qfmsgf0hepu2c4kfk.o
     ª       ª           9hla790ffq4zqftahaly6qdtv.o
     ª       ª           9jo5sxw85p0lybp9k29ba6nd2.o
+    ª       ª           9kdp6fibr7oroaztzg0vqi960.o
     ª       ª           9lfql4itg8l6o7hezdcn3ynt6.o
     ª       ª           9n8bc20m4km7v77zgcc7g2th8.o
     ª       ª           9rrlka45mlss9gb02svabva4a.o
     ª       ª           9s9xtcijgbn72ie20odcmg00e.o
-    ª       ª           9tkdyvvqctrcrkjo1z3uogg41.o
     ª       ª           9u0ejlxdle4u27zpj0it5817v.o
     ª       ª           9vx6pv4sbvalxcjkdpyuy2zuo.o
-    ª       ª           9vxi1p3jqcf0j0yknhskabeqi.o
     ª       ª           9xio5bm7pcsm2phil30e016l4.o
-    ª       ª           9y05ps4xnva7mivy7d6brf6ng.o
+    ª       ª           9xjegh7ugwqmubos66uwrpheu.o
     ª       ª           9zs814ttv4cn5vt07q87zcdxa.o
-    ª       ª           a5jzvw1ghmp7kim8qg15osrj5.o
-    ª       ª           a7h36nxw3i4tbxgsup4zqu6ht.o
-    ª       ª           a7vqefpfxke8n5dcvhc3z9td0.o
+    ª       ª           a1t3c73q5cvk7e6v6lgvt4r2i.o
+    ª       ª           a3fiw345arkvd2wu7xlj1yq82.o
     ª       ª           a8jokl37o7jjhavn87d56g7cc.o
     ª       ª           a8to3cryeca599ecky4rbmins.o
     ª       ª           ab46ab0rzp3axwzk5pxl7a2kq.o
     ª       ª           aclx564p6vgmln57sif51fqbb.o
     ª       ª           ag1p8whty9bhawonxzwccne5x.o
+    ª       ª           agmjne190tsac3bnvjwbmpimn.o
     ª       ª           ahbq5e0qqa3yvhjljr8ntr0ob.o
-    ª       ª           aivn9a26tkyiejjhe0waciqxz.o
     ª       ª           ajv0j9phrkk34t9joeb4r4sdc.o
     ª       ª           aon0vapwpyp4bq7adzt3ruwks.o
     ª       ª           aotyokmcdhnkzfcf3ii296bdh.o
-    ª       ª           arczy79q5mrmsndly5g9aahzq.o
     ª       ª           arzgqs4x5w04309vu8v3bi5l6.o
     ª       ª           auw06950yibm8rhq0kt4yjv7m.o
     ª       ª           av9jv24k69n3waou7debi581u.o
+    ª       ª           avlwlp980fucmjkfkeiqs2t3i.o
+    ª       ª           awe6usceq8sklsaykltnmv1qr.o
     ª       ª           aykcs91dnmtmc4be8zgmznul1.o
-    ª       ª           azgbxezsstf9qnvafu4erj1vp.o
     ª       ª           b39elee5anx0zrlseebt20jx9.o
-    ª       ª           b47lnb4bvg075e8lmj54xfmaz.o
     ª       ª           b5uzn6gpmudxigus7eh1fgj02.o
     ª       ª           b8xsiaxzxjlboby8yejocorf3.o
-    ª       ª           baktk6otxcmfl8c4yqa99b7yn.o
+    ª       ª           b9sckgv62w672x9hyf5etqqp6.o
+    ª       ª           b9vlmdtbwgs9gru187fmuf997.o
+    ª       ª           bbfjk6fxe55sc5exwew1k6ywd.o
     ª       ª           bcjev5tzpp5peguyeg3gis3da.o
     ª       ª           bf50hj47y8sl0aowsnqrlmxfr.o
     ª       ª           bgut7jeoiaahs6ck4ifhwjx5y.o
-    ª       ª           bifsly70nspsk789jop4xus34.o
-    ª       ª           bk5ri8w557b1oggajh0s0pema.o
+    ª       ª           bho28uiilqfin4cp8gfaif94i.o
+    ª       ª           bjxjp74guiw1q9urzzb64huts.o
+    ª       ª           bl4u48lx5jrgkbor3sp2t30oo.o
     ª       ª           bmz9jvnklr99cz2cr8pughjou.o
     ª       ª           bnd6f8cvok4j40fscpdc3ekr1.o
     ª       ª           bsb1x1q3ohiw28s25g8bymhon.o
-    ª       ª           btta74r0o34a3ealbwycfq7ml.o
     ª       ª           bv1dgi4hwyhu48ggz66ddw97i.o
     ª       ª           bvfc0ab920hdjg5ph18gxeazp.o
-    ª       ª           c16znhqyvj11ps5icgpk8hx3d.o
-    ª       ª           c27oz40d83sxad7xlbdr564fo.o
-    ª       ª           c839jmapfcxtosiilqki60r0b.o
+    ª       ª           bze45qp7lo4ie6eupzlus663f.o
+    ª       ª           c50pv8z4dxjoyo3g0fmhn1hjo.o
+    ª       ª           c88yvxs0xtjpr1bmnx01o47r5.o
+    ª       ª           carc2wxypjpustltztgn9ifcl.o
     ª       ª           cbiool7hcsveklbjiifts8e4g.o
     ª       ª           cbxe514ihda8hve6igdeib5n4.o
     ª       ª           cdrg0fopxzdd6se893pnccy2q.o
     ª       ª           cgz4ute6jax2p9aecsu6mdbqk.o
-    ª       ª           cim5xr03oaxtncy8f1tm7prt8.o
+    ª       ª           cl3wiccd0jehje71bw75yq2im.o
     ª       ª           cl7uz4dxahs77uawk0ac4dira.o
-    ª       ª           cleilhlxngwanzk4g0geqa9by.o
     ª       ª           clqdlrxrhoy5o15np0dh3msb1.o
-    ª       ª           co92mky8b23fypj5kkqyojpsw.o
     ª       ª           cqa5teru2nwckkowr2dcs0dno.o
     ª       ª           cqjwvt4gqi7o2z7bfxt6cg59a.o
+    ª       ª           cre1u9bgk0k42gkdxzy0654ri.o
     ª       ª           cu6y4faekzplwt1ziu19i4iqz.o
     ª       ª           cv9o05bmr1wvs58zhjmt1sbm1.o
     ª       ª           cwakniiqo59b10e1w3oacgdo2.o
-    ª       ª           cyj30bumvi7vr4p65aaj08k7s.o
-    ª       ª           cyyq1yw7dtjf35exqk5yq3uue.o
+    ª       ª           cy31bwjfcatv60uml0yi2h7bs.o
     ª       ª           d0vq1qietyhtuxetjgm6u2bet.o
     ª       ª           d5t9vgl9eecixmv89cvv70v90.o
     ª       ª           d6entt7uis2zaldfvk9rhyijg.o
-    ª       ª           d7okqf02w9k9dez87v4bjkekp.o
-    ª       ª           d8ub41g8exviwu853f0ymaxzg.o
     ª       ª           d95wehn5ssy35sfxjhnajhcl4.o
     ª       ª           d9hhr21bpllvseg9omefis8dv.o
     ª       ª           d9kv9kbfgm0gi72c0r3v0f9xp.o
     ª       ª           db40uduv3qm25p6zkopal58od.o
+    ª       ª           dck93bqnl4bh8ynfk9gf59aqj.o
     ª       ª           dep-graph.bin
     ª       ª           dlavfup0ufqyaj89puvct65em.o
     ª       ª           dm62ndzx8eg8d6as2vxl7654u.o
+    ª       ª           dp52xg21icgoaqwv1vevwbrqi.o
+    ª       ª           drbpycue4ybpo12ylwqnkpy5s.o
     ª       ª           dtkit59ddq4e1emlxzxjpshy7.o
     ª       ª           dwa1vapno4wr5rzk2kxr3a8c0.o
     ª       ª           dza2hsfw91f3ue0o73567un4z.o
-    ª       ª           dzaa0rlv8891b8lhnr8xwq879.o
-    ª       ª           dzjse77kpvgm6k9dxrm3ab7bl.o
     ª       ª           e54twxwimfgnf9yynwn15kz9f.o
     ª       ª           e7pdag966gs4blbl5bv03g762.o
     ª       ª           e8avfemvb0tvpjmt2v2hr0fv7.o
@@ -7518,18 +7522,16 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           eh1fx9bskortbw5l9aoa4w81t.o
     ª       ª           ehjdpsko6k0qwagknk5rztrgh.o
     ª       ª           ejhqnpluxcmd0w4l789norsfg.o
-    ª       ª           elktokl0zlfvilxh1bysncnqb.o
     ª       ª           eluitetp5exu94xhy2psml8od.o
+    ª       ª           eodnrs8mv2vp7nyufjk14x4ln.o
     ª       ª           eubcv4qw2088uen13mdfsvrf4.o
     ª       ª           evlje1y4d1hv1cfb1xav7xe00.o
     ª       ª           eye6gvjtfducxhnpiqcm61ax8.o
-    ª       ª           eyyt7ag6vju3dxtgp24dqrwxy.o
     ª       ª           ez020qpc0jpmn1kauvl7nioza.o
     ª       ª           ezzi59d651lsj6guozgzqc9od.o
     ª       ª           f0klkkmzmmi3tldqn1likvsie.o
     ª       ª           f1srpdm4hnoywfjbcm7gpugjm.o
-    ª       ª           f2kp5xwubmv1nkgrj0ga0pk3n.o
-    ª       ª           f3lm3f0e3ytz2okqyn62oow9a.o
+    ª       ª           f5an6zye7setqfj50rhsdzvrg.o
     ª       ª           metadata.rmeta
     ª       ª           query-cache.bin
     ª       ª           work-products.bin
@@ -8091,9 +8093,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---bf42lite-1o5j46zt2xiim
-    ª       ª   ª   s-hddq0v3p9p-0kfagcq.lock
+    ª       ª   ª   s-hde0lxpm1j-0dodg9j.lock
     ª       ª   ª   
-    ª       ª   +---s-hddq0v3p9p-0kfagcq-8f56rzydwracayp2j4uj90a80
+    ª       ª   +---s-hde0lxpm1j-0dodg9j-e9agqvbz200a5cum2ry1rja8u
     ª       ª           3xx6hlxmmx9rq31k4adj860lj.o
     ª       ª           498uouqfe7flelqapy6ejhm19.o
     ª       ª           8qebd8odc2i897x1jw1zd3w19.o
@@ -8395,9 +8397,9 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
     ª       ª           work-products.bin
     ª       ª           
     ª       +---build_script_build-0w8rhr53qq861
-    ª       ª   ª   s-hddpyyjgs3-17jnuo3.lock
+    ª       ª   ª   s-hddsxo8c2p-15w9m2y.lock
     ª       ª   ª   
-    ª       ª   +---s-hddpyyjgs3-17jnuo3-8cpey4nf27netrl1qgjdonwqf
+    ª       ª   +---s-hddsxo8c2p-15w9m2y-8cpey4nf27netrl1qgjdonwqf
     ª       ª           1nabpkql61kzjdsf9wyu8dpcl.o
     ª       ª           84z43qatb7fege3ktiww6b92f.o
     ª       ª           b95wot6r7u9fq6u93c2pbe4qt.o
@@ -12883,6 +12885,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª               51c1d76e4c14b7edd04bdb02a2dacb82342ae7ba32168060e0176fb84de3be45.html
         ª   ª               53560b4217e3d759b3c9e566d743b8722fed5a8ecbbe20fbb2a074ceea2463e6.html
         ª   ª               53e7308ac51120ad06014b80e4d26f1fd07d45e03d3f2b00fcb0f3aa2fbaf940.js
+        ª   ª               546b220e6dd87168831013831a44d19f697fbb8d5b7f563aa2f6ab5022c6b1ab.html
         ª   ª               5631b6a8cfd9f4360c6c5e1e1660d52e3d5b02a78c6cac375bbb41f117924723.js
         ª   ª               567f59998d29df1912509767ea730409a5b956e47b280eec498ce0a2c62ac88e.html
         ª   ª               5b9b99d842b5346b00259bcb73d7fe1abd58494411ecac3669875c77b1da1c06.html
@@ -12921,6 +12924,7 @@ D:\BF42LITE\APPS\CLIENT-TAURI\SRC-TAURI
         ª   ª               9566f80b18dff49f7ac88bae65a6eac999e584c3f07ef17da4d0f9370a851bb9.html
         ª   ª               95767e6e3efbced1db60b5339823281edb6b9cec71ddd6f3a0a75617f9b56ea2.html
         ª   ª               959134250c665f157a9d34a04df06009fe4742d0e3fbb39c666a9a8c3ea636f4.js
+        ª   ª               98d7b881389a8277763599e11f83f0a3a2782829ba7286fd8337fd62ba02899e.js
         ª   ª               992ca6155788ad37703cd809b0551aa9435ce0e07809f825d0043c46202477af.js
         ª   ª               9a6d6bfae66282ac86bfda9fab59a2f990dfbc07dcab39243e44f05e6938e5f5.js
         ª   ª               9c68a5f46749ff6c28a43c77d6d88962e4a159e2512101247757ac5a9fe4e789.js
@@ -21121,15 +21125,98 @@ default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
 
+## FILE: apps\client-tauri\src-tauri\classes.json
+---------------------------
+[
+  {
+    "id": 0,
+    "key": "ASSAULT",
+    "name": "Assault",
+    "max_health": 100.0,
+    "primary_weapon_id": 0
+  },
+  {
+    "id": 1,
+    "key": "MEDIC",
+    "name": "Medic",
+    "max_health": 110.0,
+    "primary_weapon_id": 1
+  },
+  {
+    "id": 2,
+    "key": "SCOUT",
+    "name": "Scout",
+    "max_health": 80.0,
+    "primary_weapon_id": 2
+  }
+]
+
+
 ## FILE: apps\client-tauri\src-tauri\game_config.toml
 ---------------------------
+# game_config.toml
+
 [movement]
-move_speed = 10.0
-air_speed_factor = 0.6
-gravity = -25.0
-jump_force = 9.0
+move_speed = 6.0
+gravity = -9.81
+jump_force = 5.0
 sprint_multiplier = 1.5
-mouse_sensitivity = 0.002
+mouse_sensitivity = 0.1
+
+# --- WEAPONS ---
+
+[[weapons]]
+id = 0
+key = "ASSAULT_PRIMARY"
+name = "Thompson"
+damage_per_hit = 20.0
+fire_rate = 0.12         # seconds between shots, matches client WEAPON_STATS for Assault
+mag_size = 30
+reserve_ammo = 120
+recoil = 1.0
+
+[[weapons]]
+id = 1
+key = "MEDIC_PRIMARY"
+name = "MP40"
+damage_per_hit = 18.0
+fire_rate = 0.15         # seconds between shots, matches Medic
+mag_size = 32
+reserve_ammo = 128
+recoil = 0.9
+
+[[weapons]]
+id = 2
+key = "SCOUT_PRIMARY"
+name = "Kar98k"
+damage_per_hit = 80.0
+fire_rate = 1.5          # seconds between shots, matches Scout bolt-action
+mag_size = 5
+reserve_ammo = 25
+recoil = 2.0
+
+# --- CLASSES ---
+
+[[classes]]
+id = 0
+key = "ASSAULT"
+name = "Assault"
+max_health = 100.0
+primary_weapon_id = 0
+
+[[classes]]
+id = 1
+key = "MEDIC"
+name = "Medic"
+max_health = 110.0
+primary_weapon_id = 1
+
+[[classes]]
+id = 2
+key = "SCOUT"
+name = "Scout"
+max_health = 80.0
+primary_weapon_id = 2
 
 
 ## FILE: apps\client-tauri\src-tauri\tauri.conf.json
@@ -21199,6 +21286,42 @@ mouse_sensitivity = 0.002
     }
   }
 }
+
+
+## FILE: apps\client-tauri\src-tauri\weapons.json
+---------------------------
+[
+  {
+    "id": 0,
+    "key": "ASSAULT_PRIMARY",
+    "name": "Thompson",
+    "damage_per_hit": 20.0,
+    "fire_rate": 0.12,
+    "mag_size": 30,
+    "reserve_ammo": 120,
+    "recoil": 1.0
+  },
+  {
+    "id": 1,
+    "key": "MEDIC_PRIMARY",
+    "name": "MP40",
+    "damage_per_hit": 18.0,
+    "fire_rate": 0.15,
+    "mag_size": 32,
+    "reserve_ammo": 128,
+    "recoil": 0.9
+  },
+  {
+    "id": 2,
+    "key": "SCOUT_PRIMARY",
+    "name": "Kar98k",
+    "damage_per_hit": 80.0,
+    "fire_rate": 1.5,
+    "mag_size": 5,
+    "reserve_ammo": 25,
+    "recoil": 2.0
+  }
+]
 
 
 ## FILE: apps\client-tauri\src-tauri\capabilities\default.json
@@ -28451,14 +28574,12 @@ uÍ3R[žº•õÇ†îø+R^aKXƒ]]NUãÌbjÆ<2‹h7(~uÒ×ÍV~Fò<!Ìa•
 ## FILE: apps\client-tauri\src-tauri\src\config.rs
 ---------------------------
 // apps/client-tauri/src-tauri/src/config.rs
-
 use serde::Deserialize;
 use std::fs;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct MovementConfig {
     pub move_speed: f32,
-    pub air_speed_factor: f32,
     pub gravity: f32,
     pub jump_force: f32,
     pub sprint_multiplier: f32,
@@ -28468,38 +28589,136 @@ pub struct MovementConfig {
 impl Default for MovementConfig {
     fn default() -> Self {
         Self {
-            // These are your current hardcoded values:
-            move_speed: 10.0,
-            air_speed_factor: 0.6,
-            gravity: -25.0,
-            jump_force: 9.0,
+            move_speed: 6.0,
+            gravity: -9.81,
+            jump_force: 5.0,
             sprint_multiplier: 1.5,
-            mouse_sensitivity: 0.002,
+            mouse_sensitivity: 0.1,
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WeaponConfig {
+    pub id: u32,
+    pub key: String,
+    pub name: String,
+    pub damage_per_hit: f32,
+    pub fire_rate: f32, // seconds between shots
+    pub mag_size: u32,
+    pub reserve_ammo: u32,
+    pub recoil: f32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ClassConfig {
+    pub id: u8,
+    pub key: String,
+    pub name: String,
+    pub max_health: f32,
+    pub primary_weapon_id: u32,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct GameConfig {
     #[serde(default)]
     pub movement: MovementConfig,
+
+    #[serde(default)]
+    pub weapons: Vec<WeaponConfig>,
+
+    #[serde(default)]
+    pub classes: Vec<ClassConfig>,
 }
 
 impl Default for GameConfig {
     fn default() -> Self {
         Self {
+            // movement still has code defaults as a safety net
             movement: MovementConfig::default(),
+            // NO in-code weapons/classes stats anymore
+            weapons: Vec::new(),
+            classes: Vec::new(),
         }
     }
 }
 
 impl GameConfig {
-    /// Load config from a TOML file. If anything fails, fall back to defaults.
+    /// Keep TOML loader for movement (and as a general config file if you want).
     pub fn load_from_file(path: &str) -> Self {
-        match fs::read_to_string(path) {
-            Ok(contents) => toml::from_str(&contents).unwrap_or_default(),
-            Err(_) => GameConfig::default(),
+        let contents = fs::read_to_string(path).unwrap_or_else(|err| {
+            eprintln!(
+                "[GameConfig] Failed to read {}: {}. Using defaults.",
+                path, err
+            );
+            String::new()
+        });
+
+        if contents.trim().is_empty() {
+            eprintln!("[GameConfig] Empty or missing config file. Using defaults.");
+            return GameConfig::default();
         }
+
+        match toml::from_str::<GameConfig>(&contents) {
+            Ok(cfg) => cfg,
+            Err(err) => {
+                eprintln!(
+                    "[GameConfig] Failed to parse {}: {}. Using defaults.",
+                    path, err
+                );
+                GameConfig::default()
+            }
+        }
+    }
+
+    /// Weapons/classes come only from JSON.
+    pub fn load_all() -> Self {
+        // 1) Start from TOML (for movement); weapons/classes will be overwritten by JSON
+        let mut cfg = GameConfig::load_from_file("game_config.toml");
+
+        // 2) weapons.json
+        match fs::read_to_string("weapons.json") {
+            Ok(text) => match serde_json::from_str::<Vec<WeaponConfig>>(&text) {
+                Ok(weapons) => {
+                    println!("[GameConfig] Loaded {} weapons from weapons.json", weapons.len());
+                    cfg.weapons = weapons;
+                }
+                Err(err) => {
+                    eprintln!("[GameConfig] Failed to parse weapons.json: {}. Leaving weapons empty.", err);
+                    cfg.weapons.clear();
+                }
+            },
+            Err(err) => {
+                eprintln!(
+                    "[GameConfig] Failed to read weapons.json: {}. Leaving weapons empty.",
+                    err
+                );
+                cfg.weapons.clear();
+            }
+        }
+
+        // 3) classes.json
+        match fs::read_to_string("classes.json") {
+            Ok(text) => match serde_json::from_str::<Vec<ClassConfig>>(&text) {
+                Ok(classes) => {
+                    println!("[GameConfig] Loaded {} classes from classes.json", classes.len());
+                    cfg.classes = classes;
+                }
+                Err(err) => {
+                    eprintln!("[GameConfig] Failed to parse classes.json: {}. Leaving classes empty.", err);
+                    cfg.classes.clear();
+                }
+            },
+            Err(err) => {
+                eprintln!(
+                    "[GameConfig] Failed to read classes.json: {}. Leaving classes empty.",
+                    err
+                );
+                cfg.classes.clear();
+            }
+        }
+
+        cfg
     }
 }
 
@@ -29138,7 +29357,7 @@ pub struct FlagZone {
 impl SimState {
     pub fn new() -> Self {
         // Try to load from a TOML file; fall back to defaults if missing.
-        let config = GameConfig::load_from_file("game_config.toml");
+let config = GameConfig::load_all();
 
         Self {
             players: HashMap::new(),
@@ -29188,7 +29407,7 @@ systems::movement::update(
                 id, p.transform.x, p.transform.y, p.transform.z, p.team
             );
         }
-        systems::combat::update(&mut self.players, input_map, dt);
+systems::combat::update(&mut self.players, input_map, dt, &self.config);
 
         // 2. Conquest logic: update flag capture + tickets
         systems::conquest::update_conquest(
@@ -29315,80 +29534,123 @@ pub fn create_flags() -> Vec<FlagZone> {
 ---------------------------
 // apps/client-tauri/src-tauri/src/systems/combat.rs
 use std::collections::HashMap;
+
+use crate::config::{GameConfig, WeaponConfig};
 use crate::player::{Player, RESPAWN_TIME};
 use crate::protocol::ClientMessage;
 
-const DAMAGE_PER_HIT: f32 = 34.0; 
-const FIRE_RATE: f32 = 0.15;
+/// Resolve the primary weapon for a given player from the game config.
+fn weapon_for_player<'a>(
+    player: &Player,
+    config: &'a GameConfig,
+) -> Option<&'a WeaponConfig> {
+    // We assume Player has a `class_id: u8` that matches ClassConfig.id
+    let class_cfg = config.classes.iter().find(|c| c.id == player.class_id)?;
+    config
+        .weapons
+        .iter()
+        .find(|w| w.id == class_cfg.primary_weapon_id)
+}
 
-pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, ClientMessage>, dt: f32) {
-    // 1. Cooldowns
+/// Server-side combat update:
+/// - handles fire cooldowns and respawns
+/// - performs hitscan
+/// - applies damage using weapon/class config
+pub fn update(
+    players: &mut HashMap<u32, Player>,
+    input_map: &HashMap<u32, ClientMessage>,
+    dt: f32,
+    config: &GameConfig,
+) {
+    // 1. Cooldowns + respawn timers
     for (_, player) in players.iter_mut() {
-        if player.fire_cooldown > 0.0 { player.fire_cooldown -= dt; }
+        if player.fire_cooldown > 0.0 {
+            player.fire_cooldown -= dt;
+        }
         if player.is_dead {
             player.respawn_timer -= dt;
-            if player.respawn_timer <= 0.0 { player.respawn(); }
+            if player.respawn_timer <= 0.0 {
+                player.respawn();
+            }
         }
     }
 
     // 2. Hitscan
-    let mut hits: Vec<(u32, u32)> = Vec::new(); 
-    
-    let shooter_data: Vec<(u32, f32, f32, f32, f32, f32, bool)> = players.iter()
-        .map(|(id, p)| (*id, p.transform.x, p.transform.y, p.transform.z, p.transform.yaw, p.transform.pitch, p.is_dead))
+    let mut hits: Vec<(u32, u32)> = Vec::new();
+
+    // Snapshot shooter data so we don't fight the borrow checker later
+    let shooter_data: Vec<(u32, f32, f32, f32, f32, f32, bool)> = players
+        .iter()
+        .map(|(id, p)| {
+            (
+                *id,
+                p.transform.x,
+                p.transform.y,
+                p.transform.z,
+                p.transform.yaw,
+                p.transform.pitch,
+                p.is_dead,
+            )
+        })
         .collect();
 
-        for (shooter_id, sx, sy, sz, syaw, spitch, sdead) in &shooter_data {
-            if *sdead {
-                continue;
-            }
-    
-            if let Some(msg) = input_map.get(shooter_id) {
-                // Derive the "fire" flag from the new client message shape.
-                let fire = match msg {
-                    ClientMessage::Input { axes, .. } => axes.shoot,
-                    ClientMessage::Fire { .. } => true,           // explicit fire message = fire
-                    _ => false,
-                };
-    
-                let current_cooldown = players
-                    .get(shooter_id)
-                    .map(|p| p.fire_cooldown)
-                    .unwrap_or(0.0);
-    
-                if fire && current_cooldown <= 0.0 {
-                    hits.push((*shooter_id, 0));
-                    println!("[COMBAT] Player {} FIRED!", shooter_id);
-    
-                    let origin_x = *sx;
-                    let origin_y = *sy + 0.6;
-                    let origin_z = *sz;
-    
-                    // Direction: already matched to client camera
-                    let dir_x = syaw.sin() * spitch.cos();
-                    let dir_y = spitch.sin();
-                    let dir_z = syaw.cos() * spitch.cos();
-    
-                    let mut best_dist = 1000.0;
-                    let mut hit_victim = None;    
+    for (shooter_id, sx, sy, sz, syaw, spitch, sdead) in &shooter_data {
+        if *sdead {
+            continue;
+        }
+
+        if let Some(msg) = input_map.get(shooter_id) {
+            // Derive the "fire" flag from the new client message shape.
+            let fire = match msg {
+                ClientMessage::Input { axes, .. } => axes.shoot,
+                ClientMessage::Fire { .. } => true, // explicit fire message = fire
+                _ => false,
+            };
+
+            let current_cooldown = players
+                .get(shooter_id)
+                .map(|p| p.fire_cooldown)
+                .unwrap_or(0.0);
+
+            if fire && current_cooldown <= 0.0 {
+                // Placeholder entry; we may replace victim_id below
+                hits.push((*shooter_id, 0));
+                println!("[COMBAT] Player {} FIRED!", shooter_id);
+
+                let origin_x = *sx;
+                let origin_y = *sy + 0.6;
+                let origin_z = *sz;
+
+                // Direction: already matched to client camera
+                let dir_x = syaw.sin() * spitch.cos();
+                let dir_y = spitch.sin();
+                let dir_z = syaw.cos() * spitch.cos();
+
+                let mut best_dist = 1000.0;
+                let mut hit_victim = None;
 
                 for (victim_id, victim) in players.iter() {
-                    if shooter_id == victim_id || victim.is_dead { continue; }
-                    
+                    if shooter_id == victim_id || victim.is_dead {
+                        continue;
+                    }
+
                     let vx = victim.transform.x;
-                    let vy = victim.transform.y + 0.9; 
+                    let vy = victim.transform.y + 0.9;
                     let vz = victim.transform.z;
-                    let radius = 1.0; 
+                    let radius = 1.0;
 
                     let oc_x = vx - origin_x;
                     let oc_y = vy - origin_y;
                     let oc_z = vz - origin_z;
 
                     let projection = oc_x * dir_x + oc_y * dir_y + oc_z * dir_z;
-                    if projection < 0.0 { continue; } 
+                    if projection < 0.0 {
+                        continue;
+                    }
 
-                    let dist_sq = (oc_x*oc_x + oc_y*oc_y + oc_z*oc_z) - (projection * projection);
-                    
+                    let dist_sq =
+                        (oc_x * oc_x + oc_y * oc_y + oc_z * oc_z) - (projection * projection);
+
                     if dist_sq < (radius * radius) && projection < best_dist {
                         best_dist = projection;
                         hit_victim = Some(*victim_id);
@@ -29396,7 +29658,8 @@ pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, Clien
                 }
 
                 if let Some(vid) = hit_victim {
-                    hits.pop(); 
+                    // Replace the placeholder (shooter, 0) with a real victim
+                    hits.pop();
                     hits.push((*shooter_id, vid));
                     println!("[COMBAT] -> HIT Player {}!", vid);
                 } else {
@@ -29406,32 +29669,66 @@ pub fn update(players: &mut HashMap<u32, Player>, input_map: &HashMap<u32, Clien
         }
     }
 
-    // 3. Apply Damage
+    // 3. Apply Damage (data-driven via GameConfig)
     let mut kills_to_award: Vec<u32> = Vec::new();
+
     for (shooter_id, victim_id) in hits {
-        if let Some(p) = players.get_mut(&shooter_id) { p.fire_cooldown = FIRE_RATE; }
+        // Set fire cooldown based on weapon config (even on a miss: victim_id == 0)
+        if let Some(shooter) = players.get_mut(&shooter_id) {
+            if let Some(weapon_cfg) = weapon_for_player(shooter, config) {
+                shooter.fire_cooldown = weapon_cfg.fire_rate.max(0.01);
+            } else {
+                // Safe fallback if config is missing/misconfigured
+                shooter.fire_cooldown = 0.15;
+            }
+        }
 
         if victim_id != 0 {
+            // 1) Compute damage using an immutable borrow
+            let damage: f32 = if let Some(shooter_for_damage) = players.get(&shooter_id) {
+                if let Some(weapon_cfg) = weapon_for_player(shooter_for_damage, config) {
+                    weapon_cfg.damage_per_hit
+                } else {
+                    34.0 // fallback damage
+                }
+            } else {
+                34.0
+            };
+
             let mut killed = false;
+
+            // 2) Now take the mutable victim borrow and apply damage
             if let Some(victim) = players.get_mut(&victim_id) {
-                victim.health -= DAMAGE_PER_HIT;
-                println!("[COMBAT] Player {} HP: {:.1}", victim_id, victim.health);
+                victim.health -= damage;
+                println!(
+                    "[COMBAT] Player {} HP: {:.1} (damage {:.1})",
+                    victim_id, victim.health, damage
+                );
+
                 if victim.health <= 0.0 {
                     victim.health = 0.0;
                     victim.is_dead = true;
                     victim.respawn_timer = RESPAWN_TIME;
                     victim.score_deaths += 1;
-                    println!("[COMBAT] Player {} ELIMINATED by Player {}", victim_id, shooter_id);
+                    println!(
+                        "[COMBAT] Player {} ELIMINATED by Player {}",
+                        victim_id, shooter_id
+                    );
                     killed = true;
                 }
             }
-            if killed { kills_to_award.push(shooter_id); }
+
+            if killed {
+                kills_to_award.push(shooter_id);
+            }
         }
     }
-    
+
     // 4. Scores
     for shooter_id in kills_to_award {
-        if let Some(shooter) = players.get_mut(&shooter_id) { shooter.score_kills += 1; }
+        if let Some(shooter) = players.get_mut(&shooter_id) {
+            shooter.score_kills += 1;
+        }
     }
 }
 

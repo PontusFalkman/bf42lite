@@ -37,17 +37,32 @@ export const ClientMessageSchema = z.union([
 
 // --- 2. SERVER -> CLIENT BASE TYPES ---
 
-export const EntityStateSchema = z.object({
-  id: z.number(),
-  pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
-  vel: z
-    .object({ x: z.number(), y: z.number(), z: z.number() })
-    .optional(),
-  rot: z.number(),
-  health: z.number(),
-  isDead: z.boolean(),
-  // extra fields are allowed
-}).catchall(z.any());
+export const EntityStateSchema = z
+  .object({
+    id: z.number(),
+    pos: z.object({ x: z.number(), y: z.number(), z: z.number() }),
+    vel: z
+      .object({ x: z.number(), y: z.number(), z: z.number() })
+      .optional(),
+    rot: z.number(),
+    health: z.number(),
+    isDead: z.boolean(),
+
+    loadout: z
+      .object({
+        classId: z.number(),
+      })
+      .optional(),
+
+    ammo: z
+      .object({
+        current: z.number(),
+        reserve: z.number(),
+      })
+      .optional(),
+  })
+  // still allow extra fields for future extensions
+  .catchall(z.any());
 
 // Simple “v1” game-info block used by the old Node host.
 export const GameInfoSchema = z.object({

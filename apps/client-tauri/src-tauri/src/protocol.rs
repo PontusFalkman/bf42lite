@@ -70,42 +70,54 @@ pub enum ClientMessage {
 
 // ---------- SERVER → CLIENT (SNAPSHOT) ----------
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EntitySnapshot {
-    pub eid: u32,
-    pub transform: Transform,
-    pub health: Option<HealthStruct>,
-    pub stamina: Option<StaminaStruct>,
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub yaw: f32,
+    pub pitch: f32,
+    pub health: Option<f32>,
+    pub stamina: Option<f32>,
     pub team: Option<TeamStruct>,
     pub score: Option<ScoreStruct>,
     pub loadout: Option<LoadoutStruct>,
+    pub ammo: Option<AmmoStruct>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HealthStruct {
     pub current: f32,
     pub max: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StaminaStruct {
     pub current: f32,
     pub max: f32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TeamStruct {
     pub id: TeamId,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScoreStruct {
     pub kills: u32,
     pub deaths: u32,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AmmoStruct {
+    pub current: u32,
+    pub reserve: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadoutStruct {
+    #[serde(rename = "classId")]
     pub class_id: u8,
 }
 

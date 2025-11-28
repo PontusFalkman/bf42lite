@@ -5,14 +5,14 @@ use crate::protocol::{
     EntitySnapshot,
     GameModeState,
     TeamId,
-    HealthStruct,
-    StaminaStruct,
     TeamStruct,
     ScoreStruct,
     ClientMessage,
     LoadoutStruct,
+    AmmoStruct,
     FlagSnapshot,
 };
+
 use crate::systems;
 use crate::player::Player;
 use crate::config::GameConfig;
@@ -77,25 +77,27 @@ let config = GameConfig::load_all();
     ) -> TickSnapshot {
         // Debug: how many inputs did we get this tick?
         println!("[DEBUG] input_map len = {}", input_map.len());
-    
+
         self.frame_count += 1;
-    
+
         // 1. Run Systems
-systems::movement::update(
-    &mut self.players,
-    input_map,
-    dt,
-    self.frame_count,
-    &self.config.movement,
-);    
-        // Existing [DEBUG] After movement + conquest calls stay as-is
+        systems::movement::update(
+            &mut self.players,
+            input_map,
+            dt,
+            self.frame_count,
+            &self.config.movement,
+        );
+
+        // Debug after movement (keep your existing log)
         if let Some((id, p)) = self.players.iter().next() {
             println!(
                 "[DEBUG] After movement: Player {} at ({:.1}, {:.1}, {:.1}) team={:?}",
                 id, p.transform.x, p.transform.y, p.transform.z, p.team
             );
         }
-systems::combat::update(&mut self.players, input_map, dt, &self.config);
+
+        systems::combat::update(&mut self.players, input_map, dt, &self.config);
 
         // 2. Conquest logic: update flag capture + tickets
         systems::conquest::update_conquest(
@@ -107,59 +109,69 @@ systems::combat::update(&mut self.players, input_map, dt, &self.config);
         );
 
         // 3. Game Mode Logic (winner)
-let winner = if self.tickets_a <= 0.0 {
-    TeamId::TeamB
-} else if self.tickets_b <= 0.0 {
-    TeamId::TeamA
-} else {
-    TeamId::None
-};
+        let winner = if self.tickets_a <= 0.0 {
+            TeamId::TeamB
+        } else if self.tickets_b <= 0.0 {
+            TeamId::TeamA
+        } else {
+            TeamId::None
+        };
 
         // 4. Snapshot Generation: entities
         let mut entities = Vec::new();
         for p in self.players.values() {
             entities.push(EntitySnapshot {
-                eid: p.id,
-                transform: p.transform.clone(),
-                health: Some(HealthStruct {
-                    current: p.health,
-                    max: p.max_health,
-                }),
-                stamina: Some(StaminaStruct {
-                    current: 100.0,
-                    max: 100.0,
-                }),
+                // Match protocol.rs EntitySnapshot
+                id: p.id,
+                x: p.transform.x,
+                y: p.transform.y,
+                z: p.transform.z,
+                yaw: p.transform.yaw,
+                pitch: p.transform.pitch,
+
+                // Protocol wants Option<f32> for health/stamina
+                health: Some(p.health),
+                stamina: Some(100.0), // placeholder until you have real stamina
+
                 team: Some(TeamStruct { id: p.team }),
                 score: Some(ScoreStruct {
                     kills: p.score_kills,
                     deaths: p.score_deaths,
                 }),
                 loadout: Some(LoadoutStruct {
-                    class_id: p.class_id,
+                    class_id: p.class_id as u8, // cast if needed
+                }),
+                // TEMP: send zeros until Player has ammo fields
+                ammo: Some(AmmoStruct {
+                    current: 0,
+                    reserve: 0,
                 }),
             });
         }
 
         // 5. Snapshot Generation: flags
-        let flags = self.flags.iter().map(|f| FlagSnapshot {
-            id: f.id,
-            x: f.x,
-            y: f.y,
-            z: f.z,
-            radius: f.radius,
-            owner: f.owner,
-            capture: f.capture,
-        }).collect();
+        let flags = self.flags
+            .iter()
+            .map(|f| FlagSnapshot {
+                id: f.id,
+                x: f.x,
+                y: f.y,
+                z: f.z,
+                radius: f.radius,
+                owner: f.owner,
+                capture: f.capture,
+            })
+            .collect();
 
         TickSnapshot {
             entities,
             flags,
             game_state: GameModeState {
                 team_a_tickets: self.tickets_a.round() as i32,
-                team_b_tickets: self.tickets_b.round() as i32,                
+                team_b_tickets: self.tickets_b.round() as i32,
                 match_ended: winner != TeamId::None,
                 winner,
             },
-        }        
+        }
     }
 }
