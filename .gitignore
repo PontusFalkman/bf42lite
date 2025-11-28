@@ -21,3 +21,5 @@ yarn-error.log*
 
 # Ignore PowerShell scripts
 *.ps1
+*.txt
+bf42lite_sim_dump.txt
