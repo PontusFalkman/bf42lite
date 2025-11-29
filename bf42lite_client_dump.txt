@@ -1,65 +1,7 @@
-﻿===============================
- DUMP FOR: apps/client-tauri/src
-===============================
+﻿====================================
+FILE: \apps\client-tauri\src\main.ts
+====================================
 
----------- DIRECTORY TREE ----------
-
-Folder PATH listing for volume New Volume
-Volume serial number is BC16-B8E7
-D:\BF42LITE\APPS\CLIENT-TAURI\SRC
-ª   main.ts
-ª   
-+---core
-ª       ClassConfigLoader.ts
-ª       ClientGame.ts
-ª       constants.ts
-ª       EntityMapper.ts
-ª       GameLoop.ts
-ª       InputManager.ts
-ª       local-player.ts
-ª       Renderer.ts
-ª       WeaponConfigLoader.ts
-ª       WeaponSystem.ts
-ª       
-+---managers
-ª       NetworkManager.ts
-ª       UIManager.ts
-ª       
-+---net
-ª       CommandSender.ts
-ª       SnapshotDecoder.ts
-ª       types.ts
-ª       
-+---render
-ª       FlagVisual.ts
-ª       ModelFactory.ts
-ª       
-+---systems
-ª       FlagSystem.ts
-ª       interpolationHelpers.ts
-ª       InterpolationSystem.ts
-ª       MovementSystem.ts
-ª       PredictionSystem.ts
-ª       Reconciler.ts
-ª       RemoteEntitiesSystem.ts
-ª       SnapshotHandler.ts
-ª       syncLocalPlayer.ts
-ª       updateGameFrame.ts
-ª       
-+---ui
-ª       HUDUpdater.ts
-ª       
-+---utils
-ª       log.ts
-ª       
-+---world
-        worldRender.ts
-        
-
----------- FILE CONTENTS ----------
-
-## FILE: apps\client-tauri\src\main.ts
----------------------------
 import { ClientGame } from './core/ClientGame';
 
 // Prevent context menu
@@ -70,8 +12,10 @@ const game = new ClientGame();
 game.start();
 
 
-## FILE: apps\client-tauri\src\core\ClassConfigLoader.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\ClassConfigLoader.ts
+====================================
+
 export interface ClassConfig {
   id: number;
   key: string;
@@ -90,8 +34,10 @@ export async function loadClassConfig(): Promise<ClassConfig[]> {
 }
 
 
-## FILE: apps\client-tauri\src\core\ClientGame.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\ClientGame.ts
+====================================
+
 // apps/client-tauri/src/core/ClientGame.ts
 
 import {
@@ -163,7 +109,7 @@ export class ClientGame {
     this.ui.setDeployMode(true);
     this.hud.updateCenterStatus('Select a class and spawn point to deploy.');
 
-    this.weaponSystem = new WeaponSystem(this.renderer, this.net);
+    this.weaponSystem = new WeaponSystem(this.renderer, this.net, this.hud);
 
     // Snapshot handler (HUD / flags routed through HUDUpdater)
     this.snapshotHandler = new SnapshotHandler(this.hud);
@@ -264,7 +210,10 @@ export class ClientGame {
     const fps = this.loop.getCurrentFps();
     this.updateRenderAndUI(fps);
   }
-
+  public updateCrosshair(spread: number): void {
+    this.ui.setCrosshairSpread(spread);
+  }
+  
   private updateRenderAndUI(fps: number) {
     updateWorldRender(
       this.sim.world,
@@ -278,8 +227,10 @@ export class ClientGame {
 }
 
 
-## FILE: apps\client-tauri\src\core\constants.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\constants.ts
+====================================
+
 // apps/client-tauri/src/core/constants.ts
 
 // --- TEAMS ---
@@ -309,8 +260,10 @@ export const CLASS_IDS = {
 // (no weapon names/stats here anymore â€“ those now come from JSON)
 
 
-## FILE: apps\client-tauri\src\core\EntityMapper.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\EntityMapper.ts
+====================================
+
 // apps/client-tauri/src/core/EntityMapper.ts
 //
 // Convert ECS components into clean, renderer-ready RenderState objects.
@@ -412,8 +365,10 @@ export class EntityMapper {
 }
 
 
-## FILE: apps\client-tauri\src\core\GameLoop.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\GameLoop.ts
+====================================
+
 // apps/client-tauri/src/core/GameLoop.ts
 
 /**
@@ -544,8 +499,10 @@ export class GameLoop {
 }
 
 
-## FILE: apps\client-tauri\src\core\InputManager.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\InputManager.ts
+====================================
+
 import { ClientInput } from '@bf42lite/protocol';
 
 // Helper: Convert degrees to radians
@@ -632,8 +589,10 @@ export class InputManager {
 }
 
 
-## FILE: apps\client-tauri\src\core\local-player.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\local-player.ts
+====================================
+
 // apps/client-tauri/src/core/local-player.ts
 import {
     addEntity,
@@ -664,8 +623,10 @@ import {
   }
   
 
-## FILE: apps\client-tauri\src\core\Renderer.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\Renderer.ts
+====================================
+
 // apps/client-tauri/src/core/Renderer.ts
 
 import * as THREE from 'three';
@@ -943,8 +904,10 @@ export class Renderer {
 }
 
 
-## FILE: apps\client-tauri\src\core\WeaponConfigLoader.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\core\WeaponConfigLoader.ts
+====================================
+
 export interface WeaponConfig {
   id: number;
   key: string;
@@ -966,9 +929,11 @@ export async function loadWeaponConfig(): Promise<WeaponConfig[]> {
 }
 
 
-## FILE: apps\client-tauri\src\core\WeaponSystem.ts
----------------------------
-// apps/client-tauri/src/core/WeaponSystem.ts
+====================================
+FILE: \apps\client-tauri\src\core\WeaponSystem.ts
+====================================
+
+//D:\bf42lite\apps\client-tauri\src\core\WeaponSystem.ts
 
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
@@ -979,7 +944,7 @@ import type { WeaponConfig } from './WeaponConfigLoader';
 import { loadWeaponConfig } from './WeaponConfigLoader';
 import type { ClassConfig } from './ClassConfigLoader';
 import { loadClassConfig } from './ClassConfigLoader';
-
+import type { HUDUpdater } from '../ui/HUDUpdater';
 
 /**
  * Data-driven WeaponSystem:
@@ -987,6 +952,7 @@ import { loadClassConfig } from './ClassConfigLoader';
  * - Tracks current class and its primary weapon
  * - Enforces client-side fire cadence using weapon.fire_rate
  * - Sends fire commands; server does hitscan + damage
+ * - Drives a purely visual crosshair spread effect
  */
 export class WeaponSystem {
   private lastFireTime = 0;          // seconds
@@ -1002,9 +968,14 @@ export class WeaponSystem {
 
   private isLoaded = false;
 
+// Crosshair â€œpulseâ€ state
+private crosshairSpread = 0;
+private lastShootTick: number | null = null;
+
   constructor(
     private renderer: Renderer,
     private net: NetworkManager,
+    private hud: HUDUpdater,
   ) {
     // Fire-and-forget config load; if not ready yet, update() is a no-op.
     void this.loadConfigs();
@@ -1030,30 +1001,35 @@ export class WeaponSystem {
 
   /**
    * Per-frame update:
-   * - Checks if current weapon exists
-   * - Reads InputState for myEntityId
-   * - Enforces fire_rate from weapon config
-   * - Sends fire command to server
+   * - Decays crosshair spread and pushes it to HUD.
+   * - Checks if current weapon exists.
+   * - Reads InputState for myEntityId.
+   * - Enforces fire_rate from weapon config.
+   * - Sends fire command to server.
+   * - Bumps crosshair spread on each successful shot.
    */
-  public update(_dt: number, myEntityId: number, currentTick: number) {
-    if (myEntityId < 0) return;
-    if (!this.isLoaded) return;
-
-    const weapon = this.getCurrentWeapon();
-    if (!weapon) return;
-
-    const isShooting = (InputState.buttons[myEntityId] & 2) !== 0;
-    if (!isShooting) return;
-
-    const now = performance.now() / 1000;
-    if (now - this.lastFireTime <= weapon.fire_rate) {
-      // Still on client-side cooldown
+  public update(dt: number, myEntityId: number, currentTick: number) {
+    // Only animate when we are actually alive / rendered.
+    const isAlive = myEntityId >= 0 && this.renderer.hasEntity(myEntityId);
+    if (!isAlive) {
+      this.crosshairSpread = 0;
+      this.hud.updateCrosshair(0);
       return;
     }
-
-    this.fire(currentTick);
-    this.lastFireTime = now;
-  }
+  
+    const btns = InputState.buttons[myEntityId] || 0;
+    const shooting = !!(btns & this.BUTTON_SHOOT);
+  
+    // Treat â€œshootingâ€ simply as: mouse is down.
+    // Or keep lastShootTick if you want only 1 pulse per tick:
+    const isFiringThisFrame = shooting;
+  
+    // Update spread
+    this.updateCrosshairDecay(dt, isFiringThisFrame);
+  
+    // Push to HUD every frame
+    this.hud.updateCrosshair(this.crosshairSpread);
+  }  
 
   // === Internal helpers ===
 
@@ -1092,6 +1068,20 @@ export class WeaponSystem {
     this.renderer.drawTracer(visualStart, end);
   }
 
+  // --- Crosshair helpers (visual only) ---
+
+  private updateCrosshairDecay(dt: number, isFiringThisFrame: boolean) {
+    // If we fired this frame, kick spread to 1.0 (max visual).
+    if (isFiringThisFrame) {
+      this.crosshairSpread = 1.0;
+    } else {
+      // Otherwise, decay quickly back to 0.
+      const DECAY_PER_SECOND = 6.0; // tweak for feel
+      this.crosshairSpread -= DECAY_PER_SECOND * dt;
+      if (this.crosshairSpread < 0) this.crosshairSpread = 0;
+    }
+  }
+
   private async loadConfigs() {
     try {
       const [weapons, classes] = await Promise.all([
@@ -1127,8 +1117,10 @@ export class WeaponSystem {
 }
 
 
-## FILE: apps\client-tauri\src\managers\NetworkManager.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\managers\NetworkManager.ts
+====================================
+
 // apps/client-tauri/src/managers/NetworkManager.ts
 
 import { WebSocketAdapter, type NetworkAdapter } from '@bf42lite/net';
@@ -1308,8 +1300,10 @@ case 'snapshot': {
 }
 
 
-## FILE: apps\client-tauri\src\managers\UIManager.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\managers\UIManager.ts
+====================================
+
 // apps/client-tauri/src/managers/UIManager.ts
 
 export class UIManager {
@@ -1330,12 +1324,13 @@ export class UIManager {
         ammoRes: HTMLElement | null;
         weaponName: HTMLElement | null;
 
-        // New HUD elements
         objectiveText: HTMLElement | null;
         flagStrip: HTMLElement | null;
         centerStatus: HTMLElement | null;
         flagList: HTMLElement | null;
         killFeed: HTMLElement | null;
+        crosshair: HTMLElement | null;
+
     };
 
     private selectedSpawnId = -1;
@@ -1369,11 +1364,34 @@ export class UIManager {
             centerStatus: document.getElementById('center-status'),
             flagList: document.getElementById('flag-list'),
             killFeed: document.getElementById('kill-feed'),
-        };
 
+            crosshair: document.getElementById('crosshair'),
+
+        };
         this.initListeners();
     }
-
+    /**
+     * Crosshair spread animation (0 = tight, >0 = expanded).
+     * We simply bump the font size for a simple â€œbreathingâ€ effect.
+     */
+    public setCrosshairSpread(spread: number) {
+        if (!this.ui.crosshair) return;
+      
+        // Expect 0..1 from WeaponSystem and clamp it
+        const clamped = Math.max(0, Math.min(spread, 1));
+        const px = clamped * 10; // max +10px
+      
+        const top = this.ui.crosshair.querySelector('.ch-top') as HTMLElement | null;
+        const bottom = this.ui.crosshair.querySelector('.ch-bottom') as HTMLElement | null;
+        const left = this.ui.crosshair.querySelector('.ch-left') as HTMLElement | null;
+        const right = this.ui.crosshair.querySelector('.ch-right') as HTMLElement | null;
+      
+        if (top) top.style.marginTop = `-${20 + px}px`;
+        if (bottom) bottom.style.marginTop = `${8 + px}px`;
+        if (left) left.style.marginLeft = `-${20 + px}px`;
+        if (right) right.style.marginLeft = `${8 + px}px`;
+      }      
+   
     private initListeners() {
         // 1. Class Selection Listeners
         const classBtns = document.querySelectorAll('.class-btn');
@@ -1635,14 +1653,16 @@ if (this.ui.spawnBtn) {
 
     public setGameOver(isGameOver: boolean, winningTeam: string) {
         if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
+    
         if (isGameOver) {
             this.ui.gameOverScreen.classList.add('visible');
             this.ui.endTitle.innerText = winningTeam;
-            document.exitPointerLock();
+            document.exitPointerLock?.();
         } else {
             this.ui.gameOverScreen.classList.remove('visible');
+            this.ui.endTitle.innerText = '';
         }
-    }
+    }    
 
     public updateAmmo(current: number, reserve: number, weaponName?: string) {
         if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
@@ -1652,33 +1672,48 @@ if (this.ui.spawnBtn) {
 
     // Respawn timer â†’ center status and spawn button text
     public updateRespawn(isDead: boolean, timer: number) {
-        if (!this.ui.spawnBtn) return;
-
+        const t = Math.max(0, timer); // extra safety clamp
+    
         if (isDead) {
-            if (timer > 0) {
-                this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
-                this.ui.spawnBtn.setAttribute('disabled', 'true');
-                this.ui.spawnBtn.style.pointerEvents = 'none';
-                this.ui.spawnBtn.style.opacity = '0.5';
-
-                this.setCenterStatus(`Respawning in ${timer.toFixed(1)}s`);
+            // Spawn button state (if present)
+            if (this.ui.spawnBtn) {
+                if (t > 0) {
+                    this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
+                    this.ui.spawnBtn.setAttribute('disabled', 'true');
+                    this.ui.spawnBtn.style.pointerEvents = 'none';
+                    this.ui.spawnBtn.style.opacity = '0.5';
+                } else {
+                    this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
+                    this.ui.spawnBtn.removeAttribute('disabled');
+                    this.ui.spawnBtn.style.pointerEvents = 'auto';
+                    this.ui.spawnBtn.style.opacity = '1.0';
+                }
+            }
+    
+            // Center status â€“ independent of whether the button exists
+            if (t > 0) {
+                this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
             } else {
-                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
-                this.ui.spawnBtn.removeAttribute('disabled');
-                this.ui.spawnBtn.style.pointerEvents = 'auto';
-                this.ui.spawnBtn.style.opacity = '1.0';
-
                 this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
             }
         } else {
+            // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
+            if (this.ui.spawnBtn) {
+                this.ui.spawnBtn.innerText = 'DEPLOY';
+                this.ui.spawnBtn.removeAttribute('disabled');
+                this.ui.spawnBtn.style.pointerEvents = 'auto';
+                this.ui.spawnBtn.style.opacity = '1.0';
+            }
             this.setCenterStatus('');
         }
-    }
+    }    
 }
 
 
-## FILE: apps\client-tauri\src\net\CommandSender.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\net\CommandSender.ts
+====================================
+
 // apps/client-tauri/src/net/CommandSender.ts
 
 import type { ClientInput } from '@bf42lite/protocol';
@@ -1736,8 +1771,10 @@ export class CommandSender {
 }
 
 
-## FILE: apps\client-tauri\src\net\SnapshotDecoder.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\net\SnapshotDecoder.ts
+====================================
+
 // apps/client-tauri/src/net/SnapshotDecoder.ts
 
 import type {
@@ -1914,8 +1951,10 @@ export function decodeServerMessage(
 }
 
 
-## FILE: apps\client-tauri\src\net\types.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\net\types.ts
+====================================
+
 // apps/client-tauri/src/net/types.ts
 
 import type { Snapshot, FlagSnapshot } from '@bf42lite/protocol';
@@ -1966,8 +2005,10 @@ export type DecodedServerMessage =
   | DecodedUnknownMessage;
 
 
-## FILE: apps\client-tauri\src\render\FlagVisual.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\render\FlagVisual.ts
+====================================
+
 // apps/client-tauri/src/render/FlagVisual.ts
 //
 // Encapsulates all visual updates for flag objects created by ModelFactory.
@@ -2077,8 +2118,10 @@ export class FlagVisual {
 }
 
 
-## FILE: apps\client-tauri\src\render\ModelFactory.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\render\ModelFactory.ts
+====================================
+
 // apps/client-tauri/src/render/ModelFactory.ts
 //
 // Central factory for all Three.js models used by the client.
@@ -2217,8 +2260,10 @@ export class ModelFactory {
 }
 
 
-## FILE: apps\client-tauri\src\systems\FlagSystem.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\FlagSystem.ts
+====================================
+
 // apps/client-tauri/src/systems/FlagSystem.ts
 //
 // ECS-side management of Conquest flags on the client.
@@ -2302,8 +2347,10 @@ export class FlagSystem {
 }
 
 
-## FILE: apps\client-tauri\src\systems\interpolationHelpers.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\interpolationHelpers.ts
+====================================
+
 // apps/client-tauri/src/systems/interpolationHelpers.ts
 
 import {
@@ -2401,8 +2448,10 @@ export function interpolateRemotePlayers(
 }
 
 
-## FILE: apps\client-tauri\src\systems\InterpolationSystem.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\InterpolationSystem.ts
+====================================
+
 // apps/client-tauri/src/systems/InterpolationSystem.ts
 
 import {
@@ -2457,8 +2506,10 @@ export class InterpolationSystem {
 }
 
 
-## FILE: apps\client-tauri\src\systems\MovementSystem.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\MovementSystem.ts
+====================================
+
 // apps/client-tauri/src/systems/MovementSystem.ts
 //
 // Thin wrapper around the core movement system from @bf42lite/engine-core.
@@ -2504,8 +2555,10 @@ export class MovementSystemRunner {
 }
 
 
-## FILE: apps\client-tauri\src\systems\PredictionSystem.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\PredictionSystem.ts
+====================================
+
 // apps/client-tauri/src/systems/PredictionSystem.ts
 //
 // Encapsulates client-side movement prediction:
@@ -2589,8 +2642,10 @@ export class PredictionSystem {
 }
 
 
-## FILE: apps\client-tauri\src\systems\Reconciler.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\Reconciler.ts
+====================================
+
 // apps/client-tauri/src/systems/Reconciler.ts
 
 import { Transform, Velocity, SimWorld } from '@bf42lite/engine-core';
@@ -2783,8 +2838,10 @@ export class Reconciler {
 }
 
 
-## FILE: apps\client-tauri\src\systems\RemoteEntitiesSystem.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\RemoteEntitiesSystem.ts
+====================================
+
 // apps/client-tauri/src/systems/RemoteEntitiesSystem.ts
 //
 // System for synchronizing *remote* entities from server Snapshots into ECS.
@@ -2915,8 +2972,10 @@ export class RemoteEntitiesSystem {
 }
 
 
-## FILE: apps\client-tauri\src\systems\SnapshotHandler.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\SnapshotHandler.ts
+====================================
+
 // apps/client-tauri/src/systems/SnapshotHandler.ts
 //
 // Thin wrapper around Snapshot â†’ HUD effects.
@@ -2956,8 +3015,10 @@ export class SnapshotHandler {
 }
 
 
-## FILE: apps\client-tauri\src\systems\syncLocalPlayer.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\syncLocalPlayer.ts
+====================================
+
 // apps/client-tauri/src/systems/syncLocalPlayer.ts
 
 import { Transform, type SimWorld } from '@bf42lite/engine-core';
@@ -3084,7 +3145,6 @@ export function syncLocalPlayerFromSnapshot(
     Transform.y[localEntityId] = myServerEntity.pos.y;
     Transform.z[localEntityId] = myServerEntity.pos.z;
   }
-
   // Health + death state (protocol sends health as a number)
   const hp =
     typeof myServerEntity.health === 'number'
@@ -3094,24 +3154,24 @@ export function syncLocalPlayerFromSnapshot(
   Health.current[localEntityId] = hp;
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
 
-  // HUD: respawn timer
-  hud.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+  // --- Respawn timer handling ---
+  // Ensure we never pass negative timers into the HUD.
+  const rawRespawn = myServerEntity.respawnTimer ?? 0;
+  const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
 
-  // NEW: drive deploy vs live HUD directly from snapshot every tick
-  if (isNowDead) {
-    hud.showDeployScreen('Select a class and spawn point to deploy.');
-  } else {
-    hud.showLiveHUD();
-  }
+  // HUD: respawn timer (drives center status while dead)
+  hud.updateRespawn(isNowDead, respawnTimer);
 
   // HUD: deploy vs live HUD toggle on state change
   if (!wasDead && isNowDead) {
-    // Just died â†’ show deploy screen
-    hud.showDeployScreen('You died. Select a spawn point.');
+    // Just died â†’ switch to deploy layout and briefly show a death message.
+    hud.showDeployScreen();
+    hud.updateCenterStatus('You died.');
   } else if (wasDead && !isNowDead) {
-    // Just respawned â†’ back to game HUD
+    // Just respawned â†’ back to game HUD and clear center text
     hud.showLiveHUD();
   }
+
 
   // Team mapping (Rust TeamId â†’ numeric ECS team)
   if (myServerEntity.team) {
@@ -3153,8 +3213,10 @@ export function syncLocalPlayerFromSnapshot(
 }
 
 
-## FILE: apps\client-tauri\src\systems\updateGameFrame.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\systems\updateGameFrame.ts
+====================================
+
 // src/systems/updateGameFrame.ts
 
 import { InputState, type SimWorld } from '@bf42lite/engine-core';
@@ -3205,8 +3267,10 @@ export function updateGameFrame(
 }
 
 
-## FILE: apps\client-tauri\src\ui\HUDUpdater.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\ui\HUDUpdater.ts
+====================================
+
 // apps/client-tauri/src/ui/HUDUpdater.ts
 //
 // Centralized helper for updating HUD elements.
@@ -3288,6 +3352,10 @@ export class HUDUpdater {
   public showHitMarker(damage: number): void {
     this.ui.showHitMarker(damage);
   }
+    // crosshair spread
+    public updateCrosshair(spread: number): void {
+      this.ui.setCrosshairSpread(spread);
+    }
 
   /**
    * Snapshot-driven HUD hook (tickets / flags / game-over).
@@ -3323,8 +3391,10 @@ export class HUDUpdater {
 }
 
 
-## FILE: apps\client-tauri\src\utils\log.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\utils\log.ts
+====================================
+
 // src/utils/log.ts
 
 type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace';
@@ -3389,8 +3459,10 @@ export const log = {
 };
 
 
-## FILE: apps\client-tauri\src\world\worldRender.ts
----------------------------
+====================================
+FILE: \apps\client-tauri\src\world\worldRender.ts
+====================================
+
 // apps/client-tauri/src/world/worldRender.ts
 
 import { defineQuery } from '@bf42lite/engine-core';

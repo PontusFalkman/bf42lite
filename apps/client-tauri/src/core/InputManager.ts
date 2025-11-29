@@ -46,22 +46,38 @@ export class InputManager {
 
   // === 3. EXPOSE CONTROL METHOD ===
   public setInteraction(enabled: boolean) {
-      this.isInteractionEnabled = enabled;
+    this.isInteractionEnabled = enabled;
+  }
+
+  /**
+   * Simple helper for systems/HUD that only need to know
+   * “is the primary fire button currently pressed?”.
+   */
+  public isShooting(): boolean {
+    return this.buttons.has(0);
   }
 
   getCommand(tick: number): ClientInput {
     // If in menu, return empty input
     if (!this.isInteractionEnabled) {
-        return {
-            type: 'input',
-            tick,
-            axes: { forward:0, right:0, jump:false, shoot:false, reload:false, yaw: this.yaw, pitch: this.pitch }
-        };
+      return {
+        type: 'input',
+        tick,
+        axes: {
+          forward: 0,
+          right: 0,
+          jump: false,
+          shoot: false,
+          reload: false,
+          yaw: this.yaw,
+          pitch: this.pitch,
+        },
+      };
     }
 
     let forward = 0;
     let right = 0;
-    
+
     if (this.keys.has('KeyW')) forward += 1;
     if (this.keys.has('KeyS')) forward -= 1;
     if (this.keys.has('KeyD')) right += 1;
@@ -77,8 +93,9 @@ export class InputManager {
         shoot: this.buttons.has(0),
         reload: this.keys.has('KeyR'),
         yaw: this.yaw,
-        pitch: this.pitch
-      }
+        pitch: this.pitch,
+      },
     };
   }
 }
+

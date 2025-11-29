@@ -395,14 +395,79 @@ button.bf-btn:hover {
   justify-content: center;
   z-index: 15;
 }
+/* === CROSSHAIR === */
 
 #crosshair {
-  width: 40px;
-  height: 40px;
-  font-family: monospace;
-  font-size: 30px;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 1px 1px 0 #000;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Base for lines */
+#crosshair .ch-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 3px #000;
+  transition: margin 0.05s linear;
+}
+
+/* Vertical lines (centered on X axis) */
+#crosshair .ch-top,
+#crosshair .ch-bottom {
+  width: 2px;
+  height: 10px;
+  left: -1px;   /* center */
+}
+
+/* Horizontal lines (centered on Y axis) */
+#crosshair .ch-left,
+#crosshair .ch-right {
+  width: 10px;
+  height: 2px;
+  top: -1px;    /* center */
+}
+
+/* Base offsets — these create a tight + shape */
+#crosshair .ch-top    { margin-top: -3px; }
+#crosshair .ch-bottom { margin-top:  3px; }
+#crosshair .ch-left   { margin-left: -3px; }
+#crosshair .ch-right  { margin-left:  3px; }
+
+.ch-line {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 3px #000;
+  transition: margin 0.05s linear;
+}
+
+/* Vertical lines */
+.ch-top {
+  width: 2px;
+  height: 12px;
+  left: -1px;
+  top: -20px;
+}
+.ch-bottom {
+  width: 2px;
+  height: 12px;
+  left: -1px;
+  top: 8px;
+}
+
+/* Horizontal lines */
+.ch-left {
+  width: 12px;
+  height: 2px;
+  left: -20px;
+  top: -1px;
+}
+.ch-right {
+  width: 12px;
+  height: 2px;
+  left: 8px;
+  top: -1px;
 }
 
 #hitmarker {

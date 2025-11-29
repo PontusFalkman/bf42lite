@@ -18,12 +18,13 @@ export class UIManager {
         ammoRes: HTMLElement | null;
         weaponName: HTMLElement | null;
 
-        // New HUD elements
         objectiveText: HTMLElement | null;
         flagStrip: HTMLElement | null;
         centerStatus: HTMLElement | null;
         flagList: HTMLElement | null;
         killFeed: HTMLElement | null;
+        crosshair: HTMLElement | null;
+
     };
 
     private selectedSpawnId = -1;
@@ -57,11 +58,36 @@ export class UIManager {
             centerStatus: document.getElementById('center-status'),
             flagList: document.getElementById('flag-list'),
             killFeed: document.getElementById('kill-feed'),
-        };
 
+            crosshair: document.getElementById('crosshair'),
+
+        };
         this.initListeners();
     }
-
+    /**
+     * Crosshair spread animation (0 = tight, >0 = expanded).
+     * We simply bump the font size for a simple “breathing” effect.
+     */
+    public setCrosshairSpread(spread: number) {
+        if (!this.ui.crosshair) return;
+    
+        // 0..1 from WeaponSystem
+        const clamped = Math.max(0, Math.min(spread, 1));
+    
+        const baseGap = 6;       // idle distance from center (px)
+        const extraGap = clamped * 6; // extra when shooting
+    
+        const top = this.ui.crosshair.querySelector('.ch-top') as HTMLElement | null;
+        const bottom = this.ui.crosshair.querySelector('.ch-bottom') as HTMLElement | null;
+        const left = this.ui.crosshair.querySelector('.ch-left') as HTMLElement | null;
+        const right = this.ui.crosshair.querySelector('.ch-right') as HTMLElement | null;
+    
+        if (top)    top.style.marginTop    = `${-(baseGap + extraGap)}px`;
+        if (bottom) bottom.style.marginTop = `${ baseGap + extraGap }px`;
+        if (left)   left.style.marginLeft  = `${-(baseGap + extraGap)}px`;
+        if (right)  right.style.marginLeft = `${ baseGap + extraGap }px`;
+    }    
+   
     private initListeners() {
         // 1. Class Selection Listeners
         const classBtns = document.querySelectorAll('.class-btn');

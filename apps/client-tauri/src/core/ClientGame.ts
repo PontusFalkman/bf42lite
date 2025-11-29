@@ -69,7 +69,13 @@ export class ClientGame {
     this.ui.setDeployMode(true);
     this.hud.updateCenterStatus('Select a class and spawn point to deploy.');
 
-    this.weaponSystem = new WeaponSystem(this.renderer, this.net);
+    // Pass InputManager so WeaponSystem can read mouse button directly
+    this.weaponSystem = new WeaponSystem(
+      this.renderer,
+      this.net,
+      this.hud,
+      this.input,
+    );
 
     // Snapshot handler (HUD / flags routed through HUDUpdater)
     this.snapshotHandler = new SnapshotHandler(this.hud);
@@ -170,7 +176,10 @@ export class ClientGame {
     const fps = this.loop.getCurrentFps();
     this.updateRenderAndUI(fps);
   }
-
+  public updateCrosshair(spread: number): void {
+    this.ui.setCrosshairSpread(spread);
+  }
+  
   private updateRenderAndUI(fps: number) {
     updateWorldRender(
       this.sim.world,

@@ -1,25 +1,24 @@
-// apps/client-tauri/src/core/WeaponSystem.ts
-
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
 import { NetworkManager } from '../managers/NetworkManager';
-import { InputState } from '@bf42lite/engine-core';
+import { InputManager } from './InputManager';
 
 import type { WeaponConfig } from './WeaponConfigLoader';
 import { loadWeaponConfig } from './WeaponConfigLoader';
 import type { ClassConfig } from './ClassConfigLoader';
 import { loadClassConfig } from './ClassConfigLoader';
-
+import type { HUDUpdater } from '../ui/HUDUpdater';
 
 /**
  * Data-driven WeaponSystem:
  * - Loads weapons.json / classes.json (same data as server)
  * - Tracks current class and its primary weapon
- * - Enforces client-side fire cadence using weapon.fire_rate
+ * - (Later) can enforce client-side fire cadence using weapon.fire_rate
  * - Sends fire commands; server does hitscan + damage
+ * - Drives a purely visual crosshair spread effect
  */
 export class WeaponSystem {
-  private lastFireTime = 0;          // seconds
+  private lastFireTime = 0; // seconds
   private readonly RANGE = 100;
 
   private raycaster = new THREE.Raycaster();
@@ -32,9 +31,15 @@ export class WeaponSystem {
 
   private isLoaded = false;
 
+  // Crosshair “pulse” state
+  private crosshairSpread = 0;
+  private lastShootTick: number | null = null;
+
   constructor(
     private renderer: Renderer,
     private net: NetworkManager,
+    private hud: HUDUpdater,
+    private input: InputManager,
   ) {
     // Fire-and-forget config load; if not ready yet, update() is a no-op.
     void this.loadConfigs();
@@ -60,29 +65,27 @@ export class WeaponSystem {
 
   /**
    * Per-frame update:
-   * - Checks if current weapon exists
-   * - Reads InputState for myEntityId
-   * - Enforces fire_rate from weapon config
-   * - Sends fire command to server
+   * - Decays crosshair spread and pushes it to HUD.
+   * - Uses InputManager to check if the fire button is down.
+   *
+   * For now this is purely visual: static crosshair that “pulses”
+   * when you shoot.
    */
-  public update(_dt: number, myEntityId: number, currentTick: number) {
-    if (myEntityId < 0) return;
-    if (!this.isLoaded) return;
-
-    const weapon = this.getCurrentWeapon();
-    if (!weapon) return;
-
-    const isShooting = (InputState.buttons[myEntityId] & 2) !== 0;
-    if (!isShooting) return;
-
-    const now = performance.now() / 1000;
-    if (now - this.lastFireTime <= weapon.fire_rate) {
-      // Still on client-side cooldown
+  public update(dt: number, myEntityId: number, _currentTick: number) {
+    // If we don't have a local entity yet, keep crosshair idle.
+    if (myEntityId < 0) {
+      this.crosshairSpread = 0;
+      this.hud.updateCrosshair(0);
       return;
     }
 
-    this.fire(currentTick);
-    this.lastFireTime = now;
+    const isFiringThisFrame = this.input.isShooting();
+
+    // Update visual spread
+    this.updateCrosshairDecay(dt, isFiringThisFrame);
+
+    // Push to HUD every frame
+    this.hud.updateCrosshair(this.crosshairSpread);
   }
 
   // === Internal helpers ===
@@ -120,6 +123,20 @@ export class WeaponSystem {
     const visualStart = start.clone().add(visualOffset);
 
     this.renderer.drawTracer(visualStart, end);
+  }
+
+  // --- Crosshair helpers (visual only) ---
+
+  private updateCrosshairDecay(dt: number, isFiringThisFrame: boolean) {
+    // If we fired this frame, kick spread to 1.0 (max visual).
+    if (isFiringThisFrame) {
+      this.crosshairSpread = 1.0;
+    } else {
+      // Otherwise, decay quickly back to 0.
+      const DECAY_PER_SECOND = 6.0; // tweak for feel
+      this.crosshairSpread -= DECAY_PER_SECOND * dt;
+      if (this.crosshairSpread < 0) this.crosshairSpread = 0;
+    }
   }
 
   private async loadConfigs() {

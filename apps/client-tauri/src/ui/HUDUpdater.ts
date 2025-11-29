@@ -79,6 +79,10 @@ export class HUDUpdater {
   public showHitMarker(damage: number): void {
     this.ui.showHitMarker(damage);
   }
+    // crosshair spread
+    public updateCrosshair(spread: number): void {
+      this.ui.setCrosshairSpread(spread);
+    }
 
   /**
    * Snapshot-driven HUD hook (tickets / flags / game-over).

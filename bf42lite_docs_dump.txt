@@ -1,30 +1,7 @@
-﻿===============================
- DUMP FOR: docs
-===============================
+﻿====================================
+FILE: \docs\00_index.md
+====================================
 
----------- DIRECTORY TREE ----------
-
-Folder PATH listing for volume New Volume
-Volume serial number is BC16-B8E7
-D:\BF42LITE\DOCS
-    00_index.md
-    10_vision_core.md
-    20_design_gameplay.md
-    30_design_sim_arch.md
-    40_design_net_protocol.md
-    50_design_client_rendering.md
-    60_backlog_phase1_core_mvp.md
-    70_repo_structure.md
-    80_backlog_phase2_expansion.md
-    architecture_overview_v1_ascii.txt
-    
-No subfolders exist 
-
-
----------- FILE CONTENTS ----------
-
-## FILE: docs\00_index.md
----------------------------
 #### `docs/00_index.md`
 *New Index File*
 ```markdown
@@ -49,8 +26,10 @@ Simplified modular documentation focusing on LAN gameplay and hybrid authority.
 ## âš™ï¸ Infrastructure
 - [70_repo_structure.md](./70_repo_structure.md)
 
-## FILE: docs\10_vision_core.md
----------------------------
+====================================
+FILE: \docs\10_vision_core.md
+====================================
+
 # Vision & Core Goals (v1.3)
 
 **Project:** bf42lite
@@ -73,8 +52,10 @@ Use Client Authority for movement and aiming, while the server ensures consisten
 ## Focus
 LAN gameplay (no anti-cheat, but full consistency). Updated for Client-Predicted, Server-Reconciled Hits.
 
-## FILE: docs\20_design_gameplay.md
----------------------------
+====================================
+FILE: \docs\20_design_gameplay.md
+====================================
+
 # Gameplay Design (v1.3)
 
 ## Core Loop
@@ -97,8 +78,10 @@ Host or join â†’ Spawn â†’ Move, shoot, capture flags â†’ Die and
 * **Warehouse (MVP)**
 * **Island (Phase 5)**
 
-## FILE: docs\30_design_sim_arch.md
----------------------------
+====================================
+FILE: \docs\30_design_sim_arch.md
+====================================
+
 # Simulation Architecture (v1.3)
 
 The architecture explicitly avoids cross-language determinism by splitting continuous vs. discrete responsibilities.
@@ -133,8 +116,10 @@ The architecture explicitly avoids cross-language determinism by splitting conti
 * **Server** validates movement with simple checks (max speed, max teleport).
 * **Server** performs only discrete logic (health, respawns, tickets).
 
-## FILE: docs\40_design_net_protocol.md
----------------------------
+====================================
+FILE: \docs\40_design_net_protocol.md
+====================================
+
 # Networking Protocol (v1.3)
 
 ## Transport
@@ -160,8 +145,10 @@ The architecture explicitly avoids cross-language determinism by splitting conti
 ## Snapshot Rate
 Target: 10â€“20 Hz snapshots, client interpolates to 60 FPS.
 
-## FILE: docs\50_design_client_rendering.md
----------------------------
+====================================
+FILE: \docs\50_design_client_rendering.md
+====================================
+
 # Client Rendering (v1.3)
 
 ## Tech
@@ -175,8 +162,10 @@ Three.js + React overlay.
 * Low-poly, flat shading, readable silhouettes.
 * Target 60 FPS on basic GPUs/APUs.
 
-## FILE: docs\60_backlog_phase1_core_mvp.md
----------------------------
+====================================
+FILE: \docs\60_backlog_phase1_core_mvp.md
+====================================
+
 # Development Backlog (v1.3)
 
 **Current Focus:** Phase 4 â€” Core Gameplay & Hit Reconciliation
@@ -196,8 +185,10 @@ Three.js + React overlay.
 * [ ] Server applies damage, death, respawn logic.
 * [ ] Tickets drain reliably and reach Game Over state.
 
-## FILE: docs\70_repo_structure.md
----------------------------
+====================================
+FILE: \docs\70_repo_structure.md
+====================================
+
 # Infrastructure & Repo Layout (v1.4)
 
 ## Tree Overview
@@ -226,8 +217,10 @@ bf42lite/
 â””â”€â”€ docs/                 # Modular design + backlog docs
 
 
-## FILE: docs\80_backlog_phase2_expansion.md
----------------------------
+====================================
+FILE: \docs\80_backlog_phase2_expansion.md
+====================================
+
 Phase 2 expands bf42lite from infantry-only combat into a simplified combined-arms Battlefield-style game.
 The goal is to introduce classes, vehicles, conquest mode, dynamic spawning, and a larger map while keeping all systems â€œLiteâ€ and manageable for a solo developer.
 
@@ -471,187 +464,4 @@ Phase 2 is complete when:
 â€¢ Planes and boats operate with basic stability.
 â€¢ Island map performs at or near 60 FPS.
 â€¢ Multiple clients can play a full Conquest match from start to finish.
-
-## FILE: docs\architecture_overview_v1_ascii.txt
----------------------------
-===========================================================
-                    BF42LITE â€“ ARCHITECTURE
-         (Where We Started â†’ Where We Are â†’ v1.0 Goal)
-===========================================================
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-1. WHERE WE STARTED (Early Prototypes)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                   â”‚     CLIENT (TS)          â”‚
-                   â”‚  - movement logic        â”‚
-                   â”‚  - prediction             â”‚
-                   â”‚  - interpolation          â”‚
-                   â”‚  - rendering              â”‚
-                   â”‚  ALL in one place         â”‚
-                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                â”‚
-                                â”‚ (mixed logic)
-                                â–¼
-                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                   â”‚  SERVER (Rust/Tauri)     â”‚
-                   â”‚  - minimal movement      â”‚
-                   â”‚  - basic combat          â”‚
-                   â”‚  - hardcoded flags/maps  â”‚
-                   â”‚  tightly coupled to UI   â”‚
-                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-       â€¢ Hard-coded gameplay rules everywhere  
-       â€¢ Duplicate logic in TS + Rust  
-       â€¢ No engine/game separation  
-       â€¢ No package boundaries  
-       â€¢ Legacy TS network code still in tree  
-
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-2. WHERE WE ARE NOW (v0.4 Modular Client Baseline)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-               â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-               â”‚           MONOREPO ROOT             â”‚
-               â”‚  packages/   apps/   src-tauri/     â”‚
-               â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                  â”‚
-                                  â”‚
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚                     TYPESCRIPT SIDE                     â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-     packages/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ @bf42lite/protocol    -> shared message schemas        â”‚
-     â”‚ @bf42lite/net         -> WS/Tauri network adapters     â”‚
-     â”‚ @bf42lite/engine-core -> generic ECS utilities         â”‚
-     â”‚ @bf42lite/games-bf42  -> BF42 components/constants     â”‚
-     â”‚ @bf42lite/sim         -> TS prediction sim (bitecs)    â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-     apps/client-tauri/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ ClientGame (orchestrator)                              â”‚
-     â”‚ Systems: prediction, interpolation, reconciler          â”‚
-     â”‚ Renderer: Three.js scene, models, flags                 â”‚
-     â”‚ Managers: InputManager, UIManager, NetworkManager       â”‚
-     â”‚ HUDUpdater: single HUD authority                        â”‚
-     â”‚ WorldRender: ECS â†’ render state                         â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-                                  â”‚
-                                  â–¼
-
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚                    RUST SIDE (Server)                   â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-     src-tauri/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ Server tick loop                                        â”‚
-     â”‚ systems/movement.rs                                     â”‚
-     â”‚ systems/combat.rs                                       â”‚
-     â”‚ systems/conquest.rs                                     â”‚
-     â”‚ maps/warehouse.rs                                       â”‚
-     â”‚ snapshot.rs (TickSnapshot builder)                      â”‚
-     â”‚ player.rs / game_state.rs                               â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-     â€¢ Server authoritative over:                             
-       movement, combat, flags, tickets, respawn, match end   
-     â€¢ Client predicts & reconciles                            
-     â€¢ Snapshots drive rendering                               
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-3. WHERE WE ARE GOING (v1.0 Target Architecture)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-                      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                      â”‚      CONFIG ASSETS          â”‚
-                      â”‚  maps/*.toml                â”‚
-                      â”‚  gamemodes/*.toml           â”‚
-                      â”‚  weapons/*.toml             â”‚
-                      â”‚  classes/*.toml             â”‚
-                      â”‚  movement.toml              â”‚
-                      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                      â”‚  (data-driven)
-                                      â–¼
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Rust Side â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-crates/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  engine (WASM-ready)      â”‚  game-bf42 (rules)                       â”‚
-â”‚  - ECS core               â”‚  - Conquest rules                        â”‚
-â”‚  - math                   â”‚  - Weapon configs                        â”‚
-â”‚  - physics                â”‚  - Movement parameters                   â”‚
-â”‚  - WASM bindings          â”‚  - Map loading                           â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                â”‚  native
-                â”‚
-                â”‚ WASM
-                â–¼
-        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-        â”‚      CLIENT USES RUST SIM VIA WASM     â”‚
-        â”‚     (prediction + reconciliation)       â”‚
-        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ TS Side (Final Form) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-packages/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ @bf42lite/protocol   â†’ types only                                   â”‚
-â”‚ @bf42lite/net        â†’ transport adapters                            â”‚
-â”‚ @bf42lite/engine-coreâ†’ rendering helpers, TS ECS glue               â”‚
-â”‚ @bf42lite/games-bf42 â†’ client-side components & visuals              â”‚
-â”‚ @bf42lite/sim        â†’ becomes WASM wrapper over Rust sim            â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-client-tauri/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ UI, HUD, settings, Three.js renderer                                â”‚
-â”‚ ClientGame orchestrates WASM sim + Renderer + Systems               â”‚
-â”‚ No gameplay rules hardcoded                                         â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-4. FLOW SUMMARY
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-                  SERVER (RUST)
-             (authoritative simulation)
-                         â”‚
-                         â”‚ snapshots @ tick
-                         â–¼
-       CLIENT (TS + RUST/WASM sim for prediction)
-                         â”‚
-                         â”‚ input @ 30Hz
-                         â–¼
-                  SERVER (RUST)
-
-Prediction â†’ Reconciliation â†’ Interpolation â†’ Rendering  
-All gameplay rules resolved via **data configs**, not hardcoded.
-
-
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-5. LONG-TERM EXTENSION LAYER
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-
-Vehicles â”‚ AI bots â”‚ New maps â”‚ Game modes â”‚ Zombie faction â”‚ Spotting â”‚ UI Themes  
-All plug into the **game crate** + config files,  
-NOT into the engine or the renderer.
-
-
-===========================================================
-END OF ASCII ARCHITECTURE OVERVIEW
-===========================================================
-
 
