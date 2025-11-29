@@ -109,7 +109,13 @@ export class ClientGame {
     this.ui.setDeployMode(true);
     this.hud.updateCenterStatus('Select a class and spawn point to deploy.');
 
-    this.weaponSystem = new WeaponSystem(this.renderer, this.net, this.hud);
+    // Pass InputManager so WeaponSystem can read mouse button directly
+    this.weaponSystem = new WeaponSystem(
+      this.renderer,
+      this.net,
+      this.hud,
+      this.input,
+    );
 
     // Snapshot handler (HUD / flags routed through HUDUpdater)
     this.snapshotHandler = new SnapshotHandler(this.hud);
@@ -132,10 +138,36 @@ export class ClientGame {
   private initNetworkCallbacks() {
     this.net.onConnected = () => {
       console.log('Connected to server');
+
+      // Re-enable gameplay interaction and reset status text
+      this.input.setInteraction(true);
+      this.hud.updateCenterStatus('');
+
+      // Start in deploy mode as usual
+      this.ui.setDeployMode(true);
     };
 
     this.net.onDisconnected = () => {
       console.log('Disconnected from server');
+
+      // 1) Stop gameplay input so we don't keep sending commands
+      this.input.setInteraction(false);
+
+      // 2) Make sure pointer lock is released; UIManager will also
+      //    call exitPointerLock in setDeployMode(true), but this is safe.
+      if (document.pointerLockElement) {
+        try {
+          document.exitPointerLock();
+        } catch {
+          // ignore
+        }
+      }      
+
+      // 3) Show a clear center-screen message
+      this.hud.updateCenterStatus('Connection lost. Please restart or reconnect.');
+
+      // 4) Fall back to deploy layout so HUD is not pretending we are "live"
+      this.ui.setDeployMode(true);
     };
 
     // Hit marker now goes through HUD faÃ§ade
@@ -551,22 +583,38 @@ export class InputManager {
 
   // === 3. EXPOSE CONTROL METHOD ===
   public setInteraction(enabled: boolean) {
-      this.isInteractionEnabled = enabled;
+    this.isInteractionEnabled = enabled;
+  }
+
+  /**
+   * Simple helper for systems/HUD that only need to know
+   * â€œis the primary fire button currently pressed?â€.
+   */
+  public isShooting(): boolean {
+    return this.buttons.has(0);
   }
 
   getCommand(tick: number): ClientInput {
     // If in menu, return empty input
     if (!this.isInteractionEnabled) {
-        return {
-            type: 'input',
-            tick,
-            axes: { forward:0, right:0, jump:false, shoot:false, reload:false, yaw: this.yaw, pitch: this.pitch }
-        };
+      return {
+        type: 'input',
+        tick,
+        axes: {
+          forward: 0,
+          right: 0,
+          jump: false,
+          shoot: false,
+          reload: false,
+          yaw: this.yaw,
+          pitch: this.pitch,
+        },
+      };
     }
 
     let forward = 0;
     let right = 0;
-    
+
     if (this.keys.has('KeyW')) forward += 1;
     if (this.keys.has('KeyS')) forward -= 1;
     if (this.keys.has('KeyD')) right += 1;
@@ -582,11 +630,12 @@ export class InputManager {
         shoot: this.buttons.has(0),
         reload: this.keys.has('KeyR'),
         yaw: this.yaw,
-        pitch: this.pitch
-      }
+        pitch: this.pitch,
+      },
     };
   }
 }
+
 
 
 ====================================
@@ -933,12 +982,10 @@ export async function loadWeaponConfig(): Promise<WeaponConfig[]> {
 FILE: \apps\client-tauri\src\core\WeaponSystem.ts
 ====================================
 
-//D:\bf42lite\apps\client-tauri\src\core\WeaponSystem.ts
-
 import * as THREE from 'three';
 import { Renderer } from './Renderer';
 import { NetworkManager } from '../managers/NetworkManager';
-import { InputState } from '@bf42lite/engine-core';
+import { InputManager } from './InputManager';
 
 import type { WeaponConfig } from './WeaponConfigLoader';
 import { loadWeaponConfig } from './WeaponConfigLoader';
@@ -950,12 +997,12 @@ import type { HUDUpdater } from '../ui/HUDUpdater';
  * Data-driven WeaponSystem:
  * - Loads weapons.json / classes.json (same data as server)
  * - Tracks current class and its primary weapon
- * - Enforces client-side fire cadence using weapon.fire_rate
+ * - (Later) can enforce client-side fire cadence using weapon.fire_rate
  * - Sends fire commands; server does hitscan + damage
  * - Drives a purely visual crosshair spread effect
  */
 export class WeaponSystem {
-  private lastFireTime = 0;          // seconds
+  private lastFireTime = 0; // seconds
   private readonly RANGE = 100;
 
   private raycaster = new THREE.Raycaster();
@@ -968,14 +1015,15 @@ export class WeaponSystem {
 
   private isLoaded = false;
 
-// Crosshair â€œpulseâ€ state
-private crosshairSpread = 0;
-private lastShootTick: number | null = null;
+  // Crosshair â€œpulseâ€ state
+  private crosshairSpread = 0;
+  private lastShootTick: number | null = null;
 
   constructor(
     private renderer: Renderer,
     private net: NetworkManager,
     private hud: HUDUpdater,
+    private input: InputManager,
   ) {
     // Fire-and-forget config load; if not ready yet, update() is a no-op.
     void this.loadConfigs();
@@ -1002,34 +1050,27 @@ private lastShootTick: number | null = null;
   /**
    * Per-frame update:
    * - Decays crosshair spread and pushes it to HUD.
-   * - Checks if current weapon exists.
-   * - Reads InputState for myEntityId.
-   * - Enforces fire_rate from weapon config.
-   * - Sends fire command to server.
-   * - Bumps crosshair spread on each successful shot.
+   * - Uses InputManager to check if the fire button is down.
+   *
+   * For now this is purely visual: static crosshair that â€œpulsesâ€
+   * when you shoot.
    */
-  public update(dt: number, myEntityId: number, currentTick: number) {
-    // Only animate when we are actually alive / rendered.
-    const isAlive = myEntityId >= 0 && this.renderer.hasEntity(myEntityId);
-    if (!isAlive) {
+  public update(dt: number, myEntityId: number, _currentTick: number) {
+    // If we don't have a local entity yet, keep crosshair idle.
+    if (myEntityId < 0) {
       this.crosshairSpread = 0;
       this.hud.updateCrosshair(0);
       return;
     }
-  
-    const btns = InputState.buttons[myEntityId] || 0;
-    const shooting = !!(btns & this.BUTTON_SHOOT);
-  
-    // Treat â€œshootingâ€ simply as: mouse is down.
-    // Or keep lastShootTick if you want only 1 pulse per tick:
-    const isFiringThisFrame = shooting;
-  
-    // Update spread
+
+    const isFiringThisFrame = this.input.isShooting();
+
+    // Update visual spread
     this.updateCrosshairDecay(dt, isFiringThisFrame);
-  
+
     // Push to HUD every frame
     this.hud.updateCrosshair(this.crosshairSpread);
-  }  
+  }
 
   // === Internal helpers ===
 
@@ -1376,21 +1417,23 @@ export class UIManager {
      */
     public setCrosshairSpread(spread: number) {
         if (!this.ui.crosshair) return;
-      
-        // Expect 0..1 from WeaponSystem and clamp it
+    
+        // 0..1 from WeaponSystem
         const clamped = Math.max(0, Math.min(spread, 1));
-        const px = clamped * 10; // max +10px
-      
+    
+        const baseGap = 6;       // idle distance from center (px)
+        const extraGap = clamped * 6; // extra when shooting
+    
         const top = this.ui.crosshair.querySelector('.ch-top') as HTMLElement | null;
         const bottom = this.ui.crosshair.querySelector('.ch-bottom') as HTMLElement | null;
         const left = this.ui.crosshair.querySelector('.ch-left') as HTMLElement | null;
         const right = this.ui.crosshair.querySelector('.ch-right') as HTMLElement | null;
-      
-        if (top) top.style.marginTop = `-${20 + px}px`;
-        if (bottom) bottom.style.marginTop = `${8 + px}px`;
-        if (left) left.style.marginLeft = `-${20 + px}px`;
-        if (right) right.style.marginLeft = `${8 + px}px`;
-      }      
+    
+        if (top)    top.style.marginTop    = `${-(baseGap + extraGap)}px`;
+        if (bottom) bottom.style.marginTop = `${ baseGap + extraGap }px`;
+        if (left)   left.style.marginLeft  = `${-(baseGap + extraGap)}px`;
+        if (right)  right.style.marginLeft = `${ baseGap + extraGap }px`;
+    }    
    
     private initListeners() {
         // 1. Class Selection Listeners
@@ -1671,42 +1714,43 @@ if (this.ui.spawnBtn) {
     }
 
     // Respawn timer â†’ center status and spawn button text
-    public updateRespawn(isDead: boolean, timer: number) {
-        const t = Math.max(0, timer); // extra safety clamp
-    
-        if (isDead) {
-            // Spawn button state (if present)
-            if (this.ui.spawnBtn) {
-                if (t > 0) {
-                    this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
-                    this.ui.spawnBtn.setAttribute('disabled', 'true');
-                    this.ui.spawnBtn.style.pointerEvents = 'none';
-                    this.ui.spawnBtn.style.opacity = '0.5';
-                } else {
-                    this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
-                    this.ui.spawnBtn.removeAttribute('disabled');
-                    this.ui.spawnBtn.style.pointerEvents = 'auto';
-                    this.ui.spawnBtn.style.opacity = '1.0';
-                }
-            }
-    
-            // Center status â€“ independent of whether the button exists
+// Respawn timer â†’ center status and spawn button text
+public updateRespawn(isDead: boolean, timer: number) {
+    const t = Math.max(0, timer); // extra safety clamp
+
+    if (isDead) {
+        // Spawn button state (if present)
+        if (this.ui.spawnBtn) {
             if (t > 0) {
-                this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
+                this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
+                this.ui.spawnBtn.setAttribute('disabled', 'true');
+                this.ui.spawnBtn.style.pointerEvents = 'none';
+                this.ui.spawnBtn.style.opacity = '0.5';
             } else {
-                this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
-            }
-        } else {
-            // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
-            if (this.ui.spawnBtn) {
-                this.ui.spawnBtn.innerText = 'DEPLOY';
+                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
                 this.ui.spawnBtn.removeAttribute('disabled');
                 this.ui.spawnBtn.style.pointerEvents = 'auto';
                 this.ui.spawnBtn.style.opacity = '1.0';
             }
-            this.setCenterStatus('');
         }
-    }    
+
+        // Center status â€“ independent of whether the button exists
+        if (t > 0) {
+            this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
+        } else {
+            this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
+        }
+    } else {
+        // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
+        if (this.ui.spawnBtn) {
+            this.ui.spawnBtn.innerText = 'DEPLOY';
+            this.ui.spawnBtn.removeAttribute('disabled');
+            this.ui.spawnBtn.style.pointerEvents = 'auto';
+            this.ui.spawnBtn.style.opacity = '1.0';
+        }
+        this.setCenterStatus('');
+    }
+}
 }
 
 
@@ -3155,23 +3199,22 @@ export function syncLocalPlayerFromSnapshot(
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
 
   // --- Respawn timer handling ---
-  // Ensure we never pass negative timers into the HUD.
-  const rawRespawn = myServerEntity.respawnTimer ?? 0;
-  const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
+// Ensure we never pass negative timers into the HUD.
+const rawRespawn = myServerEntity.respawnTimer ?? 0;
+const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
 
-  // HUD: respawn timer (drives center status while dead)
-  hud.updateRespawn(isNowDead, respawnTimer);
+// HUD: respawn timer (drives center status while dead)
+hud.updateRespawn(isNowDead, respawnTimer);
 
-  // HUD: deploy vs live HUD toggle on state change
-  if (!wasDead && isNowDead) {
-    // Just died â†’ switch to deploy layout and briefly show a death message.
-    hud.showDeployScreen();
-    hud.updateCenterStatus('You died.');
-  } else if (wasDead && !isNowDead) {
-    // Just respawned â†’ back to game HUD and clear center text
-    hud.showLiveHUD();
-  }
-
+// HUD: deploy vs live HUD toggle on state change
+if (!wasDead && isNowDead) {
+  // Just died â†’ switch to deploy layout and briefly show a death message.
+  hud.showDeployScreen();
+  hud.updateCenterStatus('You died.');
+} else if (wasDead && !isNowDead) {
+  // Just respawned â†’ back to game HUD and clear center text
+  hud.showLiveHUD();
+}
 
   // Team mapping (Rust TeamId â†’ numeric ECS team)
   if (myServerEntity.team) {
@@ -3298,11 +3341,11 @@ export class HUDUpdater {
     }
   }
 
-  public showLiveHUD(): void {
+  showLiveHUD(): void {
     this.ui.setDeployMode(false);
     // Clear center message when fully alive
     this.updateCenterStatus('');
-  }
+  }  
 
   /**
    * Update the center status text (e.g., spawn/death messages).

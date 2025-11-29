@@ -60,8 +60,8 @@ export class UIManager {
             killFeed: document.getElementById('kill-feed'),
 
             crosshair: document.getElementById('crosshair'),
-
         };
+
         this.initListeners();
     }
     /**
@@ -130,8 +130,6 @@ if (this.ui.spawnBtn) {
 
         // Optimistic deploy: hide deploy screen immediately.
         this.setDeployMode(false);
-        this.setCenterStatus('Spawning...');
-        setTimeout(() => this.setCenterStatus(''), 800);
 
         // Let the server know which class we chose.
         this.onSpawnRequest(this.selectedClassId);
@@ -367,40 +365,41 @@ if (this.ui.spawnBtn) {
     }
 
     // Respawn timer → center status and spawn button text
-    public updateRespawn(isDead: boolean, timer: number) {
-        const t = Math.max(0, timer); // extra safety clamp
-    
-        if (isDead) {
-            // Spawn button state (if present)
-            if (this.ui.spawnBtn) {
-                if (t > 0) {
-                    this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
-                    this.ui.spawnBtn.setAttribute('disabled', 'true');
-                    this.ui.spawnBtn.style.pointerEvents = 'none';
-                    this.ui.spawnBtn.style.opacity = '0.5';
-                } else {
-                    this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
-                    this.ui.spawnBtn.removeAttribute('disabled');
-                    this.ui.spawnBtn.style.pointerEvents = 'auto';
-                    this.ui.spawnBtn.style.opacity = '1.0';
-                }
-            }
-    
-            // Center status – independent of whether the button exists
+// Respawn timer → center status and spawn button text
+public updateRespawn(isDead: boolean, timer: number) {
+    const t = Math.max(0, timer); // extra safety clamp
+
+    if (isDead) {
+        // Spawn button state (if present)
+        if (this.ui.spawnBtn) {
             if (t > 0) {
-                this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
+                this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
+                this.ui.spawnBtn.setAttribute('disabled', 'true');
+                this.ui.spawnBtn.style.pointerEvents = 'none';
+                this.ui.spawnBtn.style.opacity = '0.5';
             } else {
-                this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
-            }
-        } else {
-            // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
-            if (this.ui.spawnBtn) {
-                this.ui.spawnBtn.innerText = 'DEPLOY';
+                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
                 this.ui.spawnBtn.removeAttribute('disabled');
                 this.ui.spawnBtn.style.pointerEvents = 'auto';
                 this.ui.spawnBtn.style.opacity = '1.0';
             }
-            this.setCenterStatus('');
         }
-    }    
+
+        // Center status – independent of whether the button exists
+        if (t > 0) {
+            this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
+        } else {
+            this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
+        }
+    } else {
+        // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
+        if (this.ui.spawnBtn) {
+            this.ui.spawnBtn.innerText = 'DEPLOY';
+            this.ui.spawnBtn.removeAttribute('disabled');
+            this.ui.spawnBtn.style.pointerEvents = 'auto';
+            this.ui.spawnBtn.style.opacity = '1.0';
+        }
+        this.setCenterStatus('');
+    }
+}
 }

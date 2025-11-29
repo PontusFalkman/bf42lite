@@ -465,3 +465,1222 @@ Phase 2 is complete when:
 â€¢ Island map performs at or near 60 FPS.
 â€¢ Multiple clients can play a full Conquest match from start to finish.
 
+====================================
+FILE: \docs\architecture_overview_v1_ascii.md
+====================================
+
+===========================================================
+                    BF42LITE â€“ ARCHITECTURE
+         (Where We Started â†’ Where We Are â†’ v1.0 Goal)
+===========================================================
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+1. WHERE WE STARTED (Early Prototypes)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                   â”‚     CLIENT (TS)          â”‚
+                   â”‚  - movement logic        â”‚
+                   â”‚  - prediction             â”‚
+                   â”‚  - interpolation          â”‚
+                   â”‚  - rendering              â”‚
+                   â”‚  ALL in one place         â”‚
+                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                â”‚
+                                â”‚ (mixed logic)
+                                â–¼
+                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                   â”‚  SERVER (Rust/Tauri)     â”‚
+                   â”‚  - minimal movement      â”‚
+                   â”‚  - basic combat          â”‚
+                   â”‚  - hardcoded flags/maps  â”‚
+                   â”‚  tightly coupled to UI   â”‚
+                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+       â€¢ Hard-coded gameplay rules everywhere  
+       â€¢ Duplicate logic in TS + Rust  
+       â€¢ No engine/game separation  
+       â€¢ No package boundaries  
+       â€¢ Legacy TS network code still in tree  
+
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+2. WHERE WE ARE NOW (v0.4 Modular Client Baseline)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+               â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+               â”‚           MONOREPO ROOT             â”‚
+               â”‚  packages/   apps/   src-tauri/     â”‚
+               â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                  â”‚
+                                  â”‚
+     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+     â”‚                     TYPESCRIPT SIDE                     â”‚
+     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+     packages/
+     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+     â”‚ @bf42lite/protocol    -> shared message schemas        â”‚
+     â”‚ @bf42lite/net         -> WS/Tauri network adapters     â”‚
+     â”‚ @bf42lite/engine-core -> generic ECS utilities         â”‚
+     â”‚ @bf42lite/games-bf42  -> BF42 components/constants     â”‚
+     â”‚ @bf42lite/sim         -> TS prediction sim (bitecs)    â”‚
+     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+     apps/client-tauri/
+     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+     â”‚ ClientGame (orchestrator)                              â”‚
+     â”‚ Systems: prediction, interpolation, reconciler          â”‚
+     â”‚ Renderer: Three.js scene, models, flags                 â”‚
+     â”‚ Managers: InputManager, UIManager, NetworkManager       â”‚
+     â”‚ HUDUpdater: single HUD authority                        â”‚
+     â”‚ WorldRender: ECS â†’ render state                         â”‚
+     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+                                  â”‚
+                                  â–¼
+
+     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+     â”‚                    RUST SIDE (Server)                   â”‚
+     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+     src-tauri/
+     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+     â”‚ Server tick loop                                        â”‚
+     â”‚ systems/movement.rs                                     â”‚
+     â”‚ systems/combat.rs                                       â”‚
+     â”‚ systems/conquest.rs                                     â”‚
+     â”‚ maps/warehouse.rs                                       â”‚
+     â”‚ snapshot.rs (TickSnapshot builder)                      â”‚
+     â”‚ player.rs / game_state.rs                               â”‚
+     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+     â€¢ Server authoritative over:                             
+       movement, combat, flags, tickets, respawn, match end   
+     â€¢ Client predicts & reconciles                            
+     â€¢ Snapshots drive rendering                               
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+3. WHERE WE ARE GOING (v1.0 Target Architecture)
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+                      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                      â”‚      CONFIG ASSETS          â”‚
+                      â”‚  maps/*.toml                â”‚
+                      â”‚  gamemodes/*.toml           â”‚
+                      â”‚  weapons/*.toml             â”‚
+                      â”‚  classes/*.toml             â”‚
+                      â”‚  movement.toml              â”‚
+                      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                      â”‚  (data-driven)
+                                      â–¼
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Rust Side â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+crates/
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  engine (WASM-ready)      â”‚  game-bf42 (rules)                       â”‚
+â”‚  - ECS core               â”‚  - Conquest rules                        â”‚
+â”‚  - math                   â”‚  - Weapon configs                        â”‚
+â”‚  - physics                â”‚  - Movement parameters                   â”‚
+â”‚  - WASM bindings          â”‚  - Map loading                           â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                â”‚  native
+                â”‚
+                â”‚ WASM
+                â–¼
+        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+        â”‚      CLIENT USES RUST SIM VIA WASM     â”‚
+        â”‚     (prediction + reconciliation)       â”‚
+        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ TS Side (Final Form) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+packages/
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ @bf42lite/protocol   â†’ types only                                   â”‚
+â”‚ @bf42lite/net        â†’ transport adapters                            â”‚
+â”‚ @bf42lite/engine-coreâ†’ rendering helpers, TS ECS glue               â”‚
+â”‚ @bf42lite/games-bf42 â†’ client-side components & visuals              â”‚
+â”‚ @bf42lite/sim        â†’ becomes WASM wrapper over Rust sim            â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+client-tauri/
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ UI, HUD, settings, Three.js renderer                                â”‚
+â”‚ ClientGame orchestrates WASM sim + Renderer + Systems               â”‚
+â”‚ No gameplay rules hardcoded                                         â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+4. FLOW SUMMARY
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+                  SERVER (RUST)
+             (authoritative simulation)
+                         â”‚
+                         â”‚ snapshots @ tick
+                         â–¼
+       CLIENT (TS + RUST/WASM sim for prediction)
+                         â”‚
+                         â”‚ input @ 30Hz
+                         â–¼
+                  SERVER (RUST)
+
+Prediction â†’ Reconciliation â†’ Interpolation â†’ Rendering  
+All gameplay rules resolved via **data configs**, not hardcoded.
+
+
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+5. LONG-TERM EXTENSION LAYER
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+Vehicles â”‚ AI bots â”‚ New maps â”‚ Game modes â”‚ Zombie faction â”‚ Spotting â”‚ UI Themes  
+All plug into the **game crate** + config files,  
+NOT into the engine or the renderer.
+
+
+===========================================================
+END OF ASCII ARCHITECTURE OVERVIEW
+===========================================================
+
+
+====================================
+FILE: \docs\frametime_and_tickrate.md
+====================================
+
+==============================
+
+FRAMETIME \& TICKRATE (TXT)
+
+==============================
+
+
+
+bf42lite uses a classic networked-FPS timing model inspired by GoldSrc / Source, designed for predictable simulation, smooth rendering, and minimal input latency.
+
+
+
+This document defines how frametime, tickrate, and snapshot frequency interact.
+
+
+
+Key Concepts
+
+
+
+FPS (Frames Per Second)
+
+How many frames the client renders each second.
+
+Typical targets for bf42lite presets:
+
+
+
+Potato: 30 FPS
+
+
+
+Medium: 90 FPS
+
+
+
+High: 120 FPS
+
+
+
+Frametime
+
+The duration of one frame. Lower is better.
+
+Examples:
+
+
+
+30 FPS â†’ ~33ms
+
+
+
+60 FPS â†’ ~16.6ms
+
+
+
+90 FPS â†’ ~11.1ms
+
+
+
+120 FPS â†’ ~8.3ms
+
+
+
+Simulation Tick (Server Tickrate)
+
+How often the server simulates and sends authoritative updates.
+
+Example:
+
+
+
+30 Hz tickrate â†’ simulation every 33ms
+
+
+
+60 Hz tickrate â†’ simulation every 16.6ms
+
+
+
+bf42lite aims for 60 Hz server simulation by default.
+
+
+
+Snapshot Frequency
+
+How often the server sends world snapshots to clients. Usually equal to tickrate unless throttled.
+
+
+
+Interpolation
+
+Client blends between snapshots to smooth movement. Prevents jitter.
+
+
+
+Prediction
+
+Client simulates its own player until an authoritative snapshot arrives.
+
+
+
+High-Level Model
+
+
+
+Server simulates at 60 Hz
+
+
+
+Server sends snapshots at 60 Hz (or throttled to ~30 Hz for weak clients)
+
+
+
+Client renders at independent FPS: 30 / 90 / 120 depending on preset
+
+
+
+Client interpolates between snapshots
+
+
+
+Client predicts local movement and corrects with reconciliation
+
+
+
+This decouples rendering from simulation.
+
+
+
+Why 60 Hz Simulation Is Chosen
+
+
+
+Simple and stable timing (16.6ms steps)
+
+
+
+Easy to interpolate to ANY render FPS (30, 60, 90, 120, 144)
+
+
+
+Compatible with handhelds and midrange PCs
+
+
+
+Keeps network bandwidth reasonable
+
+
+
+GoldSrc, Source, Quake, Overwatch 1, TF2 all used similar logic
+
+
+
+How Rendering Interacts With Tickrate
+
+
+
+Rendering FPS is NOT required to match server tickrate.
+
+Examples:
+
+
+
+Case 1: 30 FPS (Potato) vs 60 Hz server
+
+
+
+Render every 33ms
+
+
+
+Interpolate between every 2 server ticks
+
+
+
+Input latency increases, but gameplay stays predictable
+
+
+
+Good for weak hardware
+
+
+
+Case 2: 90 FPS (Steam Deck OLED) vs 60 Hz server
+
+
+
+Render every 11ms
+
+
+
+Smooth visual interpolation
+
+
+
+Input sampled 3 times per simulation step
+
+
+
+Very responsive handheld experience
+
+
+
+Case 3: 120 FPS (PC) vs 60 Hz server
+
+
+
+Render every ~8ms
+
+
+
+High fluidity
+
+
+
+Low input latency
+
+
+
+Great for 120/144 Hz monitors
+
+
+
+In all cases, gameplay correctness remains identical.
+
+
+
+Recommended Snapshot Strategy
+
+
+
+Default:
+
+
+
+60 Hz snapshots for Medium and High presets
+
+
+
+Fallback:
+
+
+
+30 Hz snapshots for Potato preset (if bandwidth or CPU is restricted)
+
+
+
+Client interpolation handles both cases smoothly.
+
+
+
+Input Sampling
+
+
+
+Client should sample inputs every render frame.
+
+This means:
+
+
+
+30 FPS preset samples input 30 times per second
+
+
+
+90 FPS preset samples input 90 times per second
+
+
+
+120 FPS preset samples input 120 times per second
+
+
+
+Inputs are bundled and sent to the server at a fixed rate (e.g., 60 Hz).
+
+
+
+Input latency is therefore tied more to frametime than to tickrate.
+
+
+
+Reconciliation Loop
+
+
+
+When a snapshot arrives:
+
+
+
+Correct local player authoritative state
+
+
+
+Reapply stored inputs (unacknowledged steps)
+
+
+
+Fix visual errors via interpolation and smoothing
+
+
+
+This ensures consistency across all three presets.
+
+
+
+Frametime Stability
+
+
+
+Stable frametime is more important than raw FPS.
+
+
+
+A stable:
+
+
+
+30 FPS (33ms)
+
+feels better than a spiky:
+
+
+
+45 â†’ 70 â†’ 50 â†’ 85 â†’ 40 FPS
+
+
+
+Your 30/90/120 targets are chosen because:
+
+
+
+They divide evenly into 60 Hz simulation
+
+
+
+They match common screen refresh rates
+
+
+
+They keep frametime stable and predictable
+
+
+
+Summary of Target Rates
+
+
+
+POTATO:
+
+
+
+Render: 30 FPS
+
+
+
+Server tick: 60 Hz
+
+
+
+Snapshots: 30â€“60 Hz depending on bandwidth
+
+
+
+Goal: keep frametime consistent for weak hardware
+
+
+
+MEDIUM (Steam Deck OLED):
+
+
+
+Render: 90 FPS
+
+
+
+Server tick: 60 Hz
+
+
+
+Snapshots: 60 Hz
+
+
+
+Goal: extremely smooth handheld experience
+
+
+
+HIGH (1080p PC):
+
+
+
+Render: 120 FPS
+
+
+
+Server tick: 60 Hz
+
+
+
+Snapshots: 60 Hz
+
+
+
+Goal: high responsiveness for 120/144 Hz players
+
+
+
+====================================
+FILE: \docs\graphics_scaling.md
+====================================
+
+==========================
+
+GRAPHICS SCALING (TXT)
+
+==========================
+
+
+
+bf42lite uses three scalable presets: Potato (30 FPS), Medium (90 FPS), and High (120 FPS).
+
+No postprocessing. All scaling is done using classic GoldSrc-style adjustments: geometry, textures, particles, and world detail.
+
+
+
+Geometry and LOD
+
+
+
+Potato:
+
+
+
+Lowest LOD
+
+
+
+Many props removed
+
+
+
+Medium:
+
+
+
+Medium LOD
+
+
+
+All key props present
+
+
+
+High:
+
+
+
+Full detail LOD
+
+
+
+All props + clutter
+
+
+
+Textures
+
+
+
+Potato:
+
+
+
+256â€“512 max textures
+
+
+
+Aggressive mip bias
+
+
+
+Bilinear filtering
+
+
+
+Medium:
+
+
+
+512â€“1024 textures
+
+
+
+Normal mip bias
+
+
+
+Bilinear or trilinear
+
+
+
+High:
+
+
+
+1024 hero textures allowed
+
+
+
+Trilinear filtering
+
+
+
+Lighting
+
+
+
+Potato:
+
+
+
+Baked lightmaps only
+
+
+
+No shadows or blob shadows
+
+
+
+Very limited dynamic lights (~4)
+
+
+
+Medium:
+
+
+
+Baked lightmaps
+
+
+
+Projected/blob shadows
+
+
+
+More dynamic lights (~12)
+
+
+
+High:
+
+
+
+Baked lightmaps
+
+
+
+Higher-res projected shadows
+
+
+
+Many dynamic lights (~24)
+
+
+
+Particles
+
+
+
+Potato: Cap ~128
+
+
+
+Minimal explosions
+
+
+
+Short-lived smoke
+
+
+
+Simplified tracers
+
+
+
+Medium: Cap ~256â€“512
+
+
+
+Standard explosions
+
+
+
+Persistent but capped smoke
+
+
+
+Normal tracers
+
+
+
+High: Cap ~512â€“1024
+
+
+
+Large explosions
+
+
+
+Dense debris and persistent smoke
+
+
+
+Full tracer density
+
+
+
+Decals (bullet holes, impacts)
+
+
+
+Potato: ~32 decals cap, aggressive fade
+
+Medium: ~128 decals cap, normal fade
+
+High: ~256â€“512 decals cap, slow fade
+
+
+
+Ragdolls
+
+
+
+Potato: 0â€“1, very short lifetime
+
+Medium: 3â€“4, medium lifetime
+
+High: 6â€“8, long lifetime
+
+
+
+Props and World Detail
+
+
+
+Potato: minimal foliage, minimal debris
+
+Medium: full intended props
+
+High: full props + clutter meshes
+
+
+
+Audio Scaling
+
+
+
+Potato: ~16 voices
+
+Medium: 48â€“64 voices
+
+High: 64â€“96 voices
+
+
+
+Simulation / Network Considerations
+
+
+
+Preset does NOT affect tickrate.
+
+Only visual density and GPU load scale across presets.
+
+
+
+====================================
+FILE: \docs\performance_presets.md
+====================================
+
+==========================
+
+PERFORMANCE PRESETS (TXT)
+
+==========================
+
+
+
+bf42lite â€“ GoldSrc-inspired, no postprocessing
+
+Three presets based on target hardware and refresh-rate goals.
+
+
+
+PRESETS:
+
+
+
+POTATO â†’ 30 FPS
+
+
+
+MEDIUM â†’ 90 FPS
+
+
+
+HIGH â†’ 120 FPS
+
+
+
+PRESET: POTATO (30 FPS target)
+
+
+
+Target hardware:
+
+
+
+Very old iGPUs (Intel HD 500)
+
+
+
+Low-end Chromebooks
+
+
+
+Old preowned PCs
+
+
+
+Resolution:
+
+
+
+720p
+
+
+
+FPS Target:
+
+
+
+30 FPS stable (half of 60 Hz)
+
+
+
+Shadows:
+
+
+
+None or simple blob
+
+
+
+Textures:
+
+
+
+Low resolution (256â€“512 max)
+
+
+
+Geometry / Props:
+
+
+
+Lowest LODs
+
+
+
+Many props removed to reduce draw calls
+
+
+
+Particles:
+
+
+
+Cap ~128 total
+
+
+
+Decals:
+
+
+
+Cap ~32 total
+
+
+
+Ragdolls:
+
+
+
+0 to 1 active at once
+
+
+
+Dynamic lights:
+
+
+
+Roughly 4 active lights
+
+
+
+Notes:
+
+
+
+Pure fallback mode for very weak systems
+
+
+
+Ensures game is still playable even at minimal hardware
+
+
+
+PRESET: MEDIUM (90 FPS target â€“ Steam Deck OLED)
+
+
+
+Target hardware:
+
+
+
+Steam Deck OLED (90 Hz)
+
+
+
+Lowâ€“mid PCs and handheld devices
+
+
+
+Resolution:
+
+
+
+1280x800
+
+
+
+FPS Target:
+
+
+
+90 FPS stable
+
+
+
+Shadows:
+
+
+
+Cheap blob or projected shadows
+
+
+
+Textures:
+
+
+
+Medium resolution (512â€“1024)
+
+
+
+Geometry / Props:
+
+
+
+Full low-poly world
+
+
+
+All intended props present
+
+
+
+Particles:
+
+
+
+Cap roughly 256 to 512
+
+
+
+Decals:
+
+
+
+Cap around 128
+
+
+
+Ragdolls:
+
+
+
+3 to 4 active
+
+
+
+Dynamic lights:
+
+
+
+Around 12 active lights
+
+
+
+Notes:
+
+
+
+Primary design preset
+
+
+
+Smooth handheld experience designed for the 90 Hz OLED screen
+
+
+
+PRESET: HIGH (120 FPS target â€“ Midrange PC)
+
+
+
+Target hardware:
+
+
+
+Midrange gaming PCs (RTX 3060 / RX 6600 / 2060 class)
+
+
+
+Resolution:
+
+
+
+1080p
+
+
+
+FPS Target:
+
+
+
+120 FPS (never below 60)
+
+
+
+Shadows:
+
+
+
+Higher-quality projected shadows
+
+
+
+Textures:
+
+
+
+Mediumâ€“High (1024 for hero assets)
+
+
+
+Geometry / Props:
+
+
+
+Full detail, clutter included
+
+
+
+Particles:
+
+
+
+Cap ~512 to 1024
+
+
+
+Decals:
+
+
+
+Cap ~256 to 512
+
+
+
+Ragdolls:
+
+
+
+6 to 8 active
+
+
+
+Dynamic lights:
+
+
+
+Around 24 active lights
+
+
+
+Notes:
+
+
+
+Designed for 120â€“144 Hz desktop monitors
+
+
+
+Smooth, high-end PC experience
+
+
+
+Preset Summary (TXT Form)
+
+
+
+POTATO â€“ 30 FPS â€“ 720p â€“ weak hardware
+
+MEDIUM â€“ 90 FPS â€“ 1280x800 â€“ Steam Deck OLED
+
+HIGH â€“ 120 FPS â€“ 1080p â€“ midrange PCs
+
+
+

@@ -98,10 +98,36 @@ export class ClientGame {
   private initNetworkCallbacks() {
     this.net.onConnected = () => {
       console.log('Connected to server');
+
+      // Re-enable gameplay interaction and reset status text
+      this.input.setInteraction(true);
+      this.hud.updateCenterStatus('');
+
+      // Start in deploy mode as usual
+      this.ui.setDeployMode(true);
     };
 
     this.net.onDisconnected = () => {
       console.log('Disconnected from server');
+
+      // 1) Stop gameplay input so we don't keep sending commands
+      this.input.setInteraction(false);
+
+      // 2) Make sure pointer lock is released; UIManager will also
+      //    call exitPointerLock in setDeployMode(true), but this is safe.
+      if (document.pointerLockElement) {
+        try {
+          document.exitPointerLock();
+        } catch {
+          // ignore
+        }
+      }      
+
+      // 3) Show a clear center-screen message
+      this.hud.updateCenterStatus('Connection lost. Please restart or reconnect.');
+
+      // 4) Fall back to deploy layout so HUD is not pretending we are "live"
+      this.ui.setDeployMode(true);
     };
 
     // Hit marker now goes through HUD façade

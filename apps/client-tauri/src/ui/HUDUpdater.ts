@@ -25,11 +25,11 @@ export class HUDUpdater {
     }
   }
 
-  public showLiveHUD(): void {
+  showLiveHUD(): void {
     this.ui.setDeployMode(false);
     // Clear center message when fully alive
     this.updateCenterStatus('');
-  }
+  }  
 
   /**
    * Update the center status text (e.g., spawn/death messages).

@@ -134,23 +134,22 @@ export function syncLocalPlayerFromSnapshot(
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
 
   // --- Respawn timer handling ---
-  // Ensure we never pass negative timers into the HUD.
-  const rawRespawn = myServerEntity.respawnTimer ?? 0;
-  const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
+// Ensure we never pass negative timers into the HUD.
+const rawRespawn = myServerEntity.respawnTimer ?? 0;
+const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
 
-  // HUD: respawn timer (drives center status while dead)
-  hud.updateRespawn(isNowDead, respawnTimer);
+// HUD: respawn timer (drives center status while dead)
+hud.updateRespawn(isNowDead, respawnTimer);
 
-  // HUD: deploy vs live HUD toggle on state change
-  if (!wasDead && isNowDead) {
-    // Just died → switch to deploy layout and briefly show a death message.
-    hud.showDeployScreen();
-    hud.updateCenterStatus('You died.');
-  } else if (wasDead && !isNowDead) {
-    // Just respawned → back to game HUD and clear center text
-    hud.showLiveHUD();
-  }
-
+// HUD: deploy vs live HUD toggle on state change
+if (!wasDead && isNowDead) {
+  // Just died → switch to deploy layout and briefly show a death message.
+  hud.showDeployScreen();
+  hud.updateCenterStatus('You died.');
+} else if (wasDead && !isNowDead) {
+  // Just respawned → back to game HUD and clear center text
+  hud.showLiveHUD();
+}
 
   // Team mapping (Rust TeamId → numeric ECS team)
   if (myServerEntity.team) {
