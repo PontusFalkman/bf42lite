@@ -124,7 +124,6 @@ export function syncLocalPlayerFromSnapshot(
     Transform.y[localEntityId] = myServerEntity.pos.y;
     Transform.z[localEntityId] = myServerEntity.pos.z;
   }
-
   // Health + death state (protocol sends health as a number)
   const hp =
     typeof myServerEntity.health === 'number'
@@ -134,24 +133,24 @@ export function syncLocalPlayerFromSnapshot(
   Health.current[localEntityId] = hp;
   Health.isDead[localEntityId] = isNowDead ? 1 : 0;
 
-  // HUD: respawn timer
-  hud.updateRespawn(isNowDead, myServerEntity.respawnTimer || 0);
+  // --- Respawn timer handling ---
+  // Ensure we never pass negative timers into the HUD.
+  const rawRespawn = myServerEntity.respawnTimer ?? 0;
+  const respawnTimer = rawRespawn > 0 ? rawRespawn : 0;
 
-  // NEW: drive deploy vs live HUD directly from snapshot every tick
-  if (isNowDead) {
-    hud.showDeployScreen('Select a class and spawn point to deploy.');
-  } else {
-    hud.showLiveHUD();
-  }
+  // HUD: respawn timer (drives center status while dead)
+  hud.updateRespawn(isNowDead, respawnTimer);
 
   // HUD: deploy vs live HUD toggle on state change
   if (!wasDead && isNowDead) {
-    // Just died → show deploy screen
-    hud.showDeployScreen('You died. Select a spawn point.');
+    // Just died → switch to deploy layout and briefly show a death message.
+    hud.showDeployScreen();
+    hud.updateCenterStatus('You died.');
   } else if (wasDead && !isNowDead) {
-    // Just respawned → back to game HUD
+    // Just respawned → back to game HUD and clear center text
     hud.showLiveHUD();
   }
+
 
   // Team mapping (Rust TeamId → numeric ECS team)
   if (myServerEntity.team) {

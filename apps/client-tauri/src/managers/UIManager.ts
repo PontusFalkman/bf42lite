@@ -323,14 +323,16 @@ if (this.ui.spawnBtn) {
 
     public setGameOver(isGameOver: boolean, winningTeam: string) {
         if (!this.ui.gameOverScreen || !this.ui.endTitle) return;
+    
         if (isGameOver) {
             this.ui.gameOverScreen.classList.add('visible');
             this.ui.endTitle.innerText = winningTeam;
-            document.exitPointerLock();
+            document.exitPointerLock?.();
         } else {
             this.ui.gameOverScreen.classList.remove('visible');
+            this.ui.endTitle.innerText = '';
         }
-    }
+    }    
 
     public updateAmmo(current: number, reserve: number, weaponName?: string) {
         if (this.ui.ammoCurr) this.ui.ammoCurr.innerText = current.toString();
@@ -340,26 +342,39 @@ if (this.ui.spawnBtn) {
 
     // Respawn timer → center status and spawn button text
     public updateRespawn(isDead: boolean, timer: number) {
-        if (!this.ui.spawnBtn) return;
-
+        const t = Math.max(0, timer); // extra safety clamp
+    
         if (isDead) {
-            if (timer > 0) {
-                this.ui.spawnBtn.innerText = `Deploy in ${timer.toFixed(1)}s`;
-                this.ui.spawnBtn.setAttribute('disabled', 'true');
-                this.ui.spawnBtn.style.pointerEvents = 'none';
-                this.ui.spawnBtn.style.opacity = '0.5';
-
-                this.setCenterStatus(`Respawning in ${timer.toFixed(1)}s`);
+            // Spawn button state (if present)
+            if (this.ui.spawnBtn) {
+                if (t > 0) {
+                    this.ui.spawnBtn.innerText = `Deploy in ${t.toFixed(1)}s`;
+                    this.ui.spawnBtn.setAttribute('disabled', 'true');
+                    this.ui.spawnBtn.style.pointerEvents = 'none';
+                    this.ui.spawnBtn.style.opacity = '0.5';
+                } else {
+                    this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
+                    this.ui.spawnBtn.removeAttribute('disabled');
+                    this.ui.spawnBtn.style.pointerEvents = 'auto';
+                    this.ui.spawnBtn.style.opacity = '1.0';
+                }
+            }
+    
+            // Center status – independent of whether the button exists
+            if (t > 0) {
+                this.setCenterStatus(`Respawning in ${t.toFixed(1)}s`);
             } else {
-                this.ui.spawnBtn.innerText = 'DEPLOY (Press SPACE)';
-                this.ui.spawnBtn.removeAttribute('disabled');
-                this.ui.spawnBtn.style.pointerEvents = 'auto';
-                this.ui.spawnBtn.style.opacity = '1.0';
-
                 this.setCenterStatus('Press SPACE or click DEPLOY to respawn');
             }
         } else {
+            // Alive: clear center status and reset button visuals (even though deploy UI is hidden)
+            if (this.ui.spawnBtn) {
+                this.ui.spawnBtn.innerText = 'DEPLOY';
+                this.ui.spawnBtn.removeAttribute('disabled');
+                this.ui.spawnBtn.style.pointerEvents = 'auto';
+                this.ui.spawnBtn.style.opacity = '1.0';
+            }
             this.setCenterStatus('');
         }
-    }
+    }    
 }
