@@ -70,7 +70,7 @@ function Export-Dump {
 }
 
 function Export-TauriDump {
-    # Slimmed Tauri dump: only key config/data files
+    # Slimmed Tauri dump: key config/data files + core Rust sources
     $OutputFile = "bf42lite_tauri_dump.txt"
 
     if (Test-Path $OutputFile) {
@@ -79,13 +79,22 @@ function Export-TauriDump {
 
     # Only the files we actually care about
     $tauriFiles = @(
+        # Config / data
         "apps/client-tauri/src-tauri/Cargo.toml",
         "apps/client-tauri/src-tauri/tauri.conf.json",
         "apps/client-tauri/src-tauri/game_config.toml",
         "apps/client-tauri/src-tauri/weapons.json",
         "apps/client-tauri/src-tauri/classes.json",
         "apps/client-tauri/src-tauri/capabilities/default.json",
-        "apps/client-tauri/src-tauri/capabilities/migrated.json"
+        "apps/client-tauri/src-tauri/capabilities/migrated.json",
+
+        # Core Rust code used by the integrated server/sim
+        "apps/client-tauri/src-tauri/src/lib.rs",
+        "apps/client-tauri/src-tauri/src/main.rs",
+        "apps/client-tauri/src-tauri/src/sim.rs",
+        "apps/client-tauri/src-tauri/src/config.rs",
+        "apps/client-tauri/src-tauri/src/systems/mod.rs",
+        "apps/client-tauri/src-tauri/src/systems/conquest.rs"
     )
 
     foreach ($relativePath in $tauriFiles) {

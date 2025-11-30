@@ -1,179 +1,153 @@
-===========================================================
-                    BF42LITE – ARCHITECTURE
-         (Where We Started → Where We Are → v1.0 Goal)
-===========================================================
+# bf42lite — Architecture Overview (Updated 2025)
 
+This document describes the current architecture of **bf42lite**, reflecting the latest refactors:
+- Server-authoritative simulation (Rust)
+- Client (TS) as a prediction/visualization layer only
+- Config-driven gameplay rules (TOML/JSON)
+- Deterministic tick loop
+- Snapshot networking model
 
-───────────────────────────────────────────────────────────
-1. WHERE WE STARTED (Early Prototypes)
-───────────────────────────────────────────────────────────
+---
 
-                   ┌──────────────────────────┐
-                   │     CLIENT (TS)          │
-                   │  - movement logic        │
-                   │  - prediction             │
-                   │  - interpolation          │
-                   │  - rendering              │
-                   │  ALL in one place         │
-                   └────────────┬─────────────┘
-                                │
-                                │ (mixed logic)
-                                ▼
-                   ┌──────────────────────────┐
-                   │  SERVER (Rust/Tauri)     │
-                   │  - minimal movement      │
-                   │  - basic combat          │
-                   │  - hardcoded flags/maps  │
-                   │  tightly coupled to UI   │
-                   └──────────────────────────┘
+## 1. High-Level Architecture
 
-       • Hard-coded gameplay rules everywhere  
-       • Duplicate logic in TS + Rust  
-       • No engine/game separation  
-       • No package boundaries  
-       • Legacy TS network code still in tree  
+The game consists of **three main layers**:
 
+1. **Engine-Core (Rust + TS shared schema)**  
+   - ECS components (Transform, Velocity, Health, Ammo, Soldier, Team, etc.)  
+   - Tick-based deterministic simulation loop  
+   - Prediction & reconciliation model  
+   - Snapshot schema and message formats (in `@bf42lite/protocol`)
 
+2. **Game Logic Layer (Rust)**  
+   - Conquest rules (capture, bleed, tickets, match end, winner)  
+   - Weapon damage, firing rules, rpm enforcement  
+   - Movement physics (gravity, jump, speed)  
+   - Respawns & spawn points  
+   - Map geometry (flags, radii, base spawns)
 
-───────────────────────────────────────────────────────────
-2. WHERE WE ARE NOW (v0.4 Modular Client Baseline)
-───────────────────────────────────────────────────────────
+3. **Client (TypeScript)**  
+   - Rendering (Three.js + Tauri canvas)  
+   - HUD/UI  
+   - Crosshair, recoil, view animations  
+   - Sound, hitmarkers, screen effects  
+   - Input gathering  
+   - Prediction + interpolation of entities between snapshots
 
-               ┌────────────────────────────────────┐
-               │           MONOREPO ROOT             │
-               │  packages/   apps/   src-tauri/     │
-               └──────────────────┬──────────────────┘
-                                  │
-                                  │
-     ┌────────────────────────────┴────────────────────────────┐
-     │                     TYPESCRIPT SIDE                     │
-     └─────────────────────────────────────────────────────────┘
+The **server owns all gameplay truth**.  
+The **client only predicts visually** and corrects from snapshots.
 
-     packages/
-     ┌────────────────────────────────────────────────────────┐
-     │ @bf42lite/protocol    -> shared message schemas        │
-     │ @bf42lite/net         -> WS/Tauri network adapters     │
-     │ @bf42lite/engine-core -> generic ECS utilities         │
-     │ @bf42lite/games-bf42  -> BF42 components/constants     │
-     │ @bf42lite/sim         -> TS prediction sim (bitecs)    │
-     └────────────────────────────────────────────────────────┘
+---
 
-     apps/client-tauri/
-     ┌────────────────────────────────────────────────────────┐
-     │ ClientGame (orchestrator)                              │
-     │ Systems: prediction, interpolation, reconciler          │
-     │ Renderer: Three.js scene, models, flags                 │
-     │ Managers: InputManager, UIManager, NetworkManager       │
-     │ HUDUpdater: single HUD authority                        │
-     │ WorldRender: ECS → render state                         │
-     └────────────────────────────────────────────────────────┘
+## 2. Networking Model
 
-                                  │
-                                  ▼
+### 2.1 Input → Server  
+Client sends:
+- movement inputs  
+- aim direction  
+- fire requests  
+- class selection  
+- spawn requests  
 
-     ┌─────────────────────────────────────────────────────────┐
-     │                    RUST SIDE (Server)                   │
-     └─────────────────────────────────────────────────────────┘
+### 2.2 Server Simulation  
+Server applies:
+- movement physics  
+- combat calculations  
+- flag capture  
+- ticket loss  
+- bleeding  
+- setting `match_ended` & `winner`
 
-     src-tauri/
-     ┌────────────────────────────────────────────────────────┐
-     │ Server tick loop                                        │
-     │ systems/movement.rs                                     │
-     │ systems/combat.rs                                       │
-     │ systems/conquest.rs                                     │
-     │ maps/warehouse.rs                                       │
-     │ snapshot.rs (TickSnapshot builder)                      │
-     │ player.rs / game_state.rs                               │
-     └────────────────────────────────────────────────────────┘
+### 2.3 Snapshot → Client  
+Server sends snapshots containing:
+```ts
+{
+  tick: number,
+  entities: [...],
+  game_state: {
+     team_a_tickets: number,
+     team_b_tickets: number,
+     match_ended: boolean,
+     winner: 'TEAM_A' | 'TEAM_B' | null
+  },
+  flags: [...FlagSnapshot...]
+}
+Client interpolates remote entities and reconciles the local player.
 
-     • Server authoritative over:                             
-       movement, combat, flags, tickets, respawn, match end   
-     • Client predicts & reconciles                            
-     • Snapshots drive rendering                               
+3. Prediction, Reconciliation, Interpolation
+Prediction (Client)
 
+Client simulates its own movement frame-to-frame using:
 
-───────────────────────────────────────────────────────────
-3. WHERE WE ARE GOING (v1.0 Target Architecture)
-───────────────────────────────────────────────────────────
+movement config values
 
-                      ┌─────────────────────────────┐
-                      │      CONFIG ASSETS          │
-                      │  maps/*.toml                │
-                      │  gamemodes/*.toml           │
-                      │  weapons/*.toml             │
-                      │  classes/*.toml             │
-                      │  movement.toml              │
-                      └───────────────┬─────────────┘
-                                      │  (data-driven)
-                                      ▼
+local inputs
 
-────────────────────────────── Rust Side ───────────────────────────────
+last known server state
 
-crates/
-┌───────────────────────────┬──────────────────────────────────────────┐
-│  engine (WASM-ready)      │  game-bf42 (rules)                       │
-│  - ECS core               │  - Conquest rules                        │
-│  - math                   │  - Weapon configs                        │
-│  - physics                │  - Movement parameters                   │
-│  - WASM bindings          │  - Map loading                           │
-└───────────────────────────┴──────────────────────────────────────────┘
-                │  native
-                │
-                │ WASM
-                ▼
-        ┌────────────────────────────────────────┐
-        │      CLIENT USES RUST SIM VIA WASM     │
-        │     (prediction + reconciliation)       │
-        └────────────────────────────────────────┘
+Reconciliation (Client)
 
+On snapshot:
 
-────────────────────────── TS Side (Final Form) ───────────────────────
+Rewind to server-confirmed position
 
-packages/
-┌─────────────────────────────────────────────────────────────────────┐
-│ @bf42lite/protocol   → types only                                   │
-│ @bf42lite/net        → transport adapters                            │
-│ @bf42lite/engine-core→ rendering helpers, TS ECS glue               │
-│ @bf42lite/games-bf42 → client-side components & visuals              │
-│ @bf42lite/sim        → becomes WASM wrapper over Rust sim            │
-└─────────────────────────────────────────────────────────────────────┘
+Re-apply predicted inputs
 
-client-tauri/
-┌─────────────────────────────────────────────────────────────────────┐
-│ UI, HUD, settings, Three.js renderer                                │
-│ ClientGame orchestrates WASM sim + Renderer + Systems               │
-│ No gameplay rules hardcoded                                         │
-└─────────────────────────────────────────────────────────────────────┘
+Correct divergence
 
+Interpolation (Client)
 
-───────────────────────────────────────────────────────────
-4. FLOW SUMMARY
-───────────────────────────────────────────────────────────
+Remote players:
 
-                  SERVER (RUST)
-             (authoritative simulation)
-                         │
-                         │ snapshots @ tick
-                         ▼
-       CLIENT (TS + RUST/WASM sim for prediction)
-                         │
-                         │ input @ 30Hz
-                         ▼
-                  SERVER (RUST)
+Stored in a small buffer
 
-Prediction → Reconciliation → Interpolation → Rendering  
-All gameplay rules resolved via **data configs**, not hardcoded.
+Interpolated smoothly across snapshots
 
+Never predicted
 
-───────────────────────────────────────────────────────────
-5. LONG-TERM EXTENSION LAYER
-───────────────────────────────────────────────────────────
+4. Game Rules Ownership
+System	Owner	Notes
+Movement physics	Server	Client predicts; server corrects.
+Weapon damage	Server	All damage/hits authoritative.
+Fire rate enforcement	Server	Cannot fire too quickly client-side.
+Conquest ticket rules	Server	Capture, bleed, per-death ticket loss.
+Map geometry	Server	Spawn points, flags, radii.
+Match start/end	Server	Exported via snapshot.
+HUD/UI	Client	Purely render-only.
+Crosshair & recoil	Client	Cosmetic only.
+Interpolation	Client	Smooth remote entities.
+5. Config-Driven Data
 
-Vehicles │ AI bots │ New maps │ Game modes │ Zombie faction │ Spotting │ UI Themes  
-All plug into the **game crate** + config files,  
-NOT into the engine or the renderer.
+game_config.toml contains:
 
+[movement]
 
-===========================================================
-END OF ASCII ARCHITECTURE OVERVIEW
-===========================================================
+[conquest]
+
+[[weapons]]
+
+[[classes]]
+
+Rust loads the config; the client may load it only for prediction/UX.
+
+6. Directory Diagram (Conceptual)
+root
+├── apps
+│   ├── client-tauri (TS)
+│   │   ├── src
+│   │   │   ├── core/ (renderer, weapon visuals)
+│   │   │   ├── systems/ (prediction, interpolation)
+│   │   │   ├── ui/ (HUDUpdater, UIManager)
+│   │   │   ├── net/ (NetworkManager)
+│   │   └── src-tauri/ (Rust server)
+│   │       ├── config.rs
+│   │       ├── sim.rs
+│   │       ├── systems/
+│   │       │   ├── conquest.rs
+│   │       │   ├── combat.rs
+│   │       │   ├── movement.rs
+│   │       └── maps/
+├── packages
+│   ├── protocol
+│   └── engine-core
+└── docs

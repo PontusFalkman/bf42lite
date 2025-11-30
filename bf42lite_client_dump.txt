@@ -1407,8 +1407,8 @@ export class UIManager {
             killFeed: document.getElementById('kill-feed'),
 
             crosshair: document.getElementById('crosshair'),
-
         };
+
         this.initListeners();
     }
     /**
@@ -1477,8 +1477,6 @@ if (this.ui.spawnBtn) {
 
         // Optimistic deploy: hide deploy screen immediately.
         this.setDeployMode(false);
-        this.setCenterStatus('Spawning...');
-        setTimeout(() => this.setCenterStatus(''), 800);
 
         // Let the server know which class we chose.
         this.onSpawnRequest(this.selectedClassId);

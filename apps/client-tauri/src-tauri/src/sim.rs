@@ -106,6 +106,7 @@ let config = GameConfig::load_all();
             &mut self.tickets_a,
             &mut self.tickets_b,
             dt,
+            &self.config.conquest,
         );
 
         // 3. Game Mode Logic (winner)

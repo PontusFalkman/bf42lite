@@ -44,6 +44,27 @@ pub struct ClassConfig {
     pub primary_weapon_id: u32,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct ConquestConfig {
+    pub team_a_initial_tickets: i32,
+    pub team_b_initial_tickets: i32,
+    pub tickets_per_death: i32,
+    pub tickets_per_bleed: i32,
+    pub bleed_interval_seconds: f32,
+}
+
+impl Default for ConquestConfig {
+    fn default() -> Self {
+        Self {
+            team_a_initial_tickets: 100,
+            team_b_initial_tickets: 100,
+            tickets_per_death: 1,
+            tickets_per_bleed: 1,
+            bleed_interval_seconds: 5.0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct GameConfig {
     #[serde(default)]
@@ -54,6 +75,9 @@ pub struct GameConfig {
 
     #[serde(default)]
     pub classes: Vec<ClassConfig>,
+
+    #[serde(default)]
+    pub conquest: ConquestConfig,
 }
 
 impl Default for GameConfig {
@@ -64,6 +88,7 @@ impl Default for GameConfig {
             // NO in-code weapons/classes stats anymore
             weapons: Vec::new(),
             classes: Vec::new(),
+            conquest: ConquestConfig::default(),
         }
     }
 }

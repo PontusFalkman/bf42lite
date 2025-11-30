@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use crate::config::ConquestConfig;
 use crate::player::Player;
 use crate::protocol::TeamId;
 use crate::sim::FlagZone;
@@ -13,6 +14,7 @@ pub fn update_conquest(
     tickets_a: &mut f32,
     tickets_b: &mut f32,
     dt: f32,
+    cfg: &ConquestConfig,
 ) {
     if dt <= 0.0 {
         // Snapshot sender sometimes calls with dt = 0.0, skip progression.
@@ -20,10 +22,10 @@ pub fn update_conquest(
     }
 
     // Tweak these to taste.
-    const CAPTURE_SPEED: f32 = 0.25;        // progress per second
-    const DECAY_SPEED: f32 = 0.10;          // decay when empty / contested
-    const CAPTURE_THRESHOLD: f32 = 1.0;     // when |capture| >= 1.0, flip owner
-    const TICKET_BLEED_PER_FLAG: f32 = 0.5; // tickets per second per extra flag
+    const CAPTURE_SPEED: f32 = 0.25;    // progress per second
+    const DECAY_SPEED: f32 = 0.10;      // decay when empty / contested
+    const CAPTURE_THRESHOLD: f32 = 1.0; // when |capture| >= 1.0, flip owner
+    // No TICKET_BLEED_PER_FLAG here anymore; we use cfg.tickets_per_bleed below.
 
     // === 1) Update capture progress for each flag ===
     for flag in flags.iter_mut() {
@@ -140,19 +142,22 @@ pub fn update_conquest(
         }
     }
 
+    let bleed_per_flag = cfg.tickets_per_bleed as f32;
+
     if owned_a > owned_b {
         let advantage = (owned_a - owned_b) as f32;
-        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        let bleed = advantage * bleed_per_flag * dt;
         *tickets_b -= bleed;
         if *tickets_b < 0.0 {
             *tickets_b = 0.0;
         }
     } else if owned_b > owned_a {
         let advantage = (owned_b - owned_a) as f32;
-        let bleed = advantage * TICKET_BLEED_PER_FLAG * dt;
+        let bleed = advantage * bleed_per_flag * dt;
         *tickets_a -= bleed;
         if *tickets_a < 0.0 {
             *tickets_a = 0.0;
         }
     }
 }
+

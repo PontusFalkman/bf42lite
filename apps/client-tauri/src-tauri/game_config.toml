@@ -7,6 +7,20 @@ jump_force = 5.0
 sprint_multiplier = 1.5
 mouse_sensitivity = 0.1
 
+[conquest]
+# Tickets each team starts with
+team_a_initial_tickets = 100
+team_b_initial_tickets = 100
+
+# Tickets lost per player death
+tickets_per_death = 1
+
+# Tickets per bleed tick when one team owns more flags
+tickets_per_bleed = 1
+
+# How often bleed is applied (in seconds of sim time)
+bleed_interval_seconds = 5.0
+
 # --- WEAPONS ---
 
 [[weapons]]

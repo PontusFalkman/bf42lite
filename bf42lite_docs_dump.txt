@@ -469,186 +469,301 @@ Phase 2 is complete when:
 FILE: \docs\architecture_overview_v1_ascii.md
 ====================================
 
-===========================================================
-                    BF42LITE â€“ ARCHITECTURE
-         (Where We Started â†’ Where We Are â†’ v1.0 Goal)
-===========================================================
+# bf42lite â€” Architecture Overview (Updated 2025)
+
+This document describes the current architecture of **bf42lite**, reflecting the latest refactors:
+- Server-authoritative simulation (Rust)
+- Client (TS) as a prediction/visualization layer only
+- Config-driven gameplay rules (TOML/JSON)
+- Deterministic tick loop
+- Snapshot networking model
+
+---
+
+## 1. High-Level Architecture
+
+The game consists of **three main layers**:
+
+1. **Engine-Core (Rust + TS shared schema)**  
+   - ECS components (Transform, Velocity, Health, Ammo, Soldier, Team, etc.)  
+   - Tick-based deterministic simulation loop  
+   - Prediction & reconciliation model  
+   - Snapshot schema and message formats (in `@bf42lite/protocol`)
+
+2. **Game Logic Layer (Rust)**  
+   - Conquest rules (capture, bleed, tickets, match end, winner)  
+   - Weapon damage, firing rules, rpm enforcement  
+   - Movement physics (gravity, jump, speed)  
+   - Respawns & spawn points  
+   - Map geometry (flags, radii, base spawns)
+
+3. **Client (TypeScript)**  
+   - Rendering (Three.js + Tauri canvas)  
+   - HUD/UI  
+   - Crosshair, recoil, view animations  
+   - Sound, hitmarkers, screen effects  
+   - Input gathering  
+   - Prediction + interpolation of entities between snapshots
+
+The **server owns all gameplay truth**.  
+The **client only predicts visually** and corrects from snapshots.
+
+---
+
+## 2. Networking Model
+
+### 2.1 Input â†’ Server  
+Client sends:
+- movement inputs  
+- aim direction  
+- fire requests  
+- class selection  
+- spawn requests  
+
+### 2.2 Server Simulation  
+Server applies:
+- movement physics  
+- combat calculations  
+- flag capture  
+- ticket loss  
+- bleeding  
+- setting `match_ended` & `winner`
+
+### 2.3 Snapshot â†’ Client  
+Server sends snapshots containing:
+```ts
+{
+  tick: number,
+  entities: [...],
+  game_state: {
+     team_a_tickets: number,
+     team_b_tickets: number,
+     match_ended: boolean,
+     winner: 'TEAM_A' | 'TEAM_B' | null
+  },
+  flags: [...FlagSnapshot...]
+}
+Client interpolates remote entities and reconciles the local player.
+
+3. Prediction, Reconciliation, Interpolation
+Prediction (Client)
+
+Client simulates its own movement frame-to-frame using:
+
+movement config values
+
+local inputs
+
+last known server state
+
+Reconciliation (Client)
+
+On snapshot:
+
+Rewind to server-confirmed position
+
+Re-apply predicted inputs
+
+Correct divergence
+
+Interpolation (Client)
+
+Remote players:
+
+Stored in a small buffer
+
+Interpolated smoothly across snapshots
+
+Never predicted
+
+4. Game Rules Ownership
+System	Owner	Notes
+Movement physics	Server	Client predicts; server corrects.
+Weapon damage	Server	All damage/hits authoritative.
+Fire rate enforcement	Server	Cannot fire too quickly client-side.
+Conquest ticket rules	Server	Capture, bleed, per-death ticket loss.
+Map geometry	Server	Spawn points, flags, radii.
+Match start/end	Server	Exported via snapshot.
+HUD/UI	Client	Purely render-only.
+Crosshair & recoil	Client	Cosmetic only.
+Interpolation	Client	Smooth remote entities.
+5. Config-Driven Data
+
+game_config.toml contains:
+
+[movement]
+
+[conquest]
+
+[[weapons]]
+
+[[classes]]
+
+Rust loads the config; the client may load it only for prediction/UX.
+
+6. Directory Diagram (Conceptual)
+root
+â”œâ”€â”€ apps
+â”‚   â”œâ”€â”€ client-tauri (TS)
+â”‚   â”‚   â”œâ”€â”€ src
+â”‚   â”‚   â”‚   â”œâ”€â”€ core/ (renderer, weapon visuals)
+â”‚   â”‚   â”‚   â”œâ”€â”€ systems/ (prediction, interpolation)
+â”‚   â”‚   â”‚   â”œâ”€â”€ ui/ (HUDUpdater, UIManager)
+â”‚   â”‚   â”‚   â”œâ”€â”€ net/ (NetworkManager)
+â”‚   â”‚   â””â”€â”€ src-tauri/ (Rust server)
+â”‚   â”‚       â”œâ”€â”€ config.rs
+â”‚   â”‚       â”œâ”€â”€ sim.rs
+â”‚   â”‚       â”œâ”€â”€ systems/
+â”‚   â”‚       â”‚   â”œâ”€â”€ conquest.rs
+â”‚   â”‚       â”‚   â”œâ”€â”€ combat.rs
+â”‚   â”‚       â”‚   â”œâ”€â”€ movement.rs
+â”‚   â”‚       â””â”€â”€ maps/
+â”œâ”€â”€ packages
+â”‚   â”œâ”€â”€ protocol
+â”‚   â””â”€â”€ engine-core
+â””â”€â”€ docs
 
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-1. WHERE WE STARTED (Early Prototypes)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+====================================
+FILE: \docs\conquest.md
+====================================
 
-                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                   â”‚     CLIENT (TS)          â”‚
-                   â”‚  - movement logic        â”‚
-                   â”‚  - prediction             â”‚
-                   â”‚  - interpolation          â”‚
-                   â”‚  - rendering              â”‚
-                   â”‚  ALL in one place         â”‚
-                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                â”‚
-                                â”‚ (mixed logic)
-                                â–¼
-                   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                   â”‚  SERVER (Rust/Tauri)     â”‚
-                   â”‚  - minimal movement      â”‚
-                   â”‚  - basic combat          â”‚
-                   â”‚  - hardcoded flags/maps  â”‚
-                   â”‚  tightly coupled to UI   â”‚
-                   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+# Conquest System â€” Authoritative Server Implementation (2025)
 
-       â€¢ Hard-coded gameplay rules everywhere  
-       â€¢ Duplicate logic in TS + Rust  
-       â€¢ No engine/game separation  
-       â€¢ No package boundaries  
-       â€¢ Legacy TS network code still in tree  
+This document explains the **server-side Conquest system**.  
+Everything in this file reflects the **current**, fully server-authoritative model.
 
+---
 
+## 1. Overview
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-2. WHERE WE ARE NOW (v0.4 Modular Client Baseline)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+Conquest is managed entirely on the **server (Rust)**.  
+The client simply renders whatever the snapshot provides.
 
-               â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-               â”‚           MONOREPO ROOT             â”‚
-               â”‚  packages/   apps/   src-tauri/     â”‚
-               â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                  â”‚
-                                  â”‚
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚                     TYPESCRIPT SIDE                     â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+Server maintains:
 
-     packages/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ @bf42lite/protocol    -> shared message schemas        â”‚
-     â”‚ @bf42lite/net         -> WS/Tauri network adapters     â”‚
-     â”‚ @bf42lite/engine-core -> generic ECS utilities         â”‚
-     â”‚ @bf42lite/games-bf42  -> BF42 components/constants     â”‚
-     â”‚ @bf42lite/sim         -> TS prediction sim (bitecs)    â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+- Flag ownership & capture progress  
+- Tickets for both teams  
+- Ticket loss per death  
+- Ticket bleed from flag majority  
+- Match end conditions  
+- Winner declaration  
 
-     apps/client-tauri/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ ClientGame (orchestrator)                              â”‚
-     â”‚ Systems: prediction, interpolation, reconciler          â”‚
-     â”‚ Renderer: Three.js scene, models, flags                 â”‚
-     â”‚ Managers: InputManager, UIManager, NetworkManager       â”‚
-     â”‚ HUDUpdater: single HUD authority                        â”‚
-     â”‚ WorldRender: ECS â†’ render state                         â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+This ensures all gameplay logic is secure and consistent across clients.
 
-                                  â”‚
-                                  â–¼
+---
 
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚                    RUST SIDE (Server)                   â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+## 2. Capture Logic
 
-     src-tauri/
-     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-     â”‚ Server tick loop                                        â”‚
-     â”‚ systems/movement.rs                                     â”‚
-     â”‚ systems/combat.rs                                       â”‚
-     â”‚ systems/conquest.rs                                     â”‚
-     â”‚ maps/warehouse.rs                                       â”‚
-     â”‚ snapshot.rs (TickSnapshot builder)                      â”‚
-     â”‚ player.rs / game_state.rs                               â”‚
-     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+Each flag is represented as:
 
-     â€¢ Server authoritative over:                             
-       movement, combat, flags, tickets, respawn, match end   
-     â€¢ Client predicts & reconciles                            
-     â€¢ Snapshots drive rendering                               
+```rust
+pub struct FlagZone {
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub radius: f32,
+    pub owner: TeamId,
+    pub capture: f32,  // -1.0..1.0
+}
+Steps per tick:
+Count players inside radius per team.
 
+Choose capture direction:
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-3. WHERE WE ARE GOING (v1.0 Target Architecture)
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+If only Team A present â†’ capture += speed
 
-                      â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                      â”‚      CONFIG ASSETS          â”‚
-                      â”‚  maps/*.toml                â”‚
-                      â”‚  gamemodes/*.toml           â”‚
-                      â”‚  weapons/*.toml             â”‚
-                      â”‚  classes/*.toml             â”‚
-                      â”‚  movement.toml              â”‚
-                      â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                      â”‚  (data-driven)
-                                      â–¼
+If only Team B present â†’ capture -= speed
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Rust Side â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+If contested or empty â†’ capture decays toward 0
 
-crates/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  engine (WASM-ready)      â”‚  game-bf42 (rules)                       â”‚
-â”‚  - ECS core               â”‚  - Conquest rules                        â”‚
-â”‚  - math                   â”‚  - Weapon configs                        â”‚
-â”‚  - physics                â”‚  - Movement parameters                   â”‚
-â”‚  - WASM bindings          â”‚  - Map loading                           â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                â”‚  native
-                â”‚
-                â”‚ WASM
-                â–¼
-        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-        â”‚      CLIENT USES RUST SIM VIA WASM     â”‚
-        â”‚     (prediction + reconciliation)       â”‚
-        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+Flip owner if capture >= 1.0 or <= -1.0.
 
+Write updated flags into the snapshot.
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ TS Side (Final Form) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+3. Tickets
+Tickets represent remaining team strength.
 
-packages/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ @bf42lite/protocol   â†’ types only                                   â”‚
-â”‚ @bf42lite/net        â†’ transport adapters                            â”‚
-â”‚ @bf42lite/engine-coreâ†’ rendering helpers, TS ECS glue               â”‚
-â”‚ @bf42lite/games-bf42 â†’ client-side components & visuals              â”‚
-â”‚ @bf42lite/sim        â†’ becomes WASM wrapper over Rust sim            â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+Server updates tickets through:
 
-client-tauri/
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ UI, HUD, settings, Three.js renderer                                â”‚
-â”‚ ClientGame orchestrates WASM sim + Renderer + Systems               â”‚
-â”‚ No gameplay rules hardcoded                                         â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+3.1 Ticket Loss per Death
+Triggered in combat system:
 
+Team of the dead player loses tickets_per_death.
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-4. FLOW SUMMARY
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+3.2 Ticket Bleed
+Controlled by majority flag ownership:
 
-                  SERVER (RUST)
-             (authoritative simulation)
-                         â”‚
-                         â”‚ snapshots @ tick
-                         â–¼
-       CLIENT (TS + RUST/WASM sim for prediction)
-                         â”‚
-                         â”‚ input @ 30Hz
-                         â–¼
-                  SERVER (RUST)
+css
+Copy code
+if A owns more flags â†’ B bleeds
+if B owns more flags â†’ A bleeds
+Amount:
 
-Prediction â†’ Reconciliation â†’ Interpolation â†’ Rendering  
-All gameplay rules resolved via **data configs**, not hardcoded.
+ini
+Copy code
+bleed = advantage * tickets_per_bleed * dt
+3.3 Ticket Floor
+Tickets never go below 0.
 
+4. Match End
+The server marks the match as ended when:
 
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-5. LONG-TERM EXTENSION LAYER
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+nginx
+Copy code
+team_a_tickets <= 0  â†’ winner = TeamB
+team_b_tickets <= 0  â†’ winner = TeamA
+This sets:
 
-Vehicles â”‚ AI bots â”‚ New maps â”‚ Game modes â”‚ Zombie faction â”‚ Spotting â”‚ UI Themes  
-All plug into the **game crate** + config files,  
-NOT into the engine or the renderer.
+rust
+Copy code
+match_ended = true
+winner = Some(TeamWinner)
+These values are included in the snapshotâ€™s game_state.
 
+5. Config-Driven Conquest
+Defined in game_config.toml:
 
-===========================================================
-END OF ASCII ARCHITECTURE OVERVIEW
-===========================================================
+toml
+Copy code
+[conquest]
+team_a_initial_tickets = 100
+team_b_initial_tickets = 100
+tickets_per_death = 1
+tickets_per_bleed = 1
+bleed_interval_seconds = 5.0
+The server reads these at startup and initializes ConquestState accordingly.
 
+6. Snapshot Fields
+Server sends:
+
+ts
+Copy code
+game_state: {
+  team_a_tickets: number,
+  team_b_tickets: number,
+  match_ended: boolean,
+  winner: 'TEAM_A' | 'TEAM_B' | null
+}
+
+flags: FlagSnapshot[]
+Client HUD uses these values exclusively.
+
+7. Client Role
+Client is purely visual:
+
+Draws flags on minimap
+
+Shows capture bar from flag.capture
+
+Shows ticket counts
+
+Plays capture/bleed animations
+
+Shows game-over screen from game_state.match_ended
+
+Client does not compute tickets or capture.
 
 ====================================
 FILE: \docs\frametime_and_tickrate.md
@@ -1331,6 +1446,94 @@ Only visual density and GPU load scale across presets.
 
 
 ====================================
+FILE: \docs\map.md
+====================================
+
+This document describes how map data, flags, spawns, and geometry now work.
+
+---
+
+## 1. Overview
+
+The **server owns all gameplay-related map data**:
+
+- flag positions  
+- flag radii  
+- initial ownership  
+- spawn points for teams  
+- world boundaries  
+- terrain areas relevant for gameplay  
+
+The client does not own any authoritative geometry.
+
+---
+
+## 2. Flag Data Structure
+
+```rust
+pub struct FlagZone {
+    pub id: u32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub radius: f32,
+    pub owner: TeamId,
+    pub capture: f32,
+}
+Flags are defined in Rust under maps/ and loaded into the simulation.
+
+3. Spawn Points
+Rust provides spawn positions for:
+
+Team A bases
+
+Team B bases
+
+Possible forward spawns (later)
+
+Safe spawn checks
+
+Client only shows spawn UI; server validates and executes respawns.
+
+4. Why Server Owns Map Data
+Prevents client-side cheating by altering geometry
+
+Ensures consistent collision and capture zones
+
+Simplifies gameplay code
+
+Makes flag ownership authoritative
+
+Clientâ€™s map/minimap is presentation-only.
+
+5. Snapshot Map Data
+Snapshots include:
+
+ts
+Copy code
+flags[] {
+  id,
+  x, y, z,
+  radius,
+  owner,
+  capture
+}
+Client uses this purely to draw UI.
+
+6. Future Extensions
+The current model supports future systems:
+
+dynamic objectives
+
+vehicle spawns
+
+destructible structures
+
+map scripting (scripted events)
+
+line-of-sight / minimap fog-of-war
+
+====================================
 FILE: \docs\performance_presets.md
 ====================================
 
@@ -1683,4 +1886,123 @@ MEDIUM â€“ 90 FPS â€“ 1280x800 â€“ Steam Deck OLED
 HIGH â€“ 120 FPS â€“ 1080p â€“ midrange PCs
 
 
+
+====================================
+FILE: \docs\weapons.md
+====================================
+
+
+# Weapons & Classes â€” Data-Driven, Server-Authoritative
+
+This document describes the weapon and class system in bf42lite.
+
+---
+
+## 1. Overview
+
+All **gameplay-critical** weapon and class stats are **owned by the server (Rust)**.  
+The client loads the same data only for:
+
+- prediction  
+- HUD labels  
+- recoil/crosshair visuals  
+- ammo indicators  
+
+Damage, RPM enforcement, and hit validation are always done on the server.
+
+---
+
+## 2. Data Sources
+
+### 2.1 game_config.toml  
+Movement, conquest, and global rules.
+
+### 2.2 weapons.json / classes.json  
+Per-weapon fields such as:
+
+- damage  
+- rpm  
+- muzzle velocity  
+- ammo capacity  
+- allowed classes  
+
+These are loaded by Rust at startup.
+
+---
+
+## 3. Server Responsibilities
+
+Server controls:
+
+- Bullet/hit detection  
+- Damage calculation  
+- Fire rate enforcement  
+- Ammo consumption  
+- Weapon switching validation  
+- Reload timing  
+- Death state  
+
+This eliminates prediction cheating and client authority.
+
+---
+
+## 4. Client Responsibilities
+
+Client uses the same weapon definitions to:
+
+- animate recoil  
+- draw crosshair expansion  
+- show weapon name  
+- show ammo HUD  
+- play sound/muzzle flash  
+- predict local refire timing (cosmetic only)
+
+Server may override predicted refire with snapshots.
+
+---
+
+## 5. Snapshot Data
+
+Snapshot includes:
+
+```ts
+entity.weapon_state = {
+  weapon_id: number,
+  ammo_current: number,
+  ammo_reserve: number,
+  is_reloading: boolean,
+}
+Client mirrors this exactly.
+
+6. Fire Request Flow
+Client â†’ send fire request.
+
+Server:
+
+checks RPM
+
+checks ammo
+
+checks hit
+
+applies damage
+
+updates ammo
+
+Snapshot â†’ client shows:
+
+ammo
+
+hitmarker
+
+death state
+
+7. Why Server Authoritative
+Prevents exploited RPM
+
+Consistent, fair damage
+
+Predictable balancing
+
+Multiplayer-safe
 
